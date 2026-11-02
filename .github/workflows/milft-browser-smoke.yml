@@ -101,6 +101,16 @@ jobs:
               if (errors.length) throw new Error('Erreurs JS : ' + errors.join(' | '));
               console.log('OK : creation, 2 seances, absence, ajout joueur, historique et reprise apres rechargement.');
               await page.screenshot({ path: 'milft-smoke.png', fullPage: true });
+            } catch (e) {
+              console.error('ECHEC CHROMIUM :', e.message);
+              console.error('Page actuelle :', page.url());
+              try {
+                console.error('Etat du formulaire ajout :', await page.locator('select[name="seasonPlayer"]').count());
+                console.error('Texte visible :', (await page.locator('body').innerText()).slice(0, 1800));
+                await page.screenshot({ path: 'milft-smoke.png', fullPage: true });
+                console.error('Capture de diagnostic enregistree.');
+              } catch (diagnosticError) { console.error('Diagnostic impossible :', diagnosticError.message); }
+              throw e;
             } finally { await browser.close(); }
           })().catch(e => { console.error(e); process.exit(1); });
           JS
