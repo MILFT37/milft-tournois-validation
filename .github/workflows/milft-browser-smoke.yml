@@ -241,15 +241,7 @@ jobs:
               if (errors.length) throw new Error('Erreurs JS : ' + errors.join(' | '));
               console.log('OK : generation Juniors a la demande, sans joueur simultane ni troisieme rencontre.');
 
-              await page.screenshot({ path: 'milft-smoke.png', fullPage: true });
-            } catch (e) {
-              console.error('ECHEC CHROMIUM :', e.message);
-              console.error('Page actuelle :', page ? page.url() : 'non ouverte');
-              try {
-                if (!page) throw new Error('Page non initialisee');
-                console.error('Etat du formulaire ajout :', await page.locator('select[name="seasonPlayer"]').count());
-                console.error('Texte visible :', (await page.locator('body').innerText()).slice(0, 1800));
-                // Controle visuel et fonctionnel du bandeau Course aux points
+              // Controle visuel et fonctionnel du bandeau Course aux points
               // pour une rencontre simple puis une competition de clubs.
               await page.evaluate(() => {
                 const t = {
@@ -287,6 +279,14 @@ jobs:
                 throw new Error('Grille CAP clubs non conforme');
               console.log('OK : bandeaux Course aux points, grille deux colonnes, commandes Terminer et Abandonner.');
               await page.screenshot({ path: 'milft-smoke.png', fullPage: true });
+            } catch (e) {
+              console.error('ECHEC CHROMIUM :', e.message);
+              console.error('Page actuelle :', page ? page.url() : 'non ouverte');
+              try {
+                if (!page) throw new Error('Page non initialisee');
+                console.error('Etat du formulaire ajout :', await page.locator('select[name="seasonPlayer"]').count());
+                console.error('Texte visible :', (await page.locator('body').innerText()).slice(0, 1800));
+                await page.screenshot({ path: 'milft-smoke.png', fullPage: true });
                 console.error('Capture de diagnostic enregistree.');
               } catch (diagnosticError) { console.error('Diagnostic impossible :', diagnosticError.message); }
               throw e;
