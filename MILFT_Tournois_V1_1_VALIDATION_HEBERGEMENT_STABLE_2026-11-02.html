@@ -964,14 +964,14 @@ function milftGenerateDynamicMatch(){
  for(let i=0;i<available.length;i++)for(let j=i+1;j<available.length;j++)for(let k=0;k<available.length;k++)for(let l=k+1;l<available.length;l++){
  const a=[available[i],available[j]],b=[available[k],available[l]];if(new Set([...a,...b]).size!==4)continue;
  if(used.has(a.slice().sort().join('|'))||used.has(b.slice().sort().join('|')))continue;
- const pending=t.matches.filter(m=>(m.status==='waiting'||m.status==='playing')&&(!m.sessionDate||m.sessionDate===(t.juniorsSessionDate||'2026-11-01')));if([...a,...b].some(id=>pending.some(m=>[...m.teamA,...m.teamB].includes(id))))continue;const cost=[...a,...b].reduce((sum,id)=>sum+counts[id],0);
+ const pending=t.matches.filter(m=>m.status==='waiting'||m.status==='playing');if([...a,...b].some(id=>pending.some(m=>[...m.teamA,...m.teamB].includes(id))))continue;const cost=[...a,...b].reduce((sum,id)=>sum+counts[id],0);
  if(cost<lowest){lowest=cost;best={a,b}}
  }
  if(!best){ // Après épuisement des binômes inédits, autoriser le moins répété pour ne pas bloquer la saison.
  const freq=Object.create(null);for(const m of t.matches)for(const team of [m.teamA,m.teamB]){const key=team.slice().sort().join('|');freq[key]=(freq[key]||0)+1;}
  for(let i=0;i<available.length;i++)for(let j=i+1;j<available.length;j++)for(let k=0;k<available.length;k++)for(let l=k+1;l<available.length;l++){
  const a=[available[i],available[j]],b=[available[k],available[l]];if(new Set([...a,...b]).size!==4)continue;
- const pending=t.matches.filter(m=>(m.status==='waiting'||m.status==='playing')&&(!m.sessionDate||m.sessionDate===(t.juniorsSessionDate||'2026-11-01')));
+ const pending=t.matches.filter(m=>m.status==='waiting'||m.status==='playing');
  if([...a,...b].some(id=>pending.some(m=>[...m.teamA,...m.teamB].includes(id))))continue;
  const repeats=(freq[a.slice().sort().join('|')]||0)+(freq[b.slice().sort().join('|')]||0);
  const cost=repeats*10000+[...a,...b].reduce((sum,id)=>sum+counts[id],0);
