@@ -117,6 +117,38 @@ jobs:
               if (!persisted) throw new Error('Sauvegarde / reprise navigateur incorrecte');
               if (errors.length) throw new Error('Erreurs JS : ' + errors.join(' | '));
               console.log('OK : creation, 2 seances, absence, ajout joueur, historique et reprise apres rechargement.');
+              const ranking = await page.evaluate(() => {
+                const check = (ok, msg) => { if (!ok) throw new Error(msg); };
+                const t = active();
+                const finished = t.matches.filter(m => m.status === 'done');
+                check(finished.length === 2, 'Deux resultats termines attendus');
+                const first = finished[0];
+                const before = monsterStats(t);
+                const a = first.teamA[0], b = first.teamB[0];
+                check(before.find(p => p.id === a).pts === 2, 'Points victoire non attribues');
+                check(before.find(p => p.id === b).pts === 0, 'Points defaite incorrects');
+                const oldIds = t.matches.map(m => m.id);
+                first.sets = [{a:0,b:5},{a:0,b:5},{a:0,b:5}];
+                first.score = {a:0,b:3};
+                const after = monsterStats(t);
+                check(after.find(p => p.id === a).pts === 0, 'Ancien gagnant non retrograde apres correction');
+                check(after.find(p => p.id === b).pts === 2, 'Nouveau gagnant non credite apres correction');
+                check(after.find(p => p.id === a).diff < 0, 'Difference de buts non recalculee');
+                check(t.matches.map(m => m.id).every((id,i) => id === oldIds[i]), 'Historique des rencontres modifie');
+                save();
+                return {id:t.id, a, b};
+              });
+              await page.reload({waitUntil:'load'});
+              const rankingSaved = await page.evaluate(({id,a,b}) => {
+                const t = db.tournaments.find(x => x.id === id);
+                if (!t) return false;
+                const stats = monsterStats(t);
+                return stats.find(p => p.id === a).pts === 0 &&
+                       stats.find(p => p.id === b).pts === 2 &&
+                       t.matches.length === 3;
+              }, ranking);
+              if (!rankingSaved) throw new Error('Correction et classement non conserves apres rechargement');
+              console.log('OK : classement individuel, inversion du vainqueur, difference de buts et sauvegarde.');
               const juniors = await page.evaluate(() => {
                 const check = (ok, msg) => { if (!ok) throw new Error(msg); };
                 const t = active();
