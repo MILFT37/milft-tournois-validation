@@ -16,6 +16,16 @@ jobs:
         run: |
           npm install --no-save playwright
           npx playwright install --with-deps chromium
+      - name: Verifier la syntaxe de tous les scripts embarques
+        run: |
+          node <<'JS'
+          const fs=require('fs'),vm=require('vm');
+          const html=fs.readFileSync('MILFT_Tournois_V1_1_VALIDATION_HEBERGEMENT_STABLE_2026-11-02.html','utf8');
+          const scripts=[...html.matchAll(/<script(?:\\s[^>]*)?>([\\s\\S]*?)<\\/script>/gi)].map(x=>x[1]);
+          if(scripts.length<2)throw Error('Scripts embarques introuvables');
+          scripts.forEach((source,i)=>{try{new vm.Script(source,{filename:'script-'+i+'.js'});}catch(e){console.error('Erreur de syntaxe script '+i);throw e;}});
+          console.log('OK : '+scripts.length+' blocs JavaScript sans erreur de syntaxe.');
+          JS
       - name: Test ouverture et erreurs JavaScript
         run: |
           node <<'JS'
