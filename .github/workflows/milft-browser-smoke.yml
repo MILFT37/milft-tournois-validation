@@ -249,7 +249,44 @@ jobs:
                 if (!page) throw new Error('Page non initialisee');
                 console.error('Etat du formulaire ajout :', await page.locator('select[name="seasonPlayer"]').count());
                 console.error('Texte visible :', (await page.locator('body').innerText()).slice(0, 1800));
-                await page.screenshot({ path: 'milft-smoke.png', fullPage: true });
+                // Controle visuel et fonctionnel du bandeau Course aux points
+              // pour une rencontre simple puis une competition de clubs.
+              await page.evaluate(() => {
+                const t = {
+                  id:'test-cap-simple',name:'Course simple TEST',date:'2026-11-02',
+                  mode:'cap',closed:false,abandoned:false,matches:[],tables:[],
+                  cap:{teamA:'MILFT',teamB:'Adversaire',targets:[5,10],types:['S','D'],
+                       relays:[],finish:'first',scoreMode:'cumulative'}
+                };
+                db.tournaments.push(t);db.selected=t.id;tab='live-detail';save();render();
+              });
+              const capHeader = page.locator('.milft-cap-header');
+              if (await capHeader.count() !== 1) throw new Error('Bandeau CAP simple absent');
+              const capButtons = await capHeader.locator('.milft-cap-actions button').allTextContents();
+              if (capButtons.length !== 4 ||
+                  !capButtons[2].includes('Terminer') ||
+                  !capButtons[3].includes('Abandonner'))
+                throw new Error('Grille CAP simple non conforme');
+              const capCols = await capHeader.locator('.milft-cap-actions').evaluate(el =>
+                getComputedStyle(el).gridTemplateColumns.split(' ').length);
+              if (capCols !== 2) throw new Error('CAP simple : grille non repartie en deux colonnes');
+              await page.evaluate(() => {
+                const t=active();
+                t.id='test-cap-clubs';
+                t.name='Course clubs TEST';
+                t.cap={competition:true,structure:'league',phase:'league',matches:[],
+                       clubs:[{id:'c1',name:'Club 1'},{id:'c2',name:'Club 2'}],
+                       rosters:{c1:[],c2:[]},targets:[5,10],types:['S','D']};
+                save();render();
+              });
+              if (await capHeader.count() !== 1) throw new Error('Bandeau CAP clubs absent');
+              const clubButtons = await capHeader.locator('.milft-cap-actions button').allTextContents();
+              if (clubButtons.length !== 4 ||
+                  !clubButtons[2].includes('Terminer') ||
+                  !clubButtons[3].includes('Abandonner'))
+                throw new Error('Grille CAP clubs non conforme');
+              console.log('OK : bandeaux Course aux points, grille deux colonnes, commandes Terminer et Abandonner.');
+              await page.screenshot({ path: 'milft-smoke.png', fullPage: true });
                 console.error('Capture de diagnostic enregistree.');
               } catch (diagnosticError) { console.error('Diagnostic impossible :', diagnosticError.message); }
               throw e;
