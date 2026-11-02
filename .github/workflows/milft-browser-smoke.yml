@@ -37,6 +37,21 @@ jobs:
               if (text.trim().length < 100) throw new Error('Interface vide ou non chargee');
               if (errors.length) throw new Error('Erreurs JS : ' + errors.join(' | '));
               console.log('OK : application chargee dans Chromium mobile, sans erreur JS.');
+              // Verification du menu reel de creation du championnat annuel.
+              await page.evaluate(() => {
+                db.players = Array.from({length: 9}, (_, i) => ({id: 'auto-'+i, first: 'Test'+i, last: 'Joueur'}));
+                tab = 'new';
+                creationMode = 'challenge';
+                render();
+              });
+              const selector = page.locator('#annual-format-choice');
+              if (await selector.count() !== 1) throw new Error('Menu annuel absent');
+              if (await page.locator('#annual-monster-form').isVisible()) throw new Error('Monster visible avant selection');
+              await selector.selectOption('monster');
+              if (!await page.locator('#annual-monster-form').isVisible()) throw new Error('Formulaire Monster non affiche');
+              if (await page.locator('#annual-classic-form').isVisible()) throw new Error('Formulaire classique non masque');
+              if (await page.locator('#annual-monster-form select[name="format"]').inputValue() !== 'bo5') throw new Error('Defaut 3 manches gagnantes absent');
+              console.log('OK : menu annuel, bascule Monster et format par defaut.');
               // Parcours integre avec les vraies fonctions de l'application et stockage navigateur.
               const integration = await page.evaluate(() => {
                 const check = (ok, label) => { if (!ok) throw new Error(label); };
