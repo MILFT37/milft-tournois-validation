@@ -193,9 +193,23 @@ jobs:
                 milftChangeJuniorsDate('2026-11-09');
                 check(Object.values(t.presence).every(v => v === true), 'Presences de la seconde date perdues');
                 save();
-                return { before, total: t.matches.length };
+                return { before, total: t.matches.length, originalId: previous.id,
+                  originalMatches: JSON.stringify(previous.matches), juniorsId: t.id };
               });
               if (juniors.total !== juniors.before + 2) throw new Error('Parcours Juniors incorrect');
+              await page.reload({waitUntil:'load'});
+              const isolated = await page.evaluate(({originalId,originalMatches,juniorsId,total}) => {
+                const original = db.tournaments.find(t => t.id === originalId);
+                const juniors = db.tournaments.find(t => t.id === juniorsId);
+                return !!original && !!juniors &&
+                  JSON.stringify(original.matches) === originalMatches &&
+                  juniors.matches.length === total &&
+                  juniors.juniorsPresences['2026-11-02'] &&
+                  juniors.juniorsPresences['2026-11-09'] &&
+                  juniors.juniorsSessionDate === '2026-11-09';
+              }, juniors);
+              if (!isolated) throw new Error('Isolation des championnats ou reprise des presences Juniors incorrecte');
+              console.log('OK : championnats independants et presences Juniors sauvegardees apres rechargement.');
               if (errors.length) throw new Error('Erreurs JS : ' + errors.join(' | '));
               console.log('OK : generation Juniors a la demande, sans joueur simultane ni troisieme rencontre.');
 
