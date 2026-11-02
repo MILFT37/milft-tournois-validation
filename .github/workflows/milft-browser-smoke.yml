@@ -24,8 +24,9 @@ jobs:
           const path = require('path');
           (async () => {
             const browser = await chromium.launch({ headless: true });
+            let page;
             try {
-              const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
+              page = await browser.newPage({ viewport: { width: 390, height: 844 } });
               const errors = [];
               page.on('pageerror', e => errors.push(e.message));
               // Playwright ferme les confirmations par defaut : les accepter pour creer les seances.
@@ -223,7 +224,7 @@ jobs:
                 return { before, total: t.matches.length, originalId: previous.id,
                   originalMatches: JSON.stringify(previous.matches), juniorsId: t.id };
               });
-              if (juniors.total !== juniors.before + 20) throw new Error('Parcours Juniors incorrect : 20 rencontres attendues');
+              if (juniors.total !== juniors.before + 20) throw new Error('Parcours Juniors incorrect : '+juniors.total+' rencontres obtenues, '+(juniors.before+20)+' attendues');
               await page.reload({waitUntil:'load'});
               const isolated = await page.evaluate(({originalId,originalMatches,juniorsId,total}) => {
                 const original = db.tournaments.find(t => t.id === originalId);
@@ -243,8 +244,9 @@ jobs:
               await page.screenshot({ path: 'milft-smoke.png', fullPage: true });
             } catch (e) {
               console.error('ECHEC CHROMIUM :', e.message);
-              console.error('Page actuelle :', page.url());
+              console.error('Page actuelle :', page ? page.url() : 'non ouverte');
               try {
+                if (!page) throw new Error('Page non initialisee');
                 console.error('Etat du formulaire ajout :', await page.locator('select[name="seasonPlayer"]').count());
                 console.error('Texte visible :', (await page.locator('body').innerText()).slice(0, 1800));
                 await page.screenshot({ path: 'milft-smoke.png', fullPage: true });
