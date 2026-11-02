@@ -212,6 +212,13 @@ jobs:
                 const standings = monsterStats(t);
                 check(standings.length === 8, 'Classement Juniors incomplet apres 18 tours');
                 check(standings.every(p => p.played > 0), 'Joueur Juniors jamais classe');
+                // Chaque rencontre finie attribue deux points a chacun des deux gagnants.
+                const played = standings.reduce((sum,p) => sum + p.played, 0);
+                const points = standings.reduce((sum,p) => sum + p.pts, 0);
+                const difference = standings.reduce((sum,p) => sum + p.diff, 0);
+                check(played === t.matches.length * 4, 'Total des participations incorrect');
+                check(points === t.matches.length * 4, 'Total des points du classement incorrect');
+                check(difference === 0, 'Difference de buts globale non equilibree');
                 save();
                 return { before, total: t.matches.length, originalId: previous.id,
                   originalMatches: JSON.stringify(previous.matches), juniorsId: t.id };
