@@ -1407,15 +1407,11 @@ function milftCapUnifiedHeader(t,description,progress,finishAction,finishLabel){
  return '<div class="card milft-cap-header"><h2>'+title(t)+'</h2><div class="row" style="flex-wrap:wrap;gap:8px;margin-top:10px"><span class="pill">'+esc(description)+'</span><span class="pill">'+esc(progress)+'</span></div>'+controls+'</div>';
 }
 function milftCapAbandon(){
- const t=active();if(!t||t.closed||!t.cap)return;
- if(!confirm('Abandonner « '+t.name+' » ? Les résultats déjà saisis seront conservés dans l’historique.'))return;
- const answer=prompt('Dernière confirmation : écris ABANDONNER en majuscules.');
- if(answer!=='ABANDONNER')return;
- if(t.cap.competition){for(const m of t.cap.matches||[]){if(m.status==='playing')m.status='waiting';}}
- for(const m of t.matches||[]){if(m.status==='playing'){m.status='waiting';m.table=null;}}
- t.abandoned=true;t.closed=true;
- db.selected=db.tournaments.find(x=>!x.closed&&!x.abandoned)?.id||null;
- tab='history';save();flash('Course aux points abandonnée et conservée dans l’historique.');
+ // Reutilise la procedure commune : double confirmation, arret des matchs,
+ // liberation des tables, archivage et conservation des resultats.
+ const t=active();
+ if(!t||!t.cap||t.closed)return;
+ abandonTournament();
 }
 function capLive(t){const c=t.cap;if(!c)return '<div class="card">Données de course indisponibles.</div>';capNormalize(c);const s=capTotals(c),i=c.relays.length,goal=c.targets.at(-1),complete=i>=c.targets.length;return `${milftCapUnifiedHeader(t,'Course aux points • rencontre',i+'/'+c.targets.length+' relais • objectif '+goal,'capClose()','Terminer') }<div class="card"><p>${esc(c.teamA)} <b>${s.a} – ${s.b}</b> ${esc(c.teamB)}</p><p class="muted">${c.finish==='draw'?'Égalité autorisée':'Premier à l’objectif'}</p>${complete?'<p><b>Tous les relais sont renseignés.</b></p>':''}</div><div class="card"><h2>Relais</h2>${c.targets.map((p,j)=>{const r=c.relays[j],previous=j?c.relays[j-1]:{a:0,b:0};return `<div class="item"><b>Relais ${j+1} — ${c.types[j]==='S'?'Simple':'Double'} — palier ${p}</b> ${r?`<p>Score cumulé : ${esc(c.teamA)} <b>${r.a}</b> – <b>${r.b}</b> ${esc(c.teamB)}</p><p class="muted">Points dans ce relais : +${r.a-previous.a} / +${r.b-previous.b}</p><button class="mutedbtn" onclick="capEdit(${j})" ${t.closed?'disabled':''}>Corriger</button>`:j===i&&!t.closed?`<p>Score cumulé à la fin de ce relais (départ ${previous.a}–${previous.b})</p><div class="grid"><div class="field"><label>${esc(c.teamA)}</label><input id="cap-a" type="number" min="${previous.a}" max="${p}" value="${previous.a}"></div><div class="field"><label>${esc(c.teamB)}</label><input id="cap-b" type="number" min="${previous.b}" max="${p}" value="${previous.b}"></div></div><button onclick="capRecord()">Enregistrer le relais</button>`:'<p class="muted">En attente</p>'}</div>`}).join('')}</div><div class="card"><h2>Règles de la rencontre</h2><p class="muted">Les paliers et l’ordre des relais sont figés après création pour préserver les résultats. Ils restent personnalisables avant création.</p></div>`}
 function capRecord(){const t=active(),c=t?.cap;if(!c||t.closed||c.relays.length>=c.targets.length)return;capNormalize(c);const a=Number($('cap-a').value),b=Number($('cap-b').value),i=c.relays.length,prev=capTotals(c),limit=c.targets[i];if(!Number.isSafeInteger(a)||!Number.isSafeInteger(b)||a<prev.a||b<prev.b||a>limit||b>limit||(a===prev.a&&b===prev.b))return alert('Saisis les scores cumulés : ils ne peuvent pas diminuer, dépasser le palier ou rester inchangés.');if(Math.max(a,b)<limit&&!(i===c.targets.length-1&&c.finish==='draw'&&a===limit-1&&b===limit-1))return alert('Un club doit atteindre le palier pour terminer ce relais (sauf égalité finale autorisée).');c.relays.push({a,b});save();flash('Relais enregistré.');}
