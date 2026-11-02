@@ -473,7 +473,7 @@ function setPresence(id,v){const t=active();t.presence??={};t.presence[id]=v;sav
 function toggleHold(id){const t=active(),m=t.matches.find(m=>m.id===id);m.hold=!m.hold;save();render()}
 function challengeMatchCard(t,m){
  const wa=m.sets.filter(s=>s.a>s.b).length,wb=m.sets.filter(s=>s.b>s.a).length;
- const best=t.mode==="knockout"||t.mode==="challenge"?5:(t.bestOf||1),needed=Math.ceil(best/2); const current=m.sets.length+1,decider=wa===needed-1&&wb===needed-1;
+ const best=t.mode==="knockout"||t.mode==="challenge"?5:(t.bestOf||1),needed=Math.ceil(best/2); const current=m.sets.length+1,decider=best>1&&wa===needed-1&&wb===needed-1;
  const options=best===1?Array.from({length:t.draw?t.target-1:t.target},(_,i)=>t.target+'-'+i):decider?['5-0','5-1','5-2','5-3','6-4','7-5','8-6','8-7']:['5-0','5-1','5-2','5-3','5-4'];
  const free=t.tables.filter(x=>x.state==='free');
  const progress=Array.from({length:5},(_,i)=>{const set=m.sets[i],active=i===m.sets.length;return `<div class="challenge-step ${set?'done':active?'current':i>=best?'disabled':''}">M${i+1}<span class="step-score">${set?set.a+'–'+set.b:active?'✎':i>=best?'🔒':'—'}</span></div>`}).join('');
