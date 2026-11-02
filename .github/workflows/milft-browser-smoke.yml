@@ -151,7 +151,22 @@ jobs:
               console.log('OK : classement individuel, inversion du vainqueur, difference de buts et sauvegarde.');
               const juniors = await page.evaluate(() => {
                 const check = (ok, msg) => { if (!ok) throw new Error(msg); };
-                const t = active();
+                // Championnat fictif independant : ne pas reutiliser les rencontres
+                // en attente du scenario annuel precedent.
+                const previous = active();
+                const t = {
+                  ...previous,
+                  id: 'test-juniors-isole',
+                  name: 'Test Juniors independant',
+                  roster: previous.roster.slice(0, 8).map(p => ({...p})),
+                  matches: [],
+                  sessions: [],
+                  currentRound: 0,
+                  closed: false,
+                  abandoned: false
+                };
+                db.tournaments.push(t);
+                db.selected = t.id;
                 // Parcours Juniors : rencontres generees a la demande, sans doublon de joueurs actifs.
                 t.dynamicSeason = true;
                 t.juniorsSessionDate = '2026-11-02';
