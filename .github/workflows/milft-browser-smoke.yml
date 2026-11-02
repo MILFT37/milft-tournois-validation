@@ -293,6 +293,8 @@ jobs:
               // Verifier que les clotures incompletes sont refusees.
               const capCloseGuard = await page.evaluate(() => {
                 const t=active();
+                t.cap.matches.push({id:'cap-pending',a:'c1',b:'c2',phase:'league',status:'waiting',relays:[]});
+                save();
                 capCompClose();
                 return t.closed;
               });
