@@ -290,6 +290,21 @@ jobs:
                 ['test-cap-simple','test-cap-clubs'].includes(t.id)).map(t=>t.id));
               if (saved.length !== 2 || !saved.includes('test-cap-simple') || !saved.includes('test-cap-clubs'))
                 throw new Error('Les deux courses CAP ne sont pas sauvegardees independamment');
+              // Verifier que les clotures incompletes sont refusees.
+              const capCloseGuard = await page.evaluate(() => {
+                const t=active();
+                capCompClose();
+                return t.closed;
+              });
+              if (capCloseGuard) throw new Error('CAP clubs : cloture prematuree autorisee');
+              await page.evaluate(() => {
+                db.selected='test-cap-simple';
+                const t=active();
+                capClose();
+                if (t.closed) throw new Error('CAP simple : cloture avant tous les relais');
+                db.selected='test-cap-clubs';render();
+              });
+              console.log('OK : cloture impossible avant la fin des relais et des rencontres.');
               console.log('OK : bandeaux Course aux points, grille deux colonnes, commandes Terminer et Abandonner.');
               await page.screenshot({ path: 'milft-smoke.png', fullPage: true });
             } catch (e) {
