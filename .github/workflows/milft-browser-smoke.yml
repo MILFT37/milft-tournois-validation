@@ -306,6 +306,24 @@ jobs:
                 throw new Error('CAP clubs : bandeau, effectifs ou colonnes mal positionnes : '+JSON.stringify(capLayout));
               if (!capLayout.labels[2].includes('Terminer') || !capLayout.labels[3].includes('Abandonner'))
                 throw new Error('CAP clubs : boutons de seconde ligne incorrects');
+              // Controle geometrique mobile : deux rangees et aucun bouton coupe.
+              const capGeometry = await page.locator('.milft-cap-actions').evaluate(grid => {
+                const buttons=[...grid.querySelectorAll('button')];
+                const rects=buttons.map(b=>b.getBoundingClientRect());
+                const viewport=document.documentElement.clientWidth;
+                return {
+                  viewport,documentWidth:document.documentElement.scrollWidth,
+                  rows:rects.map(r=>Math.round(r.top)),
+                  visible:rects.every(r=>r.width>40&&r.left>=0&&r.right<=viewport+1),
+                  firstRow:Math.abs(rects[0].top-rects[1].top)<2,
+                  secondRow:Math.abs(rects[2].top-rects[3].top)<2,
+                  below:rects[2].top>rects[0].bottom
+                };
+              });
+              if (!capGeometry.visible||!capGeometry.firstRow||
+                  !capGeometry.secondRow||!capGeometry.below||
+                  capGeometry.documentWidth>capGeometry.viewport+1)
+                throw new Error('CAP clubs : geometrie mobile incorrecte : '+JSON.stringify(capGeometry));
               await page.screenshot({ path: 'milft-cap-clubs.png', fullPage: true });
               await page.reload({ waitUntil: 'load' });
               await page.evaluate(() => { db.selected='test-cap-clubs';tab='live-detail';render(); });
