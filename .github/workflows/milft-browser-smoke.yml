@@ -263,12 +263,15 @@ jobs:
                 getComputedStyle(el).gridTemplateColumns.split(' ').length);
               if (capCols !== 2) throw new Error('CAP simple : grille non repartie en deux colonnes');
               await page.evaluate(() => {
-                const t=active();
-                t.id='test-cap-clubs';
-                t.name='Course clubs TEST';
-                t.cap={competition:true,structure:'league',phase:'league',matches:[],
+                const t={
+                  id:'test-cap-clubs',name:'Course clubs TEST',date:'2026-11-02',
+                  mode:'cap',closed:false,abandoned:false,matches:[],tables:[],
+                  cap:{competition:true,structure:'league',phase:'league',matches:[],
                        clubs:[{id:'c1',name:'Club 1'},{id:'c2',name:'Club 2'}],
-                       rosters:{c1:[],c2:[]},targets:[5,10],types:['S','D']};
+                       rosters:{c1:[],c2:[]},targets:[5,10],types:['S','D']}
+                };
+                db.tournaments.push(t);
+                db.selected=t.id;
                 save();render();
               });
               if (await capHeader.count() !== 1) throw new Error('Bandeau CAP clubs absent');
