@@ -1947,6 +1947,29 @@ capCompLive=function(t){
  if(start>=0){const tags=/<\/?div\b[^>]*>/g;tags.lastIndex=start;let depth=0,m;while((m=tags.exec(html))){depth+=m[0].startsWith('</')?-1:1;if(depth===0){html=html.slice(0,start)+header+html.slice(tags.lastIndex);break;}}}
  return html;
 };
+// Harmonisation finale : les anciens wrappers CAP peuvent ajouter des bandeaux
+// redondants. Le bandeau commun est place en premiere carte, avant les effectifs.
+function milftCapRemoveCardByClass(html,css){
+ let start=html.indexOf('<div class="card '+css);
+ while(start>=0){
+  const tags=/<\\/?div\\b[^>]*>/g;tags.lastIndex=start;let depth=0,m,end=-1;
+  while((m=tags.exec(html))){depth+=m[0].startsWith('</')?-1:1;if(depth===0){end=tags.lastIndex;break;}}
+  if(end<0)break;
+  html=html.slice(0,start)+html.slice(end);
+  start=html.indexOf('<div class="card '+css);
+ }
+ return html;
+}
+const milftCapBeforeFinalLayout=capCompLive;
+capCompLive=function(t){
+ const c=t.cap,ms=capActiveMatches(t),done=ms.filter(m=>m.status==='done').length;
+ let html=milftCapBeforeFinalLayout(t);
+ for(const css of ['milft-cap-header','cap-unified-header','milft-classic-command-header'])
+  html=milftCapRemoveCardByClass(html,css);
+ const phase=c.structure==='league'?'Championnat':c.phase==='groups'?'Qualifications en poules':'Tableau final';
+ const header=milftCapUnifiedHeader(t,phase,done+'/'+ms.length+' rencontres','capCompClose()','Terminer');
+ return header+html;
+};
 // Tournois classiques : mêmes classes et mêmes composants, seules les actions changent.
 const milftClassicLiveBeforeShared=livePage;
 livePage=function(){
