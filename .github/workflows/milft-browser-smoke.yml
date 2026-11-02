@@ -216,7 +216,7 @@ jobs:
                 return { before, total: t.matches.length, originalId: previous.id,
                   originalMatches: JSON.stringify(previous.matches), juniorsId: t.id };
               });
-              if (juniors.total !== juniors.before + 2) throw new Error('Parcours Juniors incorrect');
+              if (juniors.total !== juniors.before + 20) throw new Error('Parcours Juniors incorrect : 20 rencontres attendues');
               await page.reload({waitUntil:'load'});
               const isolated = await page.evaluate(({originalId,originalMatches,juniorsId,total}) => {
                 const original = db.tournaments.find(t => t.id === originalId);
