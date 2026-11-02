@@ -299,7 +299,7 @@ jobs:
                 const roster=document.querySelector('.cap-roster-card');
                 const grid=document.querySelector('.milft-cap-actions');
                 const buttons=[...grid.querySelectorAll('button')];
-                return {first:cards[0]===header,rosterAfter:!!roster&&header.compareDocumentPosition(roster)&Node.DOCUMENT_POSITION_FOLLOWING,
+                return {first:cards[0]===header,cardOrder:cards.slice(0,5).map(c=>c.className+' : '+c.textContent.trim().slice(0,45)),headerCount:document.querySelectorAll('.milft-cap-header').length,rosterAfter:!!roster&&Boolean(header.compareDocumentPosition(roster)&Node.DOCUMENT_POSITION_FOLLOWING),
                   labels:buttons.map(b=>b.textContent.trim()),columns:getComputedStyle(grid).gridTemplateColumns.split(' ').length};
               });
               if (!capLayout.first || !capLayout.rosterAfter || capLayout.columns!==2)
