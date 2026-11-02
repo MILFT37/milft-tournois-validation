@@ -70,6 +70,23 @@ jobs:
                 const check = (ok, label) => { if (!ok) throw new Error(label); };
                 const t = active();
                 check(t && t.mode === 'monster' && t.monsterMode === 'season' && t.bestOf === 5, 'Creation championnat Monster');
+                // Regles decidees avec les Juniors : homonymes et manches.
+                const names = {roster:[
+                  {id:'a',first:'Alex',last:'Martin'},
+                  {id:'b',first:'Alex',last:'Moreau'},
+                  {id:'c',first:'Alex',last:'Martin'},
+                  {id:'d',first:'Lea',last:'Petit'}
+                ]};
+                const labels = ['a','b','c','d'].map(id => milftPlayerDisplay(names,id,true));
+                check(new Set(labels).size === 4, 'Homonymes non distingues dans le classement');
+                check(labels[0] !== labels[2], 'Noms et prenoms identiques non distingues');
+                const eight = monsterCorrectionOptions({bestOf:1,target:8},{sets:[]},0);
+                check(eight.length === 8 && eight.some(x=>x.hi===8&&x.lo===7), 'Manche unique premier a 8 absente');
+                const belle = monsterCorrectionOptions({bestOf:5,target:5},{sets:[
+                  {a:5,b:2},{a:2,b:5},{a:5,b:1},{a:1,b:5}
+                ]},4);
+                check(belle.some(x=>x.hi===8&&x.lo===7), 'Belle 8-7 absente');
+                console.log('OK : homonymes, manche unique a 8 et belle 8-7.');
                 check(t.roster.length === 8, 'Huit joueurs inscrits depuis le formulaire');
                 generateMonsterSession();
                 check(t.currentRound === 1 && t.matches.length === 2, 'Generation premiere seance');
