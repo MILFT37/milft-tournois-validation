@@ -117,6 +117,29 @@ jobs:
               if (!persisted) throw new Error('Sauvegarde / reprise navigateur incorrecte');
               if (errors.length) throw new Error('Erreurs JS : ' + errors.join(' | '));
               console.log('OK : creation, 2 seances, absence, ajout joueur, historique et reprise apres rechargement.');
+              const juniors = await page.evaluate(() => {
+                const check = (ok, msg) => { if (!ok) throw new Error(msg); };
+                const t = active();
+                // Parcours Juniors : rencontres generees a la demande, sans doublon de joueurs actifs.
+                t.dynamicSeason = true;
+                t.juniorsSessionDate = '2026-11-02';
+                t.presence = Object.fromEntries(t.roster.map(p => [p.id, true]));
+                const before = t.matches.length;
+                milftGenerateDynamicMatch();
+                milftGenerateDynamicMatch();
+                check(t.matches.length === before + 2, 'Deux rencontres Juniors attendues');
+                const generated = t.matches.slice(-2);
+                const ids = generated.flatMap(m => [...m.teamA, ...m.teamB]);
+                check(new Set(ids).size === 8, 'Joueur affecte simultanement a deux rencontres');
+                milftGenerateDynamicMatch();
+                check(t.matches.length === before + 2, 'Une troisieme rencontre ne doit pas utiliser les joueurs occupes');
+                check(generated.every(m => m.sessionDate === '2026-11-02'), 'Date de seance Juniors incorrecte');
+                return { before, total: t.matches.length };
+              });
+              if (juniors.total !== juniors.before + 2) throw new Error('Parcours Juniors incorrect');
+              if (errors.length) throw new Error('Erreurs JS : ' + errors.join(' | '));
+              console.log('OK : generation Juniors a la demande, sans joueur simultane ni troisieme rencontre.');
+
               await page.screenshot({ path: 'milft-smoke.png', fullPage: true });
             } catch (e) {
               console.error('ECHEC CHROMIUM :', e.message);
