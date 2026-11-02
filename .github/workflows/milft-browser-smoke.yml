@@ -192,6 +192,26 @@ jobs:
                 check(Object.values(t.presence).every(v => v === true), 'Presences de la premiere date perdues');
                 milftChangeJuniorsDate('2026-11-09');
                 check(Object.values(t.presence).every(v => v === true), 'Presences de la seconde date perdues');
+                // Une fois les rencontres terminees, la saison doit pouvoir continuer
+                // meme lorsque toutes les associations de partenaires ont deja ete utilisees.
+                for (const m of generated) {
+                  m.status = 'done';
+                  m.score = {a:2,b:0};
+                  m.sets = [{a:5,b:2},{a:5,b:3}];
+                }
+                for (let round = 0; round < 18; round++) {
+                  const prior = t.matches.length;
+                  milftGenerateDynamicMatch();
+                  check(t.matches.length === prior + 1, 'Saison Juniors bloquee apres epuisement des binomes, tour ' + round);
+                  const m = t.matches[t.matches.length - 1];
+                  check(new Set([...m.teamA,...m.teamB]).size === 4, 'Joueurs repetes dans une rencontre');
+                  m.status = 'done';
+                  m.score = {a:2,b:0};
+                  m.sets = [{a:5,b:1},{a:5,b:2}];
+                }
+                const standings = monsterStats(t);
+                check(standings.length === 8, 'Classement Juniors incomplet apres 18 tours');
+                check(standings.every(p => p.played > 0), 'Joueur Juniors jamais classe');
                 save();
                 return { before, total: t.matches.length, originalId: previous.id,
                   originalMatches: JSON.stringify(previous.matches), juniorsId: t.id };
