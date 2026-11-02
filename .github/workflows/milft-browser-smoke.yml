@@ -28,6 +28,8 @@ jobs:
               const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
               const errors = [];
               page.on('pageerror', e => errors.push(e.message));
+              // Playwright ferme les confirmations par defaut : les accepter pour creer les seances.
+              page.on('dialog', dialog => dialog.accept());
               const file = path.resolve('MILFT_Tournois_V1_1_VALIDATION_HEBERGEMENT_STABLE_2026-11-02.html');
               await page.goto(pathToFileURL(file).href, { waitUntil: 'load' });
               await page.waitForTimeout(1200);
