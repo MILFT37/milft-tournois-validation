@@ -333,6 +333,16 @@ jobs:
                 ['test-cap-simple','test-cap-clubs'].includes(t.id)).map(t=>t.id));
               if (saved.length !== 2 || !saved.includes('test-cap-simple') || !saved.includes('test-cap-clubs'))
                 throw new Error('Les deux courses CAP ne sont pas sauvegardees independamment');
+              // Abandon CAP clubs : le compteur doit utiliser les rencontres CAP,
+              // et non la liste des matchs du tournoi classique.
+              const capAbandonCount = await page.evaluate(() => {
+                const t=active();
+                const pending=t.cap.matches.filter(m=>m.status!=='done').length;
+                const classic=t.matches.filter(m=>m.status!=='done').length;
+                return {pending,classic};
+              });
+              if (capAbandonCount.pending!==0 || capAbandonCount.classic!==0)
+                throw new Error('CAP clubs : etat initial inattendu');
               // Verifier que les clotures incompletes sont refusees.
               const capCloseGuard = await page.evaluate(() => {
                 const t=active();
