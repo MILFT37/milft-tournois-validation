@@ -53,14 +53,18 @@ jobs:
               if (await page.locator('#annual-monster-form select[name="format"]').inputValue() !== 'bo5') throw new Error('Defaut 3 manches gagnantes absent');
               console.log('OK : menu annuel, bascule Monster et format par defaut.');
               // Parcours integre avec les vraies fonctions de l'application et stockage navigateur.
+              // Utiliser le vrai formulaire et le vrai bouton, sans fabriquer un formulaire artificiel.
+              await page.locator('#annual-monster-form input[name="name"]').fill('Championnat automatique');
+              await page.locator('#annual-monster-form input[name="tables"]').fill('2');
+              for (let i = 0; i < 8; i++) {
+                await page.locator('#annual-monster-form input[name="participants"]').nth(i).check();
+              }
+              await page.locator('#annual-monster-form button').last().click();
               const integration = await page.evaluate(() => {
                 const check = (ok, label) => { if (!ok) throw new Error(label); };
-                db.players = Array.from({length: 9}, (_, i) => ({id: 'auto-'+i, first: 'Test'+i, last: 'Joueur'}));
-                const form = document.createElement('form');
-                form.innerHTML = '<input name="seasonMode" value="season"><input name="rounds" value="5"><input name="format" value="bo5"><input name="name" value="Championnat automatique"><input name="tables" value="2">'+db.players.slice(0,8).map(p=>'<input type="checkbox" name="participants" checked value="'+p.id+'">').join('');
-                createMonster({preventDefault(){}, target:form});
                 const t = active();
                 check(t && t.mode === 'monster' && t.monsterMode === 'season' && t.bestOf === 5, 'Creation championnat Monster');
+                check(t.roster.length === 8, 'Huit joueurs inscrits depuis le formulaire');
                 generateMonsterSession();
                 check(t.currentRound === 1 && t.matches.length === 2, 'Generation premiere seance');
                 t.matches.forEach(m => {m.status='done';m.score={a:3,b:0};m.sets=[{a:5,b:0},{a:5,b:0},{a:5,b:0}];});
