@@ -1466,7 +1466,7 @@ capCompMatch=function(t,m){let html=capCompMatchBeforeComposition(t,m);if(m.bye)
 const capCompRecordBeforeComposition=capCompRecord;
 capCompRecord=function(id){const m=active()?.cap?.matches.find(x=>x.id===id);if(m&&!m.compositionsValidated)return alert('Valide les compositions des deux clubs avant de saisir le premier relais.');return capCompRecordBeforeComposition(id)};
 const capCompLiveBeforeRosters=capCompLive;
-capCompLive=function(t){return capRosterEditor(t)+capCompLiveBeforeRosters(t)};
+capCompLive=function(t){const content=capCompLiveBeforeRosters(t),end=content.indexOf('</div>');if(end<0)return content+capRosterEditor(t);return content.slice(0,end+6)+capRosterEditor(t)+content.slice(end+6)};
 
 // Conserve les anciennes rencontres CAP sans modification des données.
 const capLegacyLive=capLive;
