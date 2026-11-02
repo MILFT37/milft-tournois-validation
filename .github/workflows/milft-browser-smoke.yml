@@ -35,6 +35,38 @@ jobs:
               if (text.trim().length < 100) throw new Error('Interface vide ou non chargee');
               if (errors.length) throw new Error('Erreurs JS : ' + errors.join(' | '));
               console.log('OK : application chargee dans Chromium mobile, sans erreur JS.');
+              // Parcours integre avec les vraies fonctions de l'application et stockage navigateur.
+              const integration = await page.evaluate(() => {
+                const check = (ok, label) => { if (!ok) throw new Error(label); };
+                db.players = Array.from({length: 9}, (_, i) => ({id: 'auto-'+i, first: 'Test'+i, last: 'Joueur'}));
+                const form = document.createElement('form');
+                form.innerHTML = '<input name="seasonMode" value="season"><input name="rounds" value="5"><input name="format" value="bo5"><input name="name" value="Championnat automatique"><input name="tables" value="2">'+db.players.slice(0,8).map(p=>'<input type="checkbox" name="participants" checked value="'+p.id+'">').join('');
+                createMonster({preventDefault(){}, target:form});
+                const t = active();
+                check(t && t.mode === 'monster' && t.monsterMode === 'season' && t.bestOf === 5, 'Creation championnat Monster');
+                generateMonsterSession();
+                check(t.currentRound === 1 && t.matches.length === 2, 'Generation premiere seance');
+                t.matches.forEach(m => {m.status='done';m.score={a:3,b:0};m.sets=[{a:5,b:0},{a:5,b:0},{a:5,b:0}];});
+                t.presence['auto-7'] = false;
+                generateMonsterSession();
+                check(t.currentRound === 2 && t.matches.length === 3, 'Deuxieme seance avec absent');
+                const oldMatches = JSON.stringify(t.matches);
+                const addForm = document.createElement('form');
+                addForm.innerHTML = '<select name="seasonPlayer"><option value="auto-8">Test8</option></select>';
+                milftSeasonAddPlayer({preventDefault(){},target:addForm});
+                check(t.roster.length === 9 && t.presence['auto-8'] === false, 'Ajout joueur');
+                check(JSON.stringify(t.matches) === oldMatches, 'Integrite historique');
+                save();
+                return {id:t.id, count:t.matches.length};
+              });
+              await page.reload({waitUntil:'load'});
+              const persisted = await page.evaluate(id => {
+                const t = db.tournaments.find(x => x.id === id);
+                return !!t && t.roster.length === 9 && t.matches.length === 3 && t.monsterMode === 'season';
+              }, integration.id);
+              if (!persisted) throw new Error('Sauvegarde / reprise navigateur incorrecte');
+              if (errors.length) throw new Error('Erreurs JS : ' + errors.join(' | '));
+              console.log('OK : creation, 2 seances, absence, ajout joueur, historique et reprise apres rechargement.');
               await page.screenshot({ path: 'milft-smoke.png', fullPage: true });
             } finally { await browser.close(); }
           })().catch(e => { console.error(e); process.exit(1); });
