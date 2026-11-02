@@ -72,14 +72,20 @@ jobs:
                 generateMonsterSession();
                 check(t.currentRound === 2 && t.matches.length === 3, 'Deuxieme seance avec absent');
                 const oldMatches = JSON.stringify(t.matches);
-                const addForm = document.createElement('form');
-                addForm.innerHTML = '<select name="seasonPlayer"><option value="auto-8">Test8</option></select>';
-                milftSeasonAddPlayer({preventDefault(){},target:addForm});
-                check(t.roster.length === 9 && t.presence['auto-8'] === false, 'Ajout joueur');
-                check(JSON.stringify(t.matches) === oldMatches, 'Integrite historique');
                 save();
-                return {id:t.id, count:t.matches.length};
+                render();
+                return {id:t.id, oldMatches};
               });
+              const addPlayer = page.locator('form:has(select[name="seasonPlayer"])');
+              if (await addPlayer.count() !== 1) throw new Error('Formulaire ajout joueur introuvable');
+              await addPlayer.locator('select[name="seasonPlayer"]').selectOption('auto-8');
+              await addPlayer.locator('button').click();
+              const added = await page.evaluate(({id,oldMatches}) => {
+                const t = db.tournaments.find(x => x.id === id);
+                return !!t && t.roster.length === 9 && t.presence['auto-8'] === false &&
+                  JSON.stringify(t.matches) === oldMatches;
+              }, integration);
+              if (!added) throw new Error('Ajout joueur ou historique altere');
               await page.reload({waitUntil:'load'});
               const persisted = await page.evaluate(id => {
                 const t = db.tournaments.find(x => x.id === id);
