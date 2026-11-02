@@ -21,7 +21,7 @@ jobs:
           node <<'JS'
           const fs=require('fs'),vm=require('vm');
           const html=fs.readFileSync('MILFT_Tournois_V1_1_VALIDATION_HEBERGEMENT_STABLE_2026-11-02.html','utf8');
-          const scripts=[...html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)].map(x=>x[1]);
+          const scripts=html.split('<script').slice(1).map(part=>part.slice(part.indexOf('>')+1,part.indexOf('</script>'))).filter(Boolean);
           if(scripts.length<2)throw Error('Scripts embarques introuvables');
           scripts.forEach((source,i)=>{try{new vm.Script(source,{filename:'script-'+i+'.js'});}catch(e){console.error('Erreur de syntaxe script '+i);throw e;}});
           console.log('OK : '+scripts.length+' blocs JavaScript sans erreur de syntaxe.');
