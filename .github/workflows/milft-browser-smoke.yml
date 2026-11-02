@@ -281,6 +281,21 @@ jobs:
                   !clubButtons[2].includes('Terminer') ||
                   !clubButtons[3].includes('Abandonner'))
                 throw new Error('Grille CAP clubs non conforme');
+              // Le bandeau doit etre la premiere carte et preceder les effectifs.
+              const capLayout = await page.evaluate(() => {
+                const view=document.querySelector('#view');
+                const cards=[...view.querySelectorAll(':scope > .card')];
+                const header=document.querySelector('.milft-cap-header');
+                const roster=document.querySelector('.cap-roster-card');
+                const grid=document.querySelector('.milft-cap-actions');
+                const buttons=[...grid.querySelectorAll('button')];
+                return {first:cards[0]===header,rosterAfter:!!roster&&header.compareDocumentPosition(roster)&Node.DOCUMENT_POSITION_FOLLOWING,
+                  labels:buttons.map(b=>b.textContent.trim()),columns:getComputedStyle(grid).gridTemplateColumns.split(' ').length};
+              });
+              if (!capLayout.first || !capLayout.rosterAfter || capLayout.columns!==2)
+                throw new Error('CAP clubs : bandeau, effectifs ou colonnes mal positionnes : '+JSON.stringify(capLayout));
+              if (!capLayout.labels[2].includes('Terminer') || !capLayout.labels[3].includes('Abandonner'))
+                throw new Error('CAP clubs : boutons de seconde ligne incorrects');
               await page.screenshot({ path: 'milft-cap-clubs.png', fullPage: true });
               await page.reload({ waitUntil: 'load' });
               await page.evaluate(() => { db.selected='test-cap-clubs';tab='live-detail';render(); });
