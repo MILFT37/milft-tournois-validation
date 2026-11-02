@@ -259,6 +259,7 @@ jobs:
                   !capButtons[2].includes('Terminer') ||
                   !capButtons[3].includes('Abandonner'))
                 throw new Error('Grille CAP simple non conforme');
+              await page.screenshot({ path: 'milft-cap-simple.png', fullPage: true });
               const capCols = await capHeader.locator('.milft-cap-actions').evaluate(el =>
                 getComputedStyle(el).gridTemplateColumns.split(' ').length);
               if (capCols !== 2) throw new Error('CAP simple : grille non repartie en deux colonnes');
@@ -280,6 +281,15 @@ jobs:
                   !clubButtons[2].includes('Terminer') ||
                   !clubButtons[3].includes('Abandonner'))
                 throw new Error('Grille CAP clubs non conforme');
+              await page.screenshot({ path: 'milft-cap-clubs.png', fullPage: true });
+              await page.reload({ waitUntil: 'load' });
+              await page.evaluate(() => { db.selected='test-cap-clubs';tab='live-detail';render(); });
+              if (await page.locator('.milft-cap-header').count() !== 1)
+                throw new Error('Bandeau CAP clubs absent apres rechargement');
+              const saved = await page.evaluate(() => db.tournaments.filter(t =>
+                ['test-cap-simple','test-cap-clubs'].includes(t.id)).map(t=>t.id));
+              if (saved.length !== 2 || !saved.includes('test-cap-simple') || !saved.includes('test-cap-clubs'))
+                throw new Error('Les deux courses CAP ne sont pas sauvegardees independamment');
               console.log('OK : bandeaux Course aux points, grille deux colonnes, commandes Terminer et Abandonner.');
               await page.screenshot({ path: 'milft-smoke.png', fullPage: true });
             } catch (e) {
@@ -300,4 +310,7 @@ jobs:
         if: always()
         with:
           name: capture-milft-chromium
-          path: milft-smoke.png
+          path: |
+            milft-smoke.png
+            milft-cap-simple.png
+            milft-cap-clubs.png
