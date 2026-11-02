@@ -134,6 +134,18 @@ jobs:
                 milftGenerateDynamicMatch();
                 check(t.matches.length === before + 2, 'Une troisieme rencontre ne doit pas utiliser les joueurs occupes');
                 check(generated.every(m => m.sessionDate === '2026-11-02'), 'Date de seance Juniors incorrecte');
+                // Changer de date ne doit ni liberer les joueurs occupes ni effacer les presences.
+                t.juniorsPresences = {'2026-11-02': {...t.presence}};
+                milftChangeJuniorsDate('2026-11-09');
+                check(Object.values(t.presence).every(v => v === false), 'Nouvelle journee non initialisee absente');
+                setAllMonsterPresence(true);
+                milftGenerateDynamicMatch();
+                check(t.matches.length === before + 2, 'Joueur deja occupe reutilise sur une autre date');
+                milftChangeJuniorsDate('2026-11-02');
+                check(Object.values(t.presence).every(v => v === true), 'Presences de la premiere date perdues');
+                milftChangeJuniorsDate('2026-11-09');
+                check(Object.values(t.presence).every(v => v === true), 'Presences de la seconde date perdues');
+                save();
                 return { before, total: t.matches.length };
               });
               if (juniors.total !== juniors.before + 2) throw new Error('Parcours Juniors incorrect');
