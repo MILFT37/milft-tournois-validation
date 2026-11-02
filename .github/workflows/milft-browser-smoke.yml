@@ -60,6 +60,12 @@ jobs:
                 await page.locator('#annual-monster-form input[name="participants"]').nth(i).check();
               }
               await page.locator('#annual-monster-form button').last().click();
+              // La creation renvoie normalement a la liste des tournois en cours.
+              // Ouvrir explicitement le championnat comme le ferait l'utilisateur.
+              const open = page.locator('#view button:has-text("Ouvrir")');
+              if (await open.count() !== 1) throw new Error('Championnat absent de la liste des tournois en cours');
+              await open.click();
+              if (!await page.locator('select[name="seasonPlayer"]').isVisible()) throw new Error('Ajout joueur absent de la fiche du championnat');
               const integration = await page.evaluate(() => {
                 const check = (ok, label) => { if (!ok) throw new Error(label); };
                 const t = active();
