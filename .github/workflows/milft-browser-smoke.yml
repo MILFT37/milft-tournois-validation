@@ -477,6 +477,13 @@ jobs:
                   capPromptGuard.closed || capPromptGuard.abandoned)
                 throw new Error('CAP clubs : annulation de seconde confirmation non respectee : '+JSON.stringify(capPromptGuard));
               console.log('OK : les deux annulations de confirmation conservent la competition.');
+              // Photographier les autres tournois avant l'abandon CAP.
+              const otherTournamentsBeforeAbandon = await page.evaluate(() =>
+                db.tournaments.filter(t=>t.id!=='test-cap-clubs').map(t=>({
+                  id:t.id,closed:!!t.closed,abandoned:!!t.abandoned,
+                  matches:JSON.stringify(t.matches),capMatches:JSON.stringify(t.cap?.matches||[])
+                }))
+              );
               // Un match CAP en cours doit etre libere lors de l'abandon.
               await page.evaluate(() => {
                 const t=active();
@@ -524,6 +531,16 @@ jobs:
                   abandonedPersisted.tableId!==null)
                 throw new Error('CAP clubs : sauvegarde de l\'abandon incorrecte : '+JSON.stringify(abandonedPersisted));
               console.log('OK : abandon CAP conserve apres rechargement, match arrete et table liberee.');
+              const otherTournamentsAfterAbandon = await page.evaluate(() =>
+                db.tournaments.filter(t=>t.id!=='test-cap-clubs').map(t=>({
+                  id:t.id,closed:!!t.closed,abandoned:!!t.abandoned,
+                  matches:JSON.stringify(t.matches),capMatches:JSON.stringify(t.cap?.matches||[])
+                }))
+              );
+              if (JSON.stringify(otherTournamentsAfterAbandon)!==JSON.stringify(otherTournamentsBeforeAbandon))
+                throw new Error('Isolation : abandon CAP a modifie un autre tournoi');
+              console.log('OK : abandon Course clubs sans effet sur les autres tournois.');
+
 
 
             } catch (e) {
