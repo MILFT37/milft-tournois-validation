@@ -675,6 +675,29 @@ jobs:
                 throw Error('CAP termine : annulation de reouverture non sauvegardee');
               console.log('OK : annulation de reouverture CAP termine preserve archive et scores.');
 
+              // Archives : la course aux points individuelle affiche ses relais
+              // tandis que les competitions de clubs affichent les rencontres.
+              const capArchiveLabels=await page.evaluate(()=>{
+                const clubs=db.tournaments.find(x=>x.id==='test-cap-clubs');
+                const original=JSON.stringify({closed:clubs.closed,abandoned:clubs.abandoned});
+                const simple={id:'test-cap-simple-archive',name:'CAP simple archive',mode:'cap',
+                  closed:true,abandoned:false,matches:[],cap:{competition:false,
+                    relays:[{score:10}],targets:[10,20,30]}};
+                db.tournaments.push(simple);db.selected=simple.id;tab='archive';render();
+                const simpleText=document.querySelector('.card h2')?.closest('.card')?.innerText||'';
+                db.selected=clubs.id;tab='archive';render();
+                const clubsText=document.querySelector('.card h2')?.closest('.card')?.innerText||'';
+                db.tournaments=db.tournaments.filter(t=>t.id!==simple.id);
+                return {simpleText,clubsText,clubsTotal:clubs.cap.matches.length,
+                  clubsDone:clubs.cap.matches.filter(m=>m.status==='done').length,
+                  original};
+              });
+              if(!capArchiveLabels.simpleText.includes('1/3 relais') ||
+                 !capArchiveLabels.clubsText.includes(capArchiveLabels.clubsDone+'/'+capArchiveLabels.clubsTotal+' rencontres'))
+                throw Error('CAP : libelles archives incorrects : '+JSON.stringify(capArchiveLabels));
+              console.log('OK : archives CAP simple en relais et CAP clubs en rencontres.');
+
+
 
 
 
