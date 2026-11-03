@@ -362,6 +362,27 @@ jobs:
               console.log('OK : cloture impossible avant la fin des relais et des rencontres.');
               console.log('OK : bandeaux Course aux points, grille deux colonnes, commandes Terminer et Abandonner.');
               await page.screenshot({ path: 'milft-smoke.png', fullPage: true });
+              // Regression reelle : la confirmation d'abandon CAP clubs doit
+              // annoncer 1 rencontre restante, puis archiver la competition.
+              const capAbandonGuard = await page.evaluate(() => {
+                db.selected='test-cap-clubs';
+                const t=active();
+                let confirmation='';
+                const originalConfirm=window.confirm;
+                const originalPrompt=window.prompt;
+                window.confirm=message=>{confirmation=message;return true;};
+                window.prompt=()=> 'ABANDONNER';
+                try { abandonTournament(); }
+                finally { window.confirm=originalConfirm;window.prompt=originalPrompt; }
+                return {confirmation,closed:t.closed,abandoned:t.abandoned,
+                  capPending:t.cap.matches.filter(m=>m.status!=='done').length};
+              });
+              if (!capAbandonGuard.confirmation.includes('1 rencontre(s) non terminée(s)') ||
+                  !capAbandonGuard.closed || !capAbandonGuard.abandoned ||
+                  capAbandonGuard.capPending!==1)
+                throw new Error('CAP clubs : abandon ou compteur de rencontres incorrect : '+JSON.stringify(capAbandonGuard));
+              console.log('OK : abandon CAP clubs, confirmation du nombre de rencontres et archivage.');
+
             } catch (e) {
               console.error('ECHEC CHROMIUM :', e.message);
               console.error('Page actuelle :', page ? page.url() : 'non ouverte');
