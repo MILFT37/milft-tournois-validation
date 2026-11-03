@@ -546,6 +546,36 @@ jobs:
                 throw new Error('Isolation : abandon CAP a modifie un autre tournoi');
               console.log('OK : abandon Course clubs sans effet sur les autres tournois.');
 
+              // Reouverture depuis l'historique : un abandon CAP ne doit pas
+              // rester marque comme abandonne ni se retrouver bloque.
+              const reopenGuard = await page.evaluate(() => {
+                const t=db.tournaments.find(x=>x.id==='test-cap-clubs');
+                db.selected=t.id;tab='archive';render();
+                const button=[...document.querySelectorAll('button')].find(b=>b.textContent.trim()==='Rouvrir le tournoi');
+                if(!button)throw Error('Bouton de reouverture absent dans les archives');
+                const originalConfirm=window.confirm;
+                let prompts=0;
+                try {
+                  window.confirm=()=>{prompts++;return true;};
+                  button.click();
+                } finally {window.confirm=originalConfirm;}
+                return {prompts,closed:t.closed,abandoned:t.abandoned,tab,
+                  pending:t.cap.matches.find(m=>m.id==='cap-pending')?.status};
+              });
+              if (reopenGuard.prompts!==1 || reopenGuard.closed || reopenGuard.abandoned ||
+                  reopenGuard.tab!=='live-detail' || reopenGuard.pending!=='waiting')
+                throw Error('CAP clubs : reouverture apres abandon incorrecte : '+JSON.stringify(reopenGuard));
+              await page.reload({waitUntil:'load'});
+              const reopenedPersisted = await page.evaluate(() => {
+                const t=db.tournaments.find(x=>x.id==='test-cap-clubs');
+                return {closed:t?.closed,abandoned:t?.abandoned,
+                  pending:t?.cap?.matches?.find(m=>m.id==='cap-pending')?.status};
+              });
+              if (reopenedPersisted.closed || reopenedPersisted.abandoned || reopenedPersisted.pending!=='waiting')
+                throw Error('CAP clubs : reouverture non sauvegardee : '+JSON.stringify(reopenedPersisted));
+              console.log('OK : tournoi CAP abandonne rouvert depuis historique et reprise sauvegardee.');
+
+
 
 
             } catch (e) {
