@@ -362,6 +362,40 @@ jobs:
               console.log('OK : cloture impossible avant la fin des relais et des rencontres.');
               console.log('OK : bandeaux Course aux points, grille deux colonnes, commandes Terminer et Abandonner.');
               await page.screenshot({ path: 'milft-smoke.png', fullPage: true });
+              // Non-regression : un abandon annule ne doit jamais archiver.
+              const capCancelGuard = await page.evaluate(() => {
+                db.selected='test-cap-clubs';render();
+                const t=active();
+                const button=document.querySelector('.milft-cap-header .milft-cap-actions button.danger');
+                if (!button) throw new Error('Bouton Abandonner CAP absent');
+                const oldConfirm=window.confirm, oldPrompt=window.prompt;
+                let confirms=0, prompts=0;
+                try {
+                  window.confirm=()=>{confirms++;return false;};
+                  window.prompt=()=>{prompts++;return 'ABANDONNER';};
+                  button.click();
+                } finally {window.confirm=oldConfirm;window.prompt=oldPrompt;}
+                return {confirms,prompts,closed:t.closed,abandoned:t.abandoned};
+              });
+              if (capCancelGuard.confirms!==1 || capCancelGuard.prompts!==0 ||
+                  capCancelGuard.closed || capCancelGuard.abandoned)
+                throw new Error('CAP clubs : annulation de confirmation non respectee : '+JSON.stringify(capCancelGuard));
+              const capPromptGuard = await page.evaluate(() => {
+                const t=active();
+                const button=document.querySelector('.milft-cap-header .milft-cap-actions button.danger');
+                const oldConfirm=window.confirm, oldPrompt=window.prompt;
+                let confirms=0, prompts=0;
+                try {
+                  window.confirm=()=>{confirms++;return true;};
+                  window.prompt=()=>{prompts++;return null;};
+                  button.click();
+                } finally {window.confirm=oldConfirm;window.prompt=oldPrompt;}
+                return {confirms,prompts,closed:t.closed,abandoned:t.abandoned};
+              });
+              if (capPromptGuard.confirms!==1 || capPromptGuard.prompts!==1 ||
+                  capPromptGuard.closed || capPromptGuard.abandoned)
+                throw new Error('CAP clubs : annulation de seconde confirmation non respectee : '+JSON.stringify(capPromptGuard));
+              console.log('OK : les deux annulations de confirmation conservent la competition.');
               // Regression reelle : la confirmation d'abandon CAP clubs doit
               // annoncer 1 rencontre restante, puis archiver la competition.
               const capAbandonGuard = await page.evaluate(() => {
