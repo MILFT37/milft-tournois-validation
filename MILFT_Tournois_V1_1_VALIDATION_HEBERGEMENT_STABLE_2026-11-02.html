@@ -811,9 +811,12 @@ function openTournament(id){const t=db.tournaments.find(x=>x.id===id);if(!t)retu
 function milftReopenArchivedTournament(){
  const t=active();if(!t||( !t.closed && !t.abandoned))return;
  const wasAbandoned=!!t.abandoned;
+ const capSimple=t.mode==='cap'&&!t.cap?.competition;
+ const subject=capSimple?'cette course aux points':t.cap?.competition?'cette compétition':t.mode==='challenge'?'ce championnat':'ce tournoi';
+ const remaining=capSimple?Math.max(0,(t.cap?.targets?.length||0)-(t.cap?.relays?.length||0)):null;
  if(!confirm(wasAbandoned
-   ?'Rouvrir ce tournoi abandonné et reprendre les rencontres restantes ?'
-   :'Rouvrir ce tournoi terminé ? Son classement redeviendra provisoire.'))return;
+   ?'Rouvrir '+subject+' abandonné'+(capSimple||t.cap?.competition?'e':'')+' et reprendre '+(capSimple?'les '+remaining+' relais restants':'les rencontres restantes')+' ?'
+   :'Rouvrir '+subject+' terminé'+(capSimple||t.cap?.competition?'e':'')+' ? Son classement redeviendra provisoire.'))return;
  t.closed=false;t.abandoned=false;
  tab='live-detail';save();flash('Tournoi rouvert.');
 }
