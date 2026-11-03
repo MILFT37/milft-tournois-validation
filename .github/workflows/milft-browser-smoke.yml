@@ -981,6 +981,31 @@ jobs:
                 throw Error('Ajout joueurs championnat non repliable : '+JSON.stringify(annualAddFold));
               console.log('OK : ajout de joueurs replie par defaut, selection multiple conservee.');
 
+              // Les presences restent disponibles mais repliees par defaut.
+              const annualPresenceFold=await page.evaluate(()=>{
+                const t={id:'test-presence-fold',name:'Simple',mode:'challenge',
+                  discipline:'single',closed:false,roster:[
+                    {id:'presence-a',first:'Alice',last:'Test'},
+                    {id:'presence-b',first:'Bruno',last:'Test'}],
+                  presence:{'presence-a':true,'presence-b':false},
+                  matches:[{id:'presence-m',a:'presence-a',b:'presence-b',
+                    status:'waiting',sets:[],score:null,table:null}],
+                  tables:[{id:1,state:'free'}]};
+                const root=document.createElement('div');root.innerHTML=challengeLive(t);
+                const d=root.querySelector('.milft-annual-presence details');
+                const count=root.querySelectorAll('.milft-presence-compact input[type="checkbox"]').length;
+                const summary=d?.querySelector('summary')?.textContent||'';
+                const add=root.querySelector('.milft-annual-add details');
+                return {present:!!d,folded:!!d&&!d.open,summary,count,
+                  addFolded:!!add&&!add.open};
+              });
+              if(!annualPresenceFold.present||!annualPresenceFold.folded||
+                 !annualPresenceFold.summary.includes('1/2 joueurs')||
+                 annualPresenceFold.count!==2||!annualPresenceFold.addFolded)
+                throw Error('Presences championnat non repliees : '+JSON.stringify(annualPresenceFold));
+              console.log('OK : presences et ajout de joueurs replies, cases conservees.');
+
+
 
 
 
