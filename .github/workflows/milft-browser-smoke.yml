@@ -408,6 +408,23 @@ jobs:
               console.log('OK : marge basse superieure a la hauteur de navigation mobile.');
               await page.screenshot({path:'milft-cap-simple-bas-ecran.png'});
               await page.evaluate(() => {db.selected='test-cap-clubs';render();});
+              // Meme geometrie et meme ordre des commandes pour Course clubs.
+              const clubsGeometry = await page.locator('.milft-cap-actions').evaluate(grid => {
+                const buttons=[...grid.querySelectorAll('button')];
+                const rects=buttons.map(b=>b.getBoundingClientRect());
+                return {count:buttons.length,
+                  labels:buttons.map(b=>b.textContent.trim()),
+                  firstRow:rects.length===4&&Math.abs(rects[0].top-rects[1].top)<2,
+                  secondRow:rects.length===4&&Math.abs(rects[2].top-rects[3].top)<2,
+                  secondBelow:rects.length===4&&rects[2].top>rects[0].bottom,
+                  withinViewport:rects.every(r=>r.left>=0&&r.right<=document.documentElement.clientWidth+1)};
+              });
+              if (clubsGeometry.count!==4 || !clubsGeometry.firstRow ||
+                  !clubsGeometry.secondRow || !clubsGeometry.secondBelow ||
+                  !clubsGeometry.withinViewport ||
+                  clubsGeometry.labels[2]!=='Terminer' || clubsGeometry.labels[3]!=='Abandonner')
+                throw new Error('CAP clubs : grille mobile non conforme : '+JSON.stringify(clubsGeometry));
+              console.log('OK : grille CAP clubs deux lignes, quatre boutons visibles.');
               // Non-regression : un abandon annule ne doit jamais archiver.
               const capCancelGuard = await page.evaluate(() => {
                 db.selected='test-cap-clubs';render();
