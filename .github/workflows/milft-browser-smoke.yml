@@ -645,6 +645,37 @@ jobs:
                 throw Error('CAP clubs : compteur archives incorrect : '+JSON.stringify(capArchiveCounter));
               console.log('OK : compteur des rencontres CAP affiche correctement dans les archives.');
 
+              // Une competition CAP terminee ne doit pas etre rouverte si
+              // l'utilisateur annule la confirmation depuis l'historique.
+              const finishedCancel=await page.evaluate(()=>{
+                const t=db.tournaments.find(x=>x.id==='test-cap-clubs');
+                t.closed=true;t.abandoned=false;db.selected=t.id;tab='archive';save();render();
+                const before=JSON.stringify(t.cap.matches);
+                const originalConfirm=window.confirm;
+                let prompts=0;
+                try {
+                  window.confirm=()=>{prompts++;return false;};
+                  const button=[...document.querySelectorAll('button')].find(b=>b.textContent.trim()==='Rouvrir le tournoi');
+                  if(!button)throw Error('Bouton reouverture termine absent');
+                  button.click();
+                } finally {window.confirm=originalConfirm;}
+                return {prompts,closed:t.closed,abandoned:t.abandoned,tab,
+                  matchesUnchanged:before===JSON.stringify(t.cap.matches)};
+              });
+              if(finishedCancel.prompts!==1 || !finishedCancel.closed ||
+                 finishedCancel.abandoned || finishedCancel.tab!=='archive' ||
+                 !finishedCancel.matchesUnchanged)
+                throw Error('CAP termine : annulation de reouverture incorrecte : '+JSON.stringify(finishedCancel));
+              await page.reload({waitUntil:'load'});
+              const finishedCancelPersisted=await page.evaluate(()=>{
+                const t=db.tournaments.find(x=>x.id==='test-cap-clubs');
+                return !!t?.closed && !t?.abandoned;
+              });
+              if(!finishedCancelPersisted)
+                throw Error('CAP termine : annulation de reouverture non sauvegardee');
+              console.log('OK : annulation de reouverture CAP termine preserve archive et scores.');
+
+
 
 
 
