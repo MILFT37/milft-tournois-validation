@@ -905,6 +905,28 @@ jobs:
                 throw Error('Championnat Simple : reprise match incorrecte : '+JSON.stringify(annualMatchResume));
               console.log('OK : championnat Simple saisie 3 manches, classement, table et reprise.');
 
+              // Le championnat annuel doit proposer une sauvegarde directe
+              // depuis sa page operationnelle, avant et apres chaque seance.
+              const annualBackupUi=await page.evaluate(()=>{
+                const t={id:'test-annual-backup-ui',name:'Simple jeudi',
+                  mode:'challenge',discipline:'single',legs:1,closed:false,
+                  roster:[{id:'backup-a',first:'A',last:'Test'},
+                          {id:'backup-b',first:'B',last:'Test'}],
+                  presence:{'backup-a':false,'backup-b':false},
+                  matches:[{id:'backup-match',a:'backup-a',b:'backup-b',
+                    leg:1,status:'waiting',table:null,sets:[],score:null}],
+                  tables:[{id:1,state:'free'}]};
+                const html=challengeLive(t);
+                return {button:html.includes('milftExportBackup()'),
+                  warning:html.includes('Ne vide pas les donnees du navigateur')||
+                          html.includes('Ne vide pas les données du navigateur'),
+                  exportAvailable:typeof milftExportBackup==='function'};
+              });
+              if(!annualBackupUi.button||!annualBackupUi.warning||!annualBackupUi.exportAvailable)
+                throw Error('Championnat annuel : sauvegarde de secours inaccessible : '+JSON.stringify(annualBackupUi));
+              console.log('OK : sauvegarde JSON directement accessible dans le championnat annuel.');
+
+
 
 
 
