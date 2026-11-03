@@ -783,6 +783,74 @@ jobs:
                 throw Error('CAP individuel : reouverture annulee incorrecte : '+JSON.stringify(capReopenLabel));
               console.log('OK : confirmation de reouverture CAP individuelle en relais.');
 
+              // Priorite lancement jeudi : championnat annuel Simple.
+              // Verifie la generation aller / retour, l'ajout tardif d'un
+              // joueur et la persistance des resultats deja saisis.
+              const annualSimpleLaunch=await page.evaluate(()=>{
+                const ids=['annual-a','annual-b','annual-c','annual-d'];
+                const roster=ids.slice(0,3).map((id,i)=>({id,first:'Joueur'+i,last:'Test'}));
+                const t={id:'test-annual-launch',name:'Championnat annuel Simple',
+                  mode:'challenge',discipline:'single',legs:2,closed:false,
+                  abandoned:false,roster,matches:[],tables:[{id:1,state:'free'}],
+                  presence:Object.fromEntries(roster.map(p=>[p.id,false]))};
+                for(let leg=1;leg<=2;leg++)
+                  for(let i=0;i<roster.length;i++)
+                    for(let j=i+1;j<roster.length;j++)
+                      t.matches.push({id:'annual-'+leg+'-'+i+'-'+j,
+                        a:leg===1?roster[i].id:roster[j].id,
+                        b:leg===1?roster[j].id:roster[i].id,
+                        leg,status:'waiting',table:null,sets:[],score:null});
+                const first=t.matches[0];
+                first.status='done';first.score={a:3,b:1};first.sets=[{a:5,b:3}];
+                db.players.push({id:ids[3],first:'Nouveau',last:'Joueur'});
+                db.tournaments.push(t);db.selected=t.id;
+                const before=JSON.stringify(first);
+                const originalConfirm=window.confirm;
+                const originalFlash=window.flash;
+                let confirmation='';
+                try{
+                  window.confirm=message=>{confirmation=message;return true;};
+                  const checkbox={value:ids[3]};
+                  addAnnualParticipants({preventDefault(){},
+                    target:{querySelectorAll(){return [checkbox];}}});
+                }finally{window.confirm=originalConfirm;}
+                const result={discipline:t.discipline,legs:annualLegs(t),
+                  roster:t.roster.length,matches:t.matches.length,
+                  preserved:JSON.stringify(first)===before,
+                  newMatches:t.matches.filter(m=>m.a===ids[3]||m.b===ids[3]).length,
+                  confirmation,allNewWaiting:t.matches.filter(m=>m.a===ids[3]||m.b===ids[3]).every(m=>m.status==='waiting')};
+                save();
+                return result;
+              });
+              if(annualSimpleLaunch.discipline!=='single' ||
+                 annualSimpleLaunch.legs!==2 ||
+                 annualSimpleLaunch.roster!==4 ||
+                 annualSimpleLaunch.matches!==12 ||
+                 annualSimpleLaunch.newMatches!==6 ||
+                 !annualSimpleLaunch.preserved ||
+                 !annualSimpleLaunch.allNewWaiting ||
+                 !annualSimpleLaunch.confirmation.includes('6 rencontre'))
+                throw Error('Championnat annuel Simple : ajout tardif incorrect : '+JSON.stringify(annualSimpleLaunch));
+              await page.reload({waitUntil:'load'});
+              const annualSimplePersisted=await page.evaluate(()=>{
+                const t=db.tournaments.find(x=>x.id==='test-annual-launch');
+                const result={exists:!!t,roster:t?.roster.length,matches:t?.matches.length,
+                  done:t?.matches.filter(m=>m.status==='done').length,
+                  score:t?.matches.find(m=>m.status==='done')?.score,
+                  legs:t?.legs,discipline:t?.discipline};
+                db.tournaments=db.tournaments.filter(x=>x.id!=='test-annual-launch');
+                db.players=db.players.filter(p=>p.id!=='annual-d');
+                save();
+                return result;
+              });
+              if(!annualSimplePersisted.exists || annualSimplePersisted.roster!==4 ||
+                 annualSimplePersisted.matches!==12 || annualSimplePersisted.done!==1 ||
+                 annualSimplePersisted.score?.a!==3 || annualSimplePersisted.score?.b!==1 ||
+                 annualSimplePersisted.legs!==2 || annualSimplePersisted.discipline!=='single')
+                throw Error('Championnat annuel Simple : reprise incorrecte : '+JSON.stringify(annualSimplePersisted));
+              console.log('OK : championnat annuel Simple aller-retour, ajout joueur, scores et reprise.');
+
+
 
 
 
