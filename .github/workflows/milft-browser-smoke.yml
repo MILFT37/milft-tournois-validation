@@ -733,6 +733,33 @@ jobs:
                 throw Error('CAP clubs : nombre de clubs incorrect dans historique : '+JSON.stringify(clubsHistoryLabel));
               console.log('OK : liste historique affiche le nombre de clubs CAP.');
 
+              // L'abandon CAP individuel doit compter les relais restants
+              // et ne jamais afficher zero rencontre restante.
+              const capSimpleAbandon=await page.evaluate(()=>{
+                const originalConfirm=window.confirm;
+                const originalPrompt=window.prompt;
+                const t={id:'test-cap-abandon-counter',name:'CAP abandon relais',
+                  mode:'cap',closed:false,abandoned:false,roster:[],matches:[],
+                  tables:[],cap:{competition:false,targets:[10,20,30],relays:[{score:10}]}};
+                db.tournaments.push(t);db.selected=t.id;
+                let confirmation='';
+                try{
+                  window.confirm=message=>{confirmation=message;return false;};
+                  window.prompt=()=>{throw Error('Confirmation finale inattendue');};
+                  abandonTournament();
+                }finally{
+                  window.confirm=originalConfirm;window.prompt=originalPrompt;
+                  db.tournaments=db.tournaments.filter(x=>x.id!==t.id);
+                }
+                return {confirmation,closed:t.closed,abandoned:t.abandoned};
+              });
+              if(!capSimpleAbandon.confirmation.includes('2 relais non terminé(s)') ||
+                 capSimpleAbandon.confirmation.includes('rencontre(s)') ||
+                 capSimpleAbandon.closed || capSimpleAbandon.abandoned)
+                throw Error('CAP individuel : confirmation abandon incorrecte : '+JSON.stringify(capSimpleAbandon));
+              console.log('OK : abandon CAP individuel compte les relais restants.');
+
+
 
 
 
