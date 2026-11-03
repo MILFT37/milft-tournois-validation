@@ -575,6 +575,32 @@ jobs:
                 throw Error('CAP clubs : reouverture non sauvegardee : '+JSON.stringify(reopenedPersisted));
               console.log('OK : tournoi CAP abandonne rouvert depuis historique et reprise sauvegardee.');
 
+              // Une annulation de reouverture doit conserver l'archive.
+              const reopenCancel = await page.evaluate(() => {
+                const t=db.tournaments.find(x=>x.id==='test-cap-clubs');
+                t.closed=true;t.abandoned=true;db.selected=t.id;tab='archive';save();render();
+                const originalConfirm=window.confirm;
+                let prompts=0;
+                try {
+                  window.confirm=()=>{prompts++;return false;};
+                  const button=[...document.querySelectorAll('button')].find(b=>b.textContent.trim()==='Rouvrir le tournoi');
+                  if(!button)throw Error('Commande archive absente');
+                  button.click();
+                } finally {window.confirm=originalConfirm;}
+                return {prompts,closed:t.closed,abandoned:t.abandoned,tab};
+              });
+              if (reopenCancel.prompts!==1 || !reopenCancel.closed ||
+                  !reopenCancel.abandoned || reopenCancel.tab!=='archive')
+                throw Error('CAP clubs : annulation reouverture non respectee : '+JSON.stringify(reopenCancel));
+              await page.reload({waitUntil:'load'});
+              const cancelPersisted=await page.evaluate(()=>{
+                const t=db.tournaments.find(x=>x.id==='test-cap-clubs');
+                return !!t?.closed && !!t?.abandoned;
+              });
+              if(!cancelPersisted)throw Error('CAP clubs : annulation reouverture non conservee');
+              console.log('OK : annulation de reouverture conserve l\'archive apres rechargement.');
+
+
 
 
 
