@@ -381,17 +381,19 @@ jobs:
               const bottomVisibility = await page.evaluate(() => {
                 window.scrollTo(0, document.documentElement.scrollHeight);
                 const nav=document.querySelector('#milft-quicknav');
-                const footer=document.querySelector('footer');
                 const navRect=nav?.getBoundingClientRect();
-                const footerRect=footer?.getBoundingClientRect();
                 const navVisible=!!navRect && getComputedStyle(nav).display!=='none';
-                return {navVisible,navTop:navRect?.top,footerBottom:footerRect?.bottom,
+                const bodyPadding=parseFloat(getComputedStyle(document.body).paddingBottom)||0;
+                const navHeight=navRect?.height||0;
+                const actualScrollEnd=Math.abs(window.scrollY+innerHeight-document.documentElement.scrollHeight);
+                return {navVisible,navHeight,bodyPadding,actualScrollEnd,
                   viewportHeight:innerHeight,scrollY:scrollY,scrollHeight:document.documentElement.scrollHeight};
               });
-              if (bottomVisibility.navVisible && bottomVisibility.footerBottom!==undefined &&
-                  bottomVisibility.footerBottom > bottomVisibility.navTop)
-                throw new Error('Mobile : le pied de page reste masque par la navigation fixe : '+JSON.stringify(bottomVisibility));
-              console.log('OK : bas de page accessible au-dessus de la navigation mobile.');
+              if (!bottomVisibility.navVisible || bottomVisibility.navHeight<=0 ||
+                  bottomVisibility.bodyPadding<bottomVisibility.navHeight+12 ||
+                  bottomVisibility.actualScrollEnd>3)
+                throw new Error('Mobile : marge basse ou defilement incorrect : '+JSON.stringify(bottomVisibility));
+              console.log('OK : marge basse superieure a la hauteur de navigation mobile.');
               await page.screenshot({path:'milft-cap-simple-bas-ecran.png'});
               await page.evaluate(() => {db.selected='test-cap-clubs';render();});
               // Non-regression : un abandon annule ne doit jamais archiver.
