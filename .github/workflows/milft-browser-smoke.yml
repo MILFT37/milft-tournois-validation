@@ -481,7 +481,8 @@ jobs:
               const otherTournamentsBeforeAbandon = await page.evaluate(() =>
                 db.tournaments.filter(t=>t.id!=='test-cap-clubs').map(t=>({
                   id:t.id,closed:!!t.closed,abandoned:!!t.abandoned,
-                  matches:JSON.stringify(t.matches),capMatches:JSON.stringify(t.cap?.matches||[])
+                  matches:JSON.stringify(t.matches),capMatches:JSON.stringify(t.cap?.matches||[]),
+                  tables:JSON.stringify(t.tables||[]),roster:JSON.stringify(t.roster||[])
                 }))
               );
               // Un match CAP en cours doit etre libere lors de l'abandon.
@@ -490,6 +491,7 @@ jobs:
                 const pending=t.cap.matches.find(m=>m.id==='cap-pending');
                 pending.status='playing';
                 pending.tableId=1;
+                t.tables=[{id:1,state:'playing'},{id:2,state:'free'}];
                 save();render();
               });
               // Regression reelle : la confirmation d'abandon CAP clubs doit
@@ -524,17 +526,20 @@ jobs:
                 const t=db.tournaments.find(x=>x.id==='test-cap-clubs');
                 const m=t?.cap?.matches?.find(x=>x.id==='cap-pending');
                 return {exists:!!t,closed:t?.closed,abandoned:t?.abandoned,
-                  status:m?.status,tableId:m?.tableId,selected:db.selected};
+                  status:m?.status,tableId:m?.tableId,selected:db.selected,
+                  tables:t?.tables?.map(x=>({id:x.id,state:x.state}))};
               });
               if (!abandonedPersisted.exists || !abandonedPersisted.closed ||
                   !abandonedPersisted.abandoned || abandonedPersisted.status!=='waiting' ||
-                  abandonedPersisted.tableId!==null)
+                  abandonedPersisted.tableId!==null ||
+                  abandonedPersisted.tables?.find(x=>x.id===1)?.state!=='free')
                 throw new Error('CAP clubs : sauvegarde de l\'abandon incorrecte : '+JSON.stringify(abandonedPersisted));
               console.log('OK : abandon CAP conserve apres rechargement, match arrete et table liberee.');
               const otherTournamentsAfterAbandon = await page.evaluate(() =>
                 db.tournaments.filter(t=>t.id!=='test-cap-clubs').map(t=>({
                   id:t.id,closed:!!t.closed,abandoned:!!t.abandoned,
-                  matches:JSON.stringify(t.matches),capMatches:JSON.stringify(t.cap?.matches||[])
+                  matches:JSON.stringify(t.matches),capMatches:JSON.stringify(t.cap?.matches||[]),
+                  tables:JSON.stringify(t.tables||[]),roster:JSON.stringify(t.roster||[])
                 }))
               );
               if (JSON.stringify(otherTournamentsAfterAbandon)!==JSON.stringify(otherTournamentsBeforeAbandon))
