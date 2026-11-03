@@ -600,6 +600,38 @@ jobs:
               if(!cancelPersisted)throw Error('CAP clubs : annulation reouverture non conservee');
               console.log('OK : annulation de reouverture conserve l\'archive apres rechargement.');
 
+              // Reouverture d'une competition CAP terminee (non abandonnee) :
+              // le statut termine doit etre leve, les scores conserves.
+              const finishedReopen = await page.evaluate(() => {
+                const t=db.tournaments.find(x=>x.id==='test-cap-clubs');
+                t.closed=true;t.abandoned=false;db.selected=t.id;tab='archive';
+                const matchesBefore=JSON.stringify(t.cap.matches);
+                save();render();
+                const button=[...document.querySelectorAll('button')].find(b=>b.textContent.trim()==='Rouvrir le tournoi');
+                if(!button)throw Error('Bouton reouverture CAP termine absent');
+                const originalConfirm=window.confirm;
+                let prompts=0;
+                try {
+                  window.confirm=()=>{prompts++;return true;};
+                  button.click();
+                } finally {window.confirm=originalConfirm;}
+                return {prompts,closed:t.closed,abandoned:t.abandoned,tab,
+                  matchesUnchanged:JSON.stringify(t.cap.matches)===matchesBefore};
+              });
+              if (finishedReopen.prompts!==1 || finishedReopen.closed ||
+                  finishedReopen.abandoned || finishedReopen.tab!=='live-detail' ||
+                  !finishedReopen.matchesUnchanged)
+                throw Error('CAP clubs : reouverture termine incorrecte : '+JSON.stringify(finishedReopen));
+              await page.reload({waitUntil:'load'});
+              const finishedReopenPersisted=await page.evaluate(()=>{
+                const t=db.tournaments.find(x=>x.id==='test-cap-clubs');
+                return {closed:t?.closed,abandoned:t?.abandoned};
+              });
+              if(finishedReopenPersisted.closed || finishedReopenPersisted.abandoned)
+                throw Error('CAP clubs : reouverture termine non sauvegardee');
+              console.log('OK : reouverture CAP termine, scores preserves et statut sauvegarde.');
+
+
 
 
 
