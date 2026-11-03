@@ -396,6 +396,14 @@ jobs:
                   capPromptGuard.closed || capPromptGuard.abandoned)
                 throw new Error('CAP clubs : annulation de seconde confirmation non respectee : '+JSON.stringify(capPromptGuard));
               console.log('OK : les deux annulations de confirmation conservent la competition.');
+              // Un match CAP en cours doit etre libere lors de l'abandon.
+              await page.evaluate(() => {
+                const t=active();
+                const pending=t.cap.matches.find(m=>m.id==='cap-pending');
+                pending.status='playing';
+                pending.tableId=1;
+                save();render();
+              });
               // Regression reelle : la confirmation d'abandon CAP clubs doit
               // annoncer 1 rencontre restante, puis archiver la competition.
               const capAbandonGuard = await page.evaluate(() => {
@@ -413,11 +421,11 @@ jobs:
                 }
                 finally { window.confirm=originalConfirm;window.prompt=originalPrompt; }
                 return {confirmation,closed:t.closed,abandoned:t.abandoned,
-                  capPending:t.cap.matches.filter(m=>m.status!=='done').length};
+                  capPending:t.cap.matches.filter(m=>m.status!=='done').length,capMatchStatus:t.cap.matches[0].status,capTableId:t.cap.matches[0].tableId};
               });
               if (!capAbandonGuard.confirmation.includes('1 rencontre(s) non terminée(s)') ||
                   !capAbandonGuard.closed || !capAbandonGuard.abandoned ||
-                  capAbandonGuard.capPending!==1)
+                  capAbandonGuard.capPending!==1 || capAbandonGuard.capMatchStatus!=='waiting' || capAbandonGuard.capTableId!==null)
                 throw new Error('CAP clubs : abandon ou compteur de rencontres incorrect : '+JSON.stringify(capAbandonGuard));
               console.log('OK : abandon CAP clubs, confirmation du nombre de rencontres et archivage.');
               await page.screenshot({ path: 'milft-cap-clubs-abandonne.png', fullPage: true });
