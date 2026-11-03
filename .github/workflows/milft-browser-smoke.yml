@@ -759,6 +759,31 @@ jobs:
                 throw Error('CAP individuel : confirmation abandon incorrecte : '+JSON.stringify(capSimpleAbandon));
               console.log('OK : abandon CAP individuel compte les relais restants.');
 
+              // La confirmation de reouverture d'une CAP individuelle
+              // abandonnee doit parler de relais, sans modifier l'archive.
+              const capReopenLabel=await page.evaluate(()=>{
+                const t={id:'test-cap-reopen-label',name:'CAP relais archive',
+                  mode:'cap',closed:true,abandoned:true,roster:[],matches:[],
+                  tables:[],cap:{competition:false,targets:[10,20,30],relays:[{score:10}]}};
+                db.tournaments.push(t);db.selected=t.id;tab='archive';
+                const oldConfirm=window.confirm;let message='';
+                try{
+                  window.confirm=m=>{message=m;return false;};
+                  milftReopenArchivedTournament();
+                }finally{
+                  window.confirm=oldConfirm;
+                  db.tournaments=db.tournaments.filter(x=>x.id!==t.id);
+                }
+                return {message,closed:t.closed,abandoned:t.abandoned,tab};
+              });
+              if(!capReopenLabel.message.includes('2 relais restants') ||
+                 !capReopenLabel.message.includes('course aux points') ||
+                 !capReopenLabel.closed || !capReopenLabel.abandoned ||
+                 capReopenLabel.tab!=='archive')
+                throw Error('CAP individuel : reouverture annulee incorrecte : '+JSON.stringify(capReopenLabel));
+              console.log('OK : confirmation de reouverture CAP individuelle en relais.');
+
+
 
 
 
