@@ -926,6 +926,23 @@ jobs:
                 throw Error('Championnat annuel : sauvegarde de secours inaccessible : '+JSON.stringify(annualBackupUi));
               console.log('OK : sauvegarde JSON directement accessible dans le championnat annuel.');
 
+              // Branche de lancement : signaletique et stockage dedie,
+              // sans ecriture automatique vers Google Drive.
+              const launchIsolation=await page.evaluate(()=>{
+                const banner=document.getElementById('milft-iso-warning')?.textContent||'';
+                return {banner,version:document.querySelector('header .pill')?.textContent||'',
+                  key:typeof KEY==='string'?KEY:'',
+                  exporter:typeof milftExportBackup==='function'};
+              });
+              if(!launchIsolation.banner.includes('CHAMPIONNAT ANNUEL SIMPLE') ||
+                 !launchIsolation.banner.includes('sauvegarde locale uniquement') ||
+                 !launchIsolation.version.includes('CHAMPIONNAT SIMPLE') ||
+                 launchIsolation.key!=='milft_championnat_simple_20261105_v01' ||
+                 !launchIsolation.exporter)
+                throw Error('Branche lancement Simple : isolation incorrecte : '+JSON.stringify(launchIsolation));
+              console.log('OK : branche lancement Simple et stockage local separe.');
+
+
 
 
 
