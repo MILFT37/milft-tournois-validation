@@ -386,6 +386,7 @@ jobs:
                   capAbandonGuard.capPending!==1)
                 throw new Error('CAP clubs : abandon ou compteur de rencontres incorrect : '+JSON.stringify(capAbandonGuard));
               console.log('OK : abandon CAP clubs, confirmation du nombre de rencontres et archivage.');
+              await page.screenshot({ path: 'milft-cap-clubs-abandonne.png', fullPage: true });
 
             } catch (e) {
               console.error('ECHEC CHROMIUM :', e.message);
@@ -409,3 +410,4 @@ jobs:
             milft-smoke.png
             milft-cap-simple.png
             milft-cap-clubs.png
+            milft-cap-clubs-abandonne.png
