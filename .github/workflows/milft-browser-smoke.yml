@@ -512,5 +512,6 @@ jobs:
           path: |
             milft-smoke.png
             milft-cap-simple.png
+            milft-cap-simple-bas-ecran.png
             milft-cap-clubs.png
             milft-cap-clubs-abandonne.png
