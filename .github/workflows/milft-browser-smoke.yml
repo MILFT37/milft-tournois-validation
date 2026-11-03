@@ -425,6 +425,24 @@ jobs:
                   clubsGeometry.labels[2]!=='Terminer' || clubsGeometry.labels[3]!=='Abandonner')
                 throw new Error('CAP clubs : grille mobile non conforme : '+JSON.stringify(clubsGeometry));
               console.log('OK : grille CAP clubs deux lignes, quatre boutons visibles.');
+              // Petit smartphone (320 px) : aucune commande ne doit deborder.
+              await page.setViewportSize({width:320,height:700});
+              const narrowMobile = await page.locator('.milft-cap-actions').evaluate(grid => {
+                const buttons=[...grid.querySelectorAll('button')];
+                const rects=buttons.map(b=>b.getBoundingClientRect());
+                return {viewport:document.documentElement.clientWidth,
+                  labels:buttons.map(b=>b.textContent.trim()),
+                  widths:rects.map(r=>Math.round(r.width)),
+                  withinViewport:rects.every(r=>r.left>=-1&&r.right<=document.documentElement.clientWidth+1),
+                  aligned:rects.length===4&&Math.abs(rects[0].top-rects[1].top)<2&&
+                    Math.abs(rects[2].top-rects[3].top)<2};
+              });
+              if (!narrowMobile.withinViewport || !narrowMobile.aligned ||
+                  narrowMobile.widths.some(w=>w<70))
+                throw new Error('CAP clubs : commandes non utilisables sur ecran 320 px : '+JSON.stringify(narrowMobile));
+              await page.setViewportSize({width:390,height:844});
+              console.log('OK : commandes CAP clubs utilisables a 320 px et 390 px.');
+
               // Non-regression : un abandon annule ne doit jamais archiver.
               const capCancelGuard = await page.evaluate(() => {
                 db.selected='test-cap-clubs';render();
