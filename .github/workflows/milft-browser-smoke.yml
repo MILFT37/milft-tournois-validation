@@ -717,6 +717,23 @@ jobs:
                 throw Error('Historique CAP : progression incorrecte : '+JSON.stringify(historyProgress));
               console.log('OK : liste historique CAP simple en relais, clubs en matchs.');
 
+              // La liste historique doit afficher les clubs CAP comme des
+              // clubs, sans les presenter comme zero joueur.
+              const clubsHistoryLabel=await page.evaluate(()=>{
+                const t=db.tournaments.find(x=>x.id==='test-cap-clubs');
+                db.selected=t.id;tab='history';historyFilters.query=t.name||'';
+                historyFilters.status='';render();
+                const list=document.querySelector('#history-results');
+                const label=list?.innerText||'';
+                historyFilters.query='';
+                return {label,clubs:t.cap.clubs.length};
+              });
+              if(!clubsHistoryLabel.label.includes(clubsHistoryLabel.clubs+' clubs') ||
+                 clubsHistoryLabel.label.includes('0 joueurs'))
+                throw Error('CAP clubs : nombre de clubs incorrect dans historique : '+JSON.stringify(clubsHistoryLabel));
+              console.log('OK : liste historique affiche le nombre de clubs CAP.');
+
+
 
 
 
