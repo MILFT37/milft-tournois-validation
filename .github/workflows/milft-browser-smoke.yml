@@ -631,6 +631,21 @@ jobs:
                 throw Error('CAP clubs : reouverture termine non sauvegardee');
               console.log('OK : reouverture CAP termine, scores preserves et statut sauvegarde.');
 
+              // Le compteur de l'archive CAP doit lire les rencontres CAP,
+              // pas la liste des rencontres du tournoi classique.
+              const capArchiveCounter=await page.evaluate(()=>{
+                const t=db.tournaments.find(x=>x.id==='test-cap-clubs');
+                t.closed=true;t.abandoned=false;db.selected=t.id;tab='archive';save();render();
+                const done=t.cap.matches.filter(m=>m.status==='done').length;
+                const total=t.cap.matches.length;
+                const card=document.querySelector('.card h2')?.closest('.card');
+                return {done,total,visible:card?.innerText||''};
+              });
+              if(!capArchiveCounter.visible.includes(capArchiveCounter.done+'/'+capArchiveCounter.total+' rencontres'))
+                throw Error('CAP clubs : compteur archives incorrect : '+JSON.stringify(capArchiveCounter));
+              console.log('OK : compteur des rencontres CAP affiche correctement dans les archives.');
+
+
 
 
 
