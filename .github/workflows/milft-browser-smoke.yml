@@ -963,6 +963,25 @@ jobs:
                 throw Error('Affichage championnat mobile non simplifie : '+JSON.stringify(annualFocus));
               console.log('OK : pilotage championnat epure et sauvegarde conservee.');
 
+              // Ajout tardif des joueurs : bloc compact et replie par defaut.
+              const annualAddFold=await page.evaluate(()=>{
+                const t={mode:'challenge',discipline:'single',legs:1,closed:false,
+                  roster:[{id:'fold-existing',first:'A',last:'B'}],matches:[]};
+                const html=annualAddPlayers(t);
+                const holder=document.createElement('div');holder.innerHTML=html;
+                const details=holder.querySelector('.milft-annual-add details');
+                const form=holder.querySelector('form[onsubmit="addAnnualParticipants(event)"]');
+                return {details:!!details,closed:!!details&&!details.open,
+                  summary:details?.querySelector('summary')?.textContent||'',
+                  form:!!form,choices:holder.querySelectorAll('input[name="annualNew"]').length};
+              });
+              if(!annualAddFold.details||!annualAddFold.closed||
+                 !annualAddFold.summary.includes('Ajouter des joueurs')||
+                 !annualAddFold.form||annualAddFold.choices<1)
+                throw Error('Ajout joueurs championnat non repliable : '+JSON.stringify(annualAddFold));
+              console.log('OK : ajout de joueurs replie par defaut, selection multiple conservee.');
+
+
 
 
 
