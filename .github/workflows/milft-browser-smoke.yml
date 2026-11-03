@@ -850,6 +850,62 @@ jobs:
                 throw Error('Championnat annuel Simple : reprise incorrecte : '+JSON.stringify(annualSimplePersisted));
               console.log('OK : championnat annuel Simple aller-retour, ajout joueur, scores et reprise.');
 
+              // Jeudi : verifier la saisie reelle des manches, le classement
+              // 2 points par victoire, la liberation de table et la reprise.
+              const annualMatchFlow=await page.evaluate(()=>{
+                const t={id:'test-annual-match-flow',name:'Championnat Simple jeudi',
+                  mode:'challenge',discipline:'single',legs:1,closed:false,
+                  roster:[{id:'flow-a',first:'Alice',last:'Test'},
+                          {id:'flow-b',first:'Bruno',last:'Test'}],
+                  presence:{'flow-a':true,'flow-b':true},
+                  matches:[{id:'flow-match',a:'flow-a',b:'flow-b',leg:1,
+                    status:'waiting',table:null,sets:[],score:null,hold:false}],
+                  tables:[{id:1,state:'free'}]};
+                db.tournaments.push(t);db.selected=t.id;
+                const oldConfirm=window.confirm;
+                const oldGet=document.getElementById.bind(document);
+                try{
+                  assignSpecific('flow-match');
+                  if(t.matches[0].status!=='playing'||t.tables[0].state!=='playing')
+                    throw Error('Attribution table impossible');
+                  window.confirm=()=>true;
+                  document.getElementById=id=>{
+                    if(id==='winner-flow-match')return {value:'a'};
+                    if(id==='set-flow-match')return {value:'5-3'};
+                    return oldGet(id);
+                  };
+                  for(let i=0;i<3;i++)addChallengeSet('flow-match');
+                  const ranking=challengeStandings(t);
+                  return {status:t.matches[0].status,sets:t.matches[0].sets.length,
+                    score:t.matches[0].score,table:t.tables[0].state,
+                    ranking,matchCount:t.matches.length};
+                }finally{
+                  window.confirm=oldConfirm;
+                  document.getElementById=oldGet;
+                }
+              });
+              if(annualMatchFlow.status!=='done' || annualMatchFlow.sets!==3 ||
+                 annualMatchFlow.score?.a!==3 || annualMatchFlow.score?.b!==0 ||
+                 annualMatchFlow.table!=='free' || annualMatchFlow.matchCount!==1 ||
+                 !annualMatchFlow.ranking.includes('Classement provisoire') ||
+                 !annualMatchFlow.ranking.includes('Alice Test'))
+                throw Error('Championnat Simple : parcours match incorrect : '+JSON.stringify(annualMatchFlow));
+              await page.reload({waitUntil:'load'});
+              const annualMatchResume=await page.evaluate(()=>{
+                const t=db.tournaments.find(x=>x.id==='test-annual-match-flow');
+                const result={found:!!t,done:t?.matches[0]?.status,
+                  sets:t?.matches[0]?.sets.length,score:t?.matches[0]?.score,
+                  table:t?.tables[0]?.state,ranking:t?challengeStandings(t):''};
+                db.tournaments=db.tournaments.filter(x=>x.id!=='test-annual-match-flow');
+                save();return result;
+              });
+              if(!annualMatchResume.found||annualMatchResume.done!=='done' ||
+                 annualMatchResume.sets!==3||annualMatchResume.score?.a!==3 ||
+                 annualMatchResume.table!=='free'||!annualMatchResume.ranking.includes('Alice Test'))
+                throw Error('Championnat Simple : reprise match incorrecte : '+JSON.stringify(annualMatchResume));
+              console.log('OK : championnat Simple saisie 3 manches, classement, table et reprise.');
+
+
 
 
 
