@@ -372,7 +372,11 @@ jobs:
                 const originalPrompt=window.prompt;
                 window.confirm=message=>{confirmation=message;return true;};
                 window.prompt=()=> 'ABANDONNER';
-                try { abandonTournament(); }
+                try {
+                  const button=document.querySelector('.milft-cap-header .milft-cap-actions button.danger');
+                  if (!button) throw new Error('Bouton Abandonner CAP introuvable');
+                  button.click();
+                }
                 finally { window.confirm=originalConfirm;window.prompt=originalPrompt; }
                 return {confirmation,closed:t.closed,abandoned:t.abandoned,
                   capPending:t.cap.matches.filter(m=>m.status!=='done').length};
