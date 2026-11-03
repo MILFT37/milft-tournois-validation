@@ -697,6 +697,27 @@ jobs:
                 throw Error('CAP : libelles archives incorrects : '+JSON.stringify(capArchiveLabels));
               console.log('OK : archives CAP simple en relais et CAP clubs en rencontres.');
 
+              // Controle des compteurs de la liste historique, distincts
+              // des compteurs de la fiche d'archive.
+              const historyProgress=await page.evaluate(()=>{
+                const clubs=db.tournaments.find(x=>x.id==='test-cap-clubs');
+                const simple={id:'test-cap-history-simple',name:'CAP simple historique',
+                  mode:'cap',closed:true,abandoned:false,roster:[],matches:[],
+                  cap:{competition:false,relays:[{score:10}],targets:[10,20,30]}};
+                db.tournaments.push(simple);
+                const simpleLabel=milftHistoryProgress(simple);
+                const clubsLabel=milftHistoryProgress(clubs);
+                db.tournaments=db.tournaments.filter(t=>t.id!==simple.id);
+                return {simpleLabel,clubsLabel,
+                  clubsDone:clubs.cap.matches.filter(m=>m.status==='done').length,
+                  clubsTotal:clubs.cap.matches.length};
+              });
+              if(historyProgress.simpleLabel!=='1/3 relais' ||
+                 historyProgress.clubsLabel!==historyProgress.clubsDone+'/'+historyProgress.clubsTotal+' matchs')
+                throw Error('Historique CAP : progression incorrecte : '+JSON.stringify(historyProgress));
+              console.log('OK : liste historique CAP simple en relais, clubs en matchs.');
+
+
 
 
 
