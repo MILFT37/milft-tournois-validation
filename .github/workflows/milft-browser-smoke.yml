@@ -362,6 +362,21 @@ jobs:
               console.log('OK : cloture impossible avant la fin des relais et des rencontres.');
               console.log('OK : bandeaux Course aux points, grille deux colonnes, commandes Terminer et Abandonner.');
               await page.screenshot({ path: 'milft-smoke.png', fullPage: true });
+              // Les commandes restent utilisables et le bandeau CAP simple
+              // conserve son alignement apres une reprise.
+              await page.evaluate(() => {db.selected='test-cap-simple';tab='live-detail';render();});
+              const simpleGeometry = await page.locator('.milft-cap-actions').evaluate(grid => {
+                const rects=[...grid.querySelectorAll('button')].map(b=>b.getBoundingClientRect());
+                return {count:rects.length,firstRow:Math.abs(rects[0].top-rects[1].top)<2,
+                  secondRow:Math.abs(rects[2].top-rects[3].top)<2,
+                  secondBelow:rects[2].top>rects[0].bottom,
+                  withinViewport:rects.every(r=>r.left>=0&&r.right<=document.documentElement.clientWidth+1)};
+              });
+              if (simpleGeometry.count!==4 || !simpleGeometry.firstRow ||
+                  !simpleGeometry.secondRow || !simpleGeometry.secondBelow ||
+                  !simpleGeometry.withinViewport)
+                throw new Error('CAP simple : geometrie mobile incorrecte : '+JSON.stringify(simpleGeometry));
+              await page.evaluate(() => {db.selected='test-cap-clubs';render();});
               // Non-regression : un abandon annule ne doit jamais archiver.
               const capCancelGuard = await page.evaluate(() => {
                 db.selected='test-cap-clubs';render();
