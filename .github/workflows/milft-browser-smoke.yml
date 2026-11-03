@@ -376,6 +376,18 @@ jobs:
                   !simpleGeometry.secondRow || !simpleGeometry.secondBelow ||
                   !simpleGeometry.withinViewport)
                 throw new Error('CAP simple : geometrie mobile incorrecte : '+JSON.stringify(simpleGeometry));
+              // Le bandeau de securite TEST doit defiler et ne pas recouvrir les commandes.
+              const testBanner = await page.evaluate(() => {
+                const el=document.querySelector('#milft-iso-warning');
+                if(!el) return {exists:false};
+                const position=getComputedStyle(el).position;
+                window.scrollTo(0, Math.min(400,document.documentElement.scrollHeight-innerHeight));
+                return {exists:true,position,top:el.getBoundingClientRect().top,scrollY:window.scrollY};
+              });
+              if (!testBanner.exists || testBanner.position==='sticky' || testBanner.position==='fixed' ||
+                  (testBanner.scrollY>100 && testBanner.top>=0))
+                throw new Error('Bandeau TEST masque encore le contenu mobile : '+JSON.stringify(testBanner));
+              console.log('OK : bandeau TEST defilant, sans superposition permanente.');
               // Verification mobile reelle : le dernier contenu reste accessible
               // au-dessus de la navigation fixe apres defilement en bas.
               const bottomVisibility = await page.evaluate(() => {
