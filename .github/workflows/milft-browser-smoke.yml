@@ -429,6 +429,21 @@ jobs:
                 throw new Error('CAP clubs : abandon ou compteur de rencontres incorrect : '+JSON.stringify(capAbandonGuard));
               console.log('OK : abandon CAP clubs, confirmation du nombre de rencontres et archivage.');
               await page.screenshot({ path: 'milft-cap-clubs-abandonne.png', fullPage: true });
+              // Persistance apres rechargement : le tournoi abandonne reste archive,
+              // sa rencontre ne redemarre pas et la table est liberee.
+              await page.reload({waitUntil:'load'});
+              const abandonedPersisted = await page.evaluate(() => {
+                const t=db.tournaments.find(x=>x.id==='test-cap-clubs');
+                const m=t?.cap?.matches?.find(x=>x.id==='cap-pending');
+                return {exists:!!t,closed:t?.closed,abandoned:t?.abandoned,
+                  status:m?.status,tableId:m?.tableId,selected:db.selected};
+              });
+              if (!abandonedPersisted.exists || !abandonedPersisted.closed ||
+                  !abandonedPersisted.abandoned || abandonedPersisted.status!=='waiting' ||
+                  abandonedPersisted.tableId!==null)
+                throw new Error('CAP clubs : sauvegarde de l\'abandon incorrecte : '+JSON.stringify(abandonedPersisted));
+              console.log('OK : abandon CAP conserve apres rechargement, match arrete et table liberee.');
+
 
             } catch (e) {
               console.error('ECHEC CHROMIUM :', e.message);
