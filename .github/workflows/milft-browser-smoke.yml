@@ -942,6 +942,28 @@ jobs:
                 throw Error('Branche lancement Simple : isolation incorrecte : '+JSON.stringify(launchIsolation));
               console.log('OK : branche lancement Simple et stockage local separe.');
 
+              // La page championnat doit garder les outils de sauvegarde
+              // tout en masquant les panneaux techniques encombrants.
+              const annualFocus=await page.evaluate(()=>{
+                const t={id:'focus-ui',name:'Focus Simple',mode:'challenge',discipline:'single',
+                  closed:false,roster:[{id:'f1',first:'A',last:'B'},{id:'f2',first:'C',last:'D'}],
+                  presence:{f1:false,f2:false},matches:[{id:'fm',a:'f1',b:'f2',
+                    status:'waiting',sets:[],score:null,table:null}],tables:[{id:1,state:'free'}]};
+                db.tournaments.push(t);db.selected=t.id;tab='live-detail';render();
+                const focus=document.body.classList.contains('milft-championship-focus');
+                const hidden=['milft-backup','milft-google-auth','milft-public-controls']
+                  .every(id=>getComputedStyle(document.getElementById(id)).display==='none');
+                const saveButton=document.getElementById('view').innerHTML.includes('milftExportBackup()');
+                tab='dashboard';render();
+                const restored=getComputedStyle(document.getElementById('milft-backup')).display!=='none';
+                db.tournaments=db.tournaments.filter(x=>x.id!=='focus-ui');db.selected=null;save();
+                return {focus,hidden,saveButton,restored};
+              });
+              if(!annualFocus.focus||!annualFocus.hidden||!annualFocus.saveButton||!annualFocus.restored)
+                throw Error('Affichage championnat mobile non simplifie : '+JSON.stringify(annualFocus));
+              console.log('OK : pilotage championnat epure et sauvegarde conservee.');
+
+
 
 
 
