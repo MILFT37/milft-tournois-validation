@@ -1005,6 +1005,35 @@ jobs:
                 throw Error('Presences championnat non repliees : '+JSON.stringify(annualPresenceFold));
               console.log('OK : presences et ajout de joueurs replies, cases conservees.');
 
+              // Rotation annuelle, reprise d'un report et liste repliable.
+              const annualRotation=await page.evaluate(()=>{
+                const roster=['a','b','c','d'].map(id=>({id,first:id,last:'Test'}));
+                const t={id:'rotation-test',name:'Rotation',mode:'challenge',discipline:'single',
+                  closed:false,roster,presence:{a:true,b:true,c:true,d:true},
+                  matches:[
+                    {id:'done-ab',a:'a',b:'b',status:'done',sets:[],score:{a:3,b:0}},
+                    {id:'wait-ab',a:'a',b:'b',status:'waiting',sets:[],hold:false},
+                    {id:'wait-cd',a:'c',b:'d',status:'waiting',sets:[],hold:false}
+                  ],tables:[{id:1,state:'free'}]};
+                const choice=milftAnnualNextMatch(t,new Set())?.id;
+                t.matches[1].hold=true;
+                t.matches[1].hold=false;
+                t.matches[1].annualResumePriority=true;
+                const resumed=milftAnnualNextMatch(t,new Set())?.id;
+                const html=challengeLive(t);
+                const holder=document.createElement('div');holder.innerHTML=html;
+                const details=holder.querySelector('.milft-annual-waiting details');
+                return {choice,resumed,folded:!!details&&!details.open,
+                  label:details?.querySelector('summary')?.textContent||'',
+                  buttons:holder.querySelectorAll('.milft-annual-waiting button').length};
+              });
+              if(annualRotation.choice!=='wait-cd'||annualRotation.resumed!=='wait-ab'||
+                 !annualRotation.folded||!annualRotation.label.includes('2')||
+                 annualRotation.buttons<4)
+                throw Error('Rotation et report annuel incorrects : '+JSON.stringify(annualRotation));
+              console.log('OK : rotation equitable, reprise prioritaire et rencontres repliees.');
+
+
 
 
 
