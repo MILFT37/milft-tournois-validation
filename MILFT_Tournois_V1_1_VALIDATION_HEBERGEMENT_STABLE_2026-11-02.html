@@ -1015,7 +1015,7 @@ function milftChangeJuniorsDate(value){
 function milftGenerateDynamicMatch(){
  const t=active();if(!t||!t.dynamicSeason||t.closed||t.abandoned)return;
  // Éviter de générer des matchs sur une nouvelle journée tant que des matchs sont lancés.
- if(t.matches.some(m=>m.status==='playing'&&m.sessionDate!==t.juniorsSessionDate))return alert('Termine les rencontres de la journée précédente avant de poursuivre.');
+ if(t.matches.some(m=>(m.status==='playing'||m.status==='waiting')&&m.sessionDate!==t.juniorsSessionDate))return alert('Termine les rencontres de la journée précédente avant de poursuivre.');
  const available=t.roster.filter(p=>t.presence?.[p.id]).map(p=>p.id);
  if(available.length<4)return alert('Il faut au moins 4 présents.');
  const used=new Set(),counts=Object.fromEntries(t.roster.map(p=>[p.id,0]));
