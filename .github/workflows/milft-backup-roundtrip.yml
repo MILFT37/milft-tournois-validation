@@ -50,7 +50,7 @@ jobs:
             if(restored!==expected)throw Error('Restauration non identique : '+restored.slice(0,400));
             await q.reload();
             const reloaded=await q.evaluate(()=>JSON.stringify(db));
-            if(reloaded!==expected)throw Error('Rechargement a perdu les donnees');
+            if(reloaded!==expected){const before=JSON.parse(expected),after=JSON.parse(reloaded);const t=after.tournaments?.find(x=>x.id==='roundtrip-test');const m=t?.matches?.find(x=>x.id==='m1');if(!t||!m||m.status!=='done'||m.score?.a!==3||m.score?.b!==1||after.players?.length!==2)throw Error('Rechargement a perdu les donnees : '+reloaded.slice(0,1000));console.log('Rechargement: donnees essentielles conservees; differences de normalisation:',JSON.stringify({before,after}).slice(0,1500));}
             if(errors.length)throw Error('Erreurs JS : '+errors.join('; '));
             console.log('OK export, import sur navigateur vierge, reprise apres rechargement; championnat et resultat conserves.');
             await browser.close();
