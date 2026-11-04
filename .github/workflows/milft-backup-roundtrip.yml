@@ -1,0 +1,57 @@
+name: Verification sauvegarde et reprise championnat Simple
+on:
+  push:
+    branches: [release-championnat-simple-2026-11-05]
+    paths: [.github/workflows/milft-backup-roundtrip.yml]
+  workflow_dispatch:
+jobs:
+  roundtrip:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Export JSON puis restauration dans un navigateur vierge et rechargement
+        run: |
+          node <<'JS'
+          const {chromium}=require('playwright');
+          const {pathToFileURL}=require('url');
+          const path=require('path');
+          (async()=>{
+            const browser=await chromium.launch({headless:true});
+            const url=pathToFileURL(path.resolve('MILFT_Tournois_V1_1_VALIDATION_HEBERGEMENT_STABLE_2026-11-02.html')).href;
+            const first=await browser.newContext({acceptDownloads:true});
+            const p=await first.newPage();
+            p.on('dialog',d=>d.accept());
+            const errors=[];p.on('pageerror',e=>errors.push(e.message));
+            await p.goto(url);
+            const expected=await p.evaluate(()=>{
+              db.players=[{id:'p1',first:'Alice',last:'Test'},{id:'p2',first:'Bob',last:'Test'}];
+              db.tournaments=[{id:'roundtrip-test',name:'Championnat fictif reprise',mode:'challenge',discipline:'single',closed:false,roster:[{id:'p1',first:'Alice',last:'Test'},{id:'p2',first:'Bob',last:'Test'}],matches:[{id:'m1',a:'p1',b:'p2',status:'done',score:{a:3,b:1},sets:[]}],tables:[{id:1,state:'free'},{id:2,state:'free'}]}];
+              db.selected='roundtrip-test';save();
+              return JSON.stringify(db);
+            });
+            const [download]=await Promise.all([p.waitForEvent('download'),p.evaluate(()=>milftExportBackup())]);
+            const file=await download.path();
+            const second=await browser.newContext({acceptDownloads:true});
+            const q=await second.newPage();
+            q.on('dialog',d=>d.accept());
+            q.on('pageerror',e=>errors.push(e.message));
+            await q.goto(url);
+            await q.locator('#milft-backup-file').setInputFiles(file);
+            await q.waitForTimeout(800);
+            const restored=await q.evaluate(()=>JSON.stringify(db));
+            if(restored!==expected)throw Error('Restauration non identique : '+restored.slice(0,400));
+            await q.reload();
+            const reloaded=await q.evaluate(()=>JSON.stringify(db));
+            if(reloaded!==expected)throw Error('Rechargement a perdu les donnees');
+            if(errors.length)throw Error('Erreurs JS : '+errors.join('; '));
+            console.log('OK export, import sur navigateur vierge, reprise apres rechargement; championnat et resultat conserves.');
+            await browser.close();
+          })().catch(e=>{console.error(e);process.exit(1)});
+          JS
