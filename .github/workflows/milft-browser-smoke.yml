@@ -1,7 +1,7 @@
 name: Test navigateur MILFT Tournois (developpement)
 on:
   push:
-    branches: [dev-championnat-monster-juniors, release-championnat-simple-2026-11-05]
+    branches: [dev-championnat-monster-juniors, release-championnat-simple-2026-11-05, dev-juniors-2026-11-08]
   workflow_dispatch:
 jobs:
   smoke-chromium:
