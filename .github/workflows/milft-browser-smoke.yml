@@ -1101,6 +1101,27 @@ jobs:
                 throw Error('Choix manuel explicite de table ignore : '+JSON.stringify(explicitTable));
               console.log('OK : choix manuel explicite respecte, autres tables intactes.');
 
+              // Reutilisation de la table liberee apres une rencontre terminee.
+              const tableReuse=await page.evaluate(()=>{
+                const t={id:'reuse-test',name:'Reutilisation',mode:'challenge',discipline:'single',
+                  closed:false,roster:[
+                    {id:'r1',first:'A',last:'T'},{id:'r2',first:'B',last:'T'},
+                    {id:'r3',first:'C',last:'T'},{id:'r4',first:'D',last:'T'}],
+                  presence:{r1:true,r2:true,r3:true,r4:true},
+                  matches:[
+                    {id:'finished',a:'r1',b:'r2',status:'done',score:{a:3,b:0},sets:[]},
+                    {id:'next',a:'r3',b:'r4',status:'waiting',sets:[],hold:false}],
+                  tables:[{id:4,state:'free'},{id:1,state:'free'},{id:2,state:'excluded'}]};
+                autoAssign(t);
+                return {table:t.matches[1].table,one:t.tables[1].state,
+                  four:t.tables[0].state,excluded:t.tables[2].state};
+              });
+              if(tableReuse.table!==1||tableReuse.one!=='playing'||
+                 tableReuse.four!=='free'||tableReuse.excluded!=='excluded')
+                throw Error('Reutilisation de table incorrecte : '+JSON.stringify(tableReuse));
+              console.log('OK : une table 1 liberee est reutilisee avant la table 4.');
+
+
 
 
 
