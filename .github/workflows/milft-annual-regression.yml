@@ -1,0 +1,67 @@
+name: Verification parcours championnat annuel Simple
+on:
+  push:
+    branches: [main]
+    paths: [.github/workflows/milft-annual-regression.yml]
+  workflow_dispatch:
+jobs:
+  annual:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - run: python3 -m http.server 8766 --bind 127.0.0.1 >/tmp/milft-annual-http.log 2>&1 &
+      - name: Tester presences, rencontres, ajout joueur, classement, tables et reprise
+        run: |
+          node <<'JS'
+          const {chromium}=require('playwright');
+          const assert=require('node:assert/strict');
+          (async()=>{
+            const browser=await chromium.launch({headless:true});
+            const context=await browser.newContext();
+            const p=await context.newPage();
+            p.on('dialog',d=>d.accept());
+            const errors=[];p.on('pageerror',e=>errors.push(e.message));
+            await p.goto('http://127.0.0.1:8766/MILFT_Tournois_V1_1_VALIDATION_HEBERGEMENT_STABLE_2026-11-02.html');
+            const state=await p.evaluate(()=>{
+              const check=(ok,msg)=>{if(!ok)throw Error(msg)};
+              db.players=[{id:'a',first:'Alice',last:'TEST'},{id:'b',first:'Bob',last:'TEST'},{id:'c',first:'Chloe',last:'TEST'}];
+              db.tournaments=[{id:'annual-ci',name:'Saison fictive CI',mode:'challenge',discipline:'single',closed:false,legs:1,roster:db.players.slice(0,2),presence:{a:true,b:false},matches:[{id:'ab',a:'a',b:'b',leg:1,status:'waiting',table:null,sets:[],score:null,hold:false}],tables:[{id:1,state:'free'},{id:2,state:'free'},{id:3,state:'free'},{id:4,state:'free'}]}];
+              db.selected='annual-ci';save();
+              autoNow();
+              let t=active(),m=t.matches[0];
+              check(m.status==='waiting','Un absent a ete programme');
+              t.presence.b=true;save();autoNow();
+              check(m.status==='playing'&&m.table===1,'Attribution premiere table incorrecte');
+              m.sets=[{a:5,b:3},{a:5,b:2},{a:5,b:1}];m.score={a:3,b:0};m.status='done';t.tables[0].state='free';m.table=null;save();
+              check(challengeStandings(t).includes('Alice'),'Classement absent');
+              const before=t.matches.find(x=>x.id==='ab').score.a;
+              const fake={preventDefault(){},target:{querySelectorAll(){return [{value:'c'}]}}};
+              addAnnualParticipants(fake);
+              t=active();
+              check(t.roster.length===3,'Ajout joueur perdu');
+              check(t.matches.length===3,'Rencontres du nouveau joueur incorrectes');
+              check(t.matches.find(x=>x.id==='ab').score.a===before,'Ancien resultat modifie');
+              check(t.presence.c===false,'Nouveau joueur doit etre absent par defaut');
+              const sorted=milftPlayingByTable([{table:2},{table:4},{table:1},{table:3}]);
+              check(sorted.map(x=>x.table).join(',')==='1,2,3,4','Ordre des tables incorrect');
+              save();
+              return {roster:t.roster.map(x=>x.id),matchCount:t.matches.length,score:t.matches.find(x=>x.id==='ab').score};
+            });
+            await p.reload();
+            const restored=await p.evaluate(()=>{
+              const t=db.tournaments.find(x=>x.id==='annual-ci');
+              return t&&{roster:t.roster.map(x=>x.id),matchCount:t.matches.length,score:t.matches.find(x=>x.id==='ab')?.score};
+            });
+            assert.deepEqual(restored,state,'La reprise a modifie la saison');
+            assert.deepEqual(errors,[],'Erreurs JavaScript');
+            console.log('OK: absence, lancement, resultat, classement, ajout joueur, tables 1-4 et reprise.');
+            await browser.close();
+          })().catch(e=>{console.error(e);process.exit(1)});
+          JS
