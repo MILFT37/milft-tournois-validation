@@ -1033,6 +1033,30 @@ jobs:
                 throw Error('Rotation et report annuel incorrects : '+JSON.stringify(annualRotation));
               console.log('OK : rotation equitable, reprise prioritaire et rencontres repliees.');
 
+              // Une table libre permet de lancer manuellement un match eligible.
+              const manualAnnual=await page.evaluate(()=>{
+                const t={id:'manual-annual-test',name:'Test',mode:'challenge',discipline:'single',
+                  closed:false,roster:[{id:'ma',first:'A',last:'Test'},{id:'mb',first:'B',last:'Test'}],
+                  presence:{ma:true,mb:true},matches:[{id:'manual-match',a:'ma',b:'mb',
+                    status:'waiting',sets:[],hold:false}],tables:[{id:1,state:'free'}]};
+                db.tournaments.push(t);const previous=db.selected;db.selected=t.id;
+                const holder=document.createElement('div');holder.innerHTML=challengeLive(t);
+                const select=holder.querySelector('#milft-annual-manual-match');
+                const button=holder.querySelector('button[onclick="milftLaunchSelectedAnnual()"]');
+                assignSpecific('manual-match');
+                const result={choice:select?.querySelector('option[value="manual-match"]')?.value,
+                  enabled:!!button&&!button.disabled,started:t.matches[0].status,
+                  table:t.matches[0].table,tableState:t.tables[0].state};
+                db.tournaments=db.tournaments.filter(x=>x.id!==t.id);db.selected=previous;save();
+                return result;
+              });
+              if(manualAnnual.choice!=='manual-match'||!manualAnnual.enabled||
+                 manualAnnual.started!=='playing'||manualAnnual.table!==1||
+                 manualAnnual.tableState!=='playing')
+                throw Error('Lancement manuel annuel incorrect : '+JSON.stringify(manualAnnual));
+              console.log('OK : lancement manuel d une rencontre sur table libre.');
+
+
 
 
 
