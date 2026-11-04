@@ -1005,13 +1005,17 @@ async function milftImportJuniorsJSON(input){
 }
 function milftChangeJuniorsDate(value){
  const t=active();if(!t?.dynamicSeason||!/^\d{4}-\d{2}-\d{2}$/.test(value))return;
+ // Ne pas masquer une rencontre en cours en changeant de date.
+ if(value!==t.juniorsSessionDate&&t.matches.some(m=>m.status==='playing')){alert('Termine les rencontres en cours avant de changer de journée.');render();return;}
  t.juniorsSessionDate=value;
  t.juniorsPresences??={};
  if(!t.juniorsPresences[value])t.juniorsPresences[value]=Object.fromEntries(t.roster.map(p=>[p.id,false]));
  t.presence={...t.juniorsPresences[value]};save();render();
 }
 function milftGenerateDynamicMatch(){
- const t=active();if(!t||!t.dynamicSeason||t.closed)return;
+ const t=active();if(!t||!t.dynamicSeason||t.closed||t.abandoned)return;
+ // Éviter de générer des matchs sur une nouvelle journée tant que des matchs sont lancés.
+ if(t.matches.some(m=>m.status==='playing'&&m.sessionDate!==t.juniorsSessionDate))return alert('Termine les rencontres de la journée précédente avant de poursuivre.');
  const available=t.roster.filter(p=>t.presence?.[p.id]).map(p=>p.id);
  if(available.length<4)return alert('Il faut au moins 4 présents.');
  const used=new Set(),counts=Object.fromEntries(t.roster.map(p=>[p.id,0]));
