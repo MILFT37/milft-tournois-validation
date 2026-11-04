@@ -16,15 +16,16 @@ jobs:
       - run: |
           npm install --no-save playwright
           npx playwright install --with-deps chromium
+      - name: Servir la page en HTTP pour un stockage persistant comme GitHub Pages
+        run: python3 -m http.server 8765 --bind 127.0.0.1 >/tmp/milft-http.log 2>&1 &
       - name: Export JSON puis restauration dans un navigateur vierge et rechargement
         run: |
           node <<'JS'
           const {chromium}=require('playwright');
-          const {pathToFileURL}=require('url');
-          const path=require('path');
+          
           (async()=>{
             const browser=await chromium.launch({headless:true});
-            const url=pathToFileURL(path.resolve('MILFT_Tournois_V1_1_VALIDATION_HEBERGEMENT_STABLE_2026-11-02.html')).href;
+            const url='http://127.0.0.1:8765/MILFT_Tournois_V1_1_VALIDATION_HEBERGEMENT_STABLE_2026-11-02.html';
             const first=await browser.newContext({acceptDownloads:true});
             const p=await first.newPage();
             p.on('dialog',d=>d.accept());
