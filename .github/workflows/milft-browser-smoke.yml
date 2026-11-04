@@ -192,24 +192,25 @@ jobs:
                 milftGenerateDynamicMatch();
                 check(t.matches.length === before + 2, 'Une troisieme rencontre ne doit pas utiliser les joueurs occupes');
                 check(generated.every(m => m.sessionDate === '2026-11-02'), 'Date de seance Juniors incorrecte');
-                // Changer de date ne doit ni liberer les joueurs occupes ni effacer les presences.
+                // Une rencontre en attente bloque le changement de journee.
                 t.juniorsPresences = {'2026-11-02': {...t.presence}};
                 milftChangeJuniorsDate('2026-11-09');
-                check(Object.values(t.presence).every(v => v === false), 'Nouvelle journee non initialisee absente');
-                setAllMonsterPresence(true);
-                milftGenerateDynamicMatch();
-                check(t.matches.length === before + 2, 'Joueur deja occupe reutilise sur une autre date');
-                milftChangeJuniorsDate('2026-11-02');
-                check(Object.values(t.presence).every(v => v === true), 'Presences de la premiere date perdues');
-                milftChangeJuniorsDate('2026-11-09');
-                check(Object.values(t.presence).every(v => v === true), 'Presences de la seconde date perdues');
-                // Une fois les rencontres terminees, la saison doit pouvoir continuer
-                // meme lorsque toutes les associations de partenaires ont deja ete utilisees.
+                check(t.juniorsSessionDate === '2026-11-02', 'Date modifiee malgre des rencontres en attente');
+                // Terminer les rencontres puis ouvrir la nouvelle seance.
                 for (const m of generated) {
                   m.status = 'done';
                   m.score = {a:2,b:0};
                   m.sets = [{a:5,b:2},{a:5,b:3}];
                 }
+                milftChangeJuniorsDate('2026-11-09');
+                check(t.juniorsSessionDate === '2026-11-09', 'Changement de journee bloque apres fin des rencontres');
+                check(Object.values(t.presence).every(v => v === false), 'Nouvelle journee non initialisee absente');
+                setAllMonsterPresence(true);
+                milftChangeJuniorsDate('2026-11-02');
+                check(Object.values(t.presence).every(v => v === true), 'Presences de la premiere date perdues');
+                milftChangeJuniorsDate('2026-11-09');
+                check(Object.values(t.presence).every(v => v === true), 'Presences de la seconde date perdues');
+                // La saison doit continuer meme lorsque les binomes ont deja ete utilises.
                 for (let round = 0; round < 18; round++) {
                   const prior = t.matches.length;
                   milftGenerateDynamicMatch();
