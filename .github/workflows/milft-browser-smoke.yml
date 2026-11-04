@@ -1078,6 +1078,30 @@ jobs:
                 throw Error('Ordre des tables incorrect : '+JSON.stringify(orderedTables));
               console.log('OK : table 1 prioritaire et choix manuel des tables libres.');
 
+              // Choix manuel explicite : la table selectionnee doit primer sur l'ordre automatique.
+              const explicitTable=await page.evaluate(()=>{
+                const t={id:'explicit-table-test',name:'Table manuelle',mode:'challenge',
+                  discipline:'single',closed:false,roster:[
+                    {id:'ea',first:'A',last:'Test'},{id:'eb',first:'B',last:'Test'}],
+                  presence:{ea:true,eb:true},matches:[
+                    {id:'explicit-match',a:'ea',b:'eb',status:'waiting',hold:false}],
+                  tables:[{id:4,state:'free'},{id:1,state:'free'}]};
+                const previous=db.selected;db.tournaments.push(t);db.selected=t.id;
+                const selector=document.createElement('select');
+                selector.id='milft-annual-manual-table';selector.innerHTML='<option value="4">Table 4</option>';
+                document.body.appendChild(selector);
+                try{assignSpecific('explicit-match');}
+                finally{selector.remove();}
+                const result={assigned:t.matches[0].table,
+                  table4:t.tables[0].state,table1:t.tables[1].state};
+                db.tournaments=db.tournaments.filter(x=>x.id!==t.id);db.selected=previous;save();
+                return result;
+              });
+              if(explicitTable.assigned!==4||explicitTable.table4!=='playing'||explicitTable.table1!=='free')
+                throw Error('Choix manuel explicite de table ignore : '+JSON.stringify(explicitTable));
+              console.log('OK : choix manuel explicite respecte, autres tables intactes.');
+
+
 
 
 
