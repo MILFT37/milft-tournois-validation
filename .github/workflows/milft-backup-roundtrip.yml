@@ -31,8 +31,8 @@ jobs:
             const errors=[];p.on('pageerror',e=>errors.push(e.message));
             await p.goto(url);
             const expected=await p.evaluate(()=>{
-              db.players=[{id:'p1',first:'Alice',last:'Test'},{id:'p2',first:'Bob',last:'Test'}];
-              db.tournaments=[{id:'roundtrip-test',name:'Championnat fictif reprise',mode:'challenge',discipline:'single',closed:false,roster:[{id:'p1',first:'Alice',last:'Test'},{id:'p2',first:'Bob',last:'Test'}],matches:[{id:'m1',a:'p1',b:'p2',status:'done',score:{a:3,b:1},sets:[]}],tables:[{id:1,state:'free'},{id:2,state:'free'}]}];
+              db.players=[{id:'p1',first:'Alice',last:'TEST'},{id:'p2',first:'Bob',last:'TEST'}];
+              db.tournaments=[{id:'roundtrip-test',name:'Championnat fictif reprise',mode:'challenge',discipline:'single',closed:false,roster:[{id:'p1',first:'Alice',last:'TEST'},{id:'p2',first:'Bob',last:'TEST'}],matches:[{id:'m1',a:'p1',b:'p2',status:'done',score:{a:3,b:1},sets:[]}],tables:[{id:1,state:'free'},{id:2,state:'free'}]}];
               db.selected='roundtrip-test';save();
               return JSON.stringify(db);
             });
