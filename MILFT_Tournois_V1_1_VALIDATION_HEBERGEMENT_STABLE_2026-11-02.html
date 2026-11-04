@@ -769,7 +769,25 @@ function milftAnnualNextMatch(t,busy){
  t.matches.indexOf(a)-t.matches.indexOf(b));
  return choices[0]||null;
 }
-function autoAssign(t){const busy=busyPlayers(t);for(const table of t.tables){if(table.state!=='free')continue;const m=t.matches.find(m=>m.status==='waiting'&&m.a&&m.b&&!m.bye&&!m.hold&&(!t.roundLimit||m.round===t.currentRound)&&matchPlayerIds(t,m).every(id=>!busy.has(id))&&(t.mode!=='challenge'||(t.presence?.[m.a]&&t.presence?.[m.b])));if(m){m.status='playing';m.annualResumePriority=false;m.table=table.id;m.startedAt=Date.now();table.state='playing';for(const id of matchPlayerIds(t,m))busy.add(id)}}}
+function milftFairNextMatch(t,busy){
+ if(t.mode==='challenge')return milftAnnualNextMatch(t,busy);
+ const eligible=t.matches.filter(m=>m.status==='waiting'&&m.a&&m.b&&!m.bye&&!m.hold&&
+ (!t.roundLimit||m.round===t.currentRound)&&matchPlayerIds(t,m).every(id=>!busy.has(id)));
+ if(!eligible.length)return null;
+ const played=new Map(),last=new Map();
+ for(let i=0;i<t.matches.length;i++){
+  const m=t.matches[i];if(m.status!=='done'||m.bye)continue;
+  for(const id of matchPlayerIds(t,m)){played.set(id,(played.get(id)||0)+1);last.set(id,i);}
+ }
+ const rank=m=>{const ids=matchPlayerIds(t,m);return [
+  Math.max(...ids.map(id=>played.get(id)||0)),
+  ids.reduce((n,id)=>n+(played.get(id)||0),0),
+  Math.max(...ids.map(id=>last.get(id)??-1))
+ ];};
+ eligible.sort((a,b)=>{const x=rank(a),y=rank(b);return x[0]-y[0]||x[1]-y[1]||x[2]-y[2]||t.matches.indexOf(a)-t.matches.indexOf(b);});
+ return eligible[0];
+}
+function autoAssign(t){const busy=busyPlayers(t);for(const table of t.tables){if(table.state!=='free')continue;const m=milftFairNextMatch(t,busy);if(m){m.status='playing';m.annualResumePriority=false;m.table=table.id;m.startedAt=Date.now();table.state='playing';for(const id of matchPlayerIds(t,m))busy.add(id)}}}
 function activeTournamentsPage(){
  const items=db.tournaments.filter(t=>!t.closed&&!t.abandoned).slice().sort((a,b)=>String(b.date||'').localeCompare(String(a.date||'')));
  return `<div class="card"><h2>Tournois en cours</h2><p class="muted">${items.length} compétition(s) active(s). Sélectionne celle que tu souhaites gérer.</p>${items.map(t=>`<div class="item" style="margin:10px 0"><b>${title(t)}</b><p class="muted">${t.mode==='cap'?'Course aux points':t.mode==='challenge'?'Championnat annuel':t.mode==='monster'?'Monster DYP':t.mode==='knockout'?'Élimination directe':'Tournoi'} · ${t.matches.filter(m=>m.status==='done').length}/${t.matches.length} rencontres terminées</p><button onclick="openTournament('${t.id}')">Ouvrir</button></div>`).join('')||'<p>Aucun tournoi en cours.</p><button onclick="setTab(\'new\')">Créer un tournoi</button>'}</div>`;
@@ -809,7 +827,7 @@ function autoNow(){
  const busy=busyPlayers(t);
  for(const table of t.tables){
   if(table.state!=='free')continue;
-  const m=t.mode==='challenge'?milftAnnualNextMatch(t,busy):t.matches.find(m=>m.status==='waiting'&&m.a&&m.b&&!m.bye&&(!t.roundLimit||m.round===t.currentRound)&&!m.hold&&matchPlayerIds(t,m).every(id=>!busy.has(id)));
+  const m=milftFairNextMatch(t,busy);
   if(!m)continue;
   m.status='playing';m.annualResumePriority=false;m.table=table.id;m.startedAt=Date.now();table.state='playing';busy.add(m.a);busy.add(m.b);for(const id of matchPlayerIds(t,m))busy.add(id);
  }
