@@ -60,8 +60,34 @@ jobs:
               return t&&{roster:t.roster.map(x=>x.id),matchCount:t.matches.length,score:t.matches.find(x=>x.id==='ab')?.score};
             });
             assert.deepEqual(restored,state,'La reprise a modifie la saison');
+            const sessions=await p.evaluate(()=>{
+              const check=(ok,msg)=>{if(!ok)throw Error(msg)};
+              let t=active();
+              // Seance 2 : Bob absent, Chloe presente; les scores de seance 1 restent inchanges.
+              t.presence={a:true,b:false,c:true};save();
+              const previous=t.matches.find(m=>m.id==='ab');
+              check(previous.status==='done'&&previous.score.a===3,'Resultat seance 1 perdu');
+              autoNow();
+              const current=t.matches.find(m=>m.status==='playing');
+              check(current&&[current.a,current.b].includes('c'),'Seance 2 non lancee');
+              check(current.a!=='b'&&current.b!=='b','Absent lance en seance 2');
+              current.sets=[{a:5,b:2},{a:5,b:3},{a:5,b:4}];
+              current.score={a:3,b:0};current.status='done';
+              const table=t.tables.find(x=>x.id===current.table);if(table)table.state='free';
+              current.table=null;save();
+              check(t.matches.filter(m=>m.status==='done').length===2,'Deux resultats attendus');
+              return {first:previous.score,secondId:current.id,second:current.score,done:2};
+            });
+            await p.reload();
+            const resumed=await p.evaluate(()=>{
+              const t=db.tournaments.find(x=>x.id==='annual-ci');
+              const first=t.matches.find(x=>x.id==='ab');
+              const second=t.matches.find(x=>x.status==='done'&&x.id!=='ab');
+              return {first:first.score,secondId:second?.id,second:second?.score,done:t.matches.filter(x=>x.status==='done').length};
+            });
+            assert.deepEqual(resumed,sessions,'Reprise apres deux seances incorrecte');
             assert.deepEqual(errors,[],'Erreurs JavaScript');
-            console.log('OK: absence, lancement, resultat, classement, ajout joueur, tables 1-4 et reprise.');
+            console.log('OK: absence, lancement, resultat, classement, ajout joueur, tables 1-4, deux seances et reprise.');
             await browser.close();
           })().catch(e=>{console.error(e);process.exit(1)});
           JS
