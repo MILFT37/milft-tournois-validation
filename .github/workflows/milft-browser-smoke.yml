@@ -265,6 +265,36 @@ jobs:
                 throw Error('Export JSON Juniors incomplet ou incoherent apres reprise');
               console.log('OK : sauvegarde JSON telechargee, relue et validee avec rencontres et presences Juniors.');
 
+              // Restauration reelle du fichier exporte dans le navigateur de test.
+              await page.evaluate(()=>{
+                db.tournaments=db.tournaments.filter(t=>t.id!=='test-juniors-isole');
+                if(db.selected==='test-juniors-isole')db.selected=null;
+                save();render();
+              });
+              const restorationEvent=page.evaluate(()=>new Promise((resolve,reject)=>{
+                const timeout=setTimeout(()=>reject(Error('Restauration JSON non confirmee')),15000);
+                window.addEventListener('milft-restauration-confirmee',()=>{
+                  clearTimeout(timeout);resolve(true);
+                },{once:true});
+              }));
+              await page.locator('#milft-backup-file').setInputFiles({
+                name:'MILFT-juniors-test.json',
+                mimeType:'application/json',
+                buffer:require('fs').readFileSync(backupPath)
+              });
+              await restorationEvent;
+              await page.reload({waitUntil:'load'});
+              const restoredJuniors=await page.evaluate(id=>{
+                const t=db.tournaments.find(x=>x.id===id);
+                return !!t&&t.dynamicSeason&&t.matches.length===20&&
+                  t.juniorsSessionDate==='2026-11-09'&&
+                  !!t.juniorsPresences?.['2026-11-02']&&
+                  !!t.juniorsPresences?.['2026-11-09'];
+              },juniors.juniorsId);
+              if(!restoredJuniors)throw Error('Restauration JSON Juniors ou reprise apres rechargement incorrecte');
+              console.log('OK : restauration JSON Juniors effective, suivie d une reprise apres rechargement.');
+
+
               if (errors.length) throw new Error('Erreurs JS : ' + errors.join(' | '));
               console.log('OK : generation Juniors a la demande, sans joueur simultane ni troisieme rencontre.');
 
