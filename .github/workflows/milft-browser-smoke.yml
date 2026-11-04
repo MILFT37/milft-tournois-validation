@@ -1158,6 +1158,43 @@ jobs:
                 throw Error('Protection des seances Juniors incorrecte : '+JSON.stringify(juniorsSessionGuard));
               console.log('OK : changement de date, generation, lancement manuel et attribution auto proteges entre seances Juniors.');
 
+              const juniorsRotation=await page.evaluate(()=>{
+                const previous=db.tournaments,selected=db.selected,previousTab=tab,previousAlert=window.alert;
+                try{
+                  window.alert=()=>{};
+                  const roster=Array.from({length:8},(_,i)=>({id:'rot'+i,first:'J'+i,last:'Junior'}));
+                  const t={id:'junior-rotation-ci',name:'Rotation Juniors',mode:'monster',monsterMode:'season',
+                    dynamicSeason:true,juniorsSessionDate:'2026-11-08',roster,
+                    presence:Object.fromEntries(roster.map(p=>[p.id,true])),
+                    matches:[],tables:[{id:1,state:'free'},{id:2,state:'free'}],
+                    sessions:[],currentRound:0,closed:false,abandoned:false};
+                  db.tournaments=[t];db.selected=t.id;
+                  for(let i=0;i<2;i++)milftGenerateDynamicMatch();
+                  const first=t.matches.slice();
+                  const firstPlayers=first.flatMap(m=>[...m.teamA,...m.teamB]);
+                  if(first.length!==2||new Set(firstPlayers).size!==8)
+                    throw Error('Joueurs dupliques dans la premiere vague Juniors');
+                  const firstPartners=new Set(first.flatMap(m=>[m.teamA,m.teamB].map(team=>[...team].sort().join('|'))));
+                  for(const m of first){m.status='done';m.score={a:2,b:0};m.sets=[{a:5,b:2},{a:5,b:3}];}
+                  for(let i=0;i<2;i++)milftGenerateDynamicMatch();
+                  const second=t.matches.slice(2);
+                  const secondPlayers=second.flatMap(m=>[...m.teamA,...m.teamB]);
+                  if(second.length!==2||new Set(secondPlayers).size!==8)
+                    throw Error('Joueurs dupliques dans la deuxieme vague Juniors');
+                  const repeated=second.flatMap(m=>[m.teamA,m.teamB]).filter(team=>firstPartners.has([...team].sort().join('|')));
+                  if(repeated.length)throw Error('Partenaires repetes alors que de nouveaux binomes existent');
+                  for(const m of second){m.status='done';m.score={a:2,b:0};m.sets=[{a:5,b:1},{a:5,b:4}];}
+                  const stats=monsterStats(t);
+                  if(stats.length!==8||stats.some(p=>p.played!==2))
+                    throw Error('Classement incoherent apres deux vagues Juniors');
+                  return {matches:t.matches.length,players:stats.length,repeatPartners:repeated.length};
+                }finally{
+                  db.tournaments=previous;db.selected=selected;tab=previousTab;window.alert=previousAlert;
+                }
+              });
+              console.log('OK : rotation Juniors sur deux vagues, 8 joueurs, sans repetition de partenaires : '+JSON.stringify(juniorsRotation));
+
+
 
 
 
