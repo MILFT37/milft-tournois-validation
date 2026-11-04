@@ -249,6 +249,22 @@ jobs:
               }, juniors);
               if (!isolated) throw new Error('Isolation des championnats ou reprise des presences Juniors incorrecte');
               console.log('OK : championnats independants et presences Juniors sauvegardees apres rechargement.');
+
+              // Export JSON reel du championnat Junior apres rechargement du navigateur.
+              const backupDownloadPromise=page.waitForEvent('download');
+              await page.evaluate(()=>milftExportBackup());
+              const backupDownload=await backupDownloadPromise;
+              const backupPath=await backupDownload.path();
+              const backup=JSON.parse(require('fs').readFileSync(backupPath,'utf8'));
+              const backupJuniors=backup.data?.tournaments?.find(t=>t.id===juniors.juniorsId);
+              if(backup.format!=='MILFT-TOURNOIS-BACKUP'||backup.version!==1||
+                 !backupJuniors?.dynamicSeason||backupJuniors.matches.length!==juniors.total||
+                 backupJuniors.juniorsSessionDate!=='2026-11-09'||
+                 !backupJuniors.juniorsPresences?.['2026-11-02']||
+                 !backupJuniors.juniorsPresences?.['2026-11-09'])
+                throw Error('Export JSON Juniors incomplet ou incoherent apres reprise');
+              console.log('OK : sauvegarde JSON telechargee, relue et validee avec rencontres et presences Juniors.');
+
               if (errors.length) throw new Error('Erreurs JS : ' + errors.join(' | '));
               console.log('OK : generation Juniors a la demande, sans joueur simultane ni troisieme rencontre.');
 
