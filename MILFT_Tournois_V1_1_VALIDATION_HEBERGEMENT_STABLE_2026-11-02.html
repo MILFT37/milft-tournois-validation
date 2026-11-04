@@ -828,7 +828,7 @@ function autoNow(){
  const before=t.matches.filter(m=>m.status==='playing').length;
  const busy=busyPlayers(t);
  for(const table of milftFreeTables(t)){
-  const m=milftFairNextMatch(t,busy);
+  const m=t.dynamicSeason?milftFairNextMatch({...t,matches:t.matches.filter(x=>x.sessionDate===t.juniorsSessionDate)},busy):milftFairNextMatch(t,busy);
   if(!m)continue;
   m.status='playing';m.annualResumePriority=false;m.table=table.id;m.startedAt=Date.now();table.state='playing';busy.add(m.a);busy.add(m.b);for(const id of matchPlayerIds(t,m))busy.add(id);
  }
