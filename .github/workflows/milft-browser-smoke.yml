@@ -938,10 +938,10 @@ jobs:
               if(!launchIsolation.banner.includes('CHAMPIONNAT ANNUEL SIMPLE') ||
                  !launchIsolation.banner.includes('sauvegarde locale uniquement') ||
                  !launchIsolation.version.includes('CHAMPIONNAT SIMPLE') ||
-                 launchIsolation.key!=='milft_championnat_simple_20261105_v01' ||
+                 launchIsolation.key!=='milft_championnat_juniors_20261108_v01' ||
                  !launchIsolation.exporter)
-                throw Error('Branche lancement Simple : isolation incorrecte : '+JSON.stringify(launchIsolation));
-              console.log('OK : branche lancement Simple et stockage local separe.');
+                throw Error('Branche Junior : isolation du stockage incorrecte : '+JSON.stringify(launchIsolation));
+              console.log('OK : branche Junior et stockage local distinct du championnat Simple.');
 
               // La page championnat doit garder les outils de sauvegarde
               // tout en masquant les panneaux techniques encombrants.
