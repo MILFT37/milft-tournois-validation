@@ -370,7 +370,7 @@ capScheduleProjection=function(t,tableLimit){
 </script>
 <script>
 'use strict';
-const KEY='milft_championnat_simple_20261105_v01';
+const KEY='milft_championnat_juniors_20261108_v01';
 const initial=()=>({players:[],tournaments:[],selected:null});
 let db;try{db=JSON.parse(localStorage.getItem(KEY))||initial();if(!Array.isArray(db.players)||!Array.isArray(db.tournaments))throw Error()}catch{db=initial()}
 let tab='dashboard',notice='',creationMode='poules';
