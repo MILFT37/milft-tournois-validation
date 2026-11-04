@@ -1056,6 +1056,29 @@ jobs:
                 throw Error('Lancement manuel annuel incorrect : '+JSON.stringify(manualAnnual));
               console.log('OK : lancement manuel d une rencontre sur table libre.');
 
+              // Les tables libres sont affectees par numero, meme si le stockage est desordonne.
+              const orderedTables=await page.evaluate(()=>{
+                const t={id:'table-order-test',name:'Tables',mode:'challenge',discipline:'single',
+                  closed:false,roster:[{id:'a',first:'A',last:'T'},{id:'b',first:'B',last:'T'}],
+                  presence:{a:true,b:true},matches:[{id:'m',a:'a',b:'b',status:'waiting',hold:false}],
+                  tables:[{id:4,state:'free'},{id:1,state:'free'},{id:2,state:'excluded'}]};
+                const order=milftFreeTables(t).map(x=>x.id);
+                const previous=db.selected;db.tournaments.push(t);db.selected=t.id;
+                const host=document.createElement('div');host.innerHTML=challengeLive(t);
+                const choices=[...host.querySelectorAll('#milft-annual-manual-table option')].map(x=>x.value);
+                assignSpecific('m');
+                const result={order,choices,assigned:t.matches[0].table};
+                db.tournaments=db.tournaments.filter(x=>x.id!==t.id);db.selected=previous;save();
+                return result;
+              });
+              if(orderedTables.order.join(',')!=='1,4'||
+                 orderedTables.assigned!==1||
+                 !orderedTables.choices.includes('1')||
+                 orderedTables.choices.includes('2'))
+                throw Error('Ordre des tables incorrect : '+JSON.stringify(orderedTables));
+              console.log('OK : table 1 prioritaire et choix manuel des tables libres.');
+
+
 
 
 
