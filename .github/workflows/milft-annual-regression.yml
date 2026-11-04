@@ -86,8 +86,34 @@ jobs:
               return {first:first.score,secondId:second?.id,second:second?.score,done:t.matches.filter(x=>x.status==='done').length};
             });
             assert.deepEqual(resumed,sessions,'Reprise apres deux seances incorrecte');
+            const correction=await p.evaluate(()=>{
+              const t=active(),m=t.matches.find(x=>x.id==='ab');
+              const original=JSON.stringify(m);
+              const originalPrompt=window.prompt,originalConfirm=window.confirm;
+              try{
+                window.prompt=()=>null;
+                correctChallenge('ab');
+                if(JSON.stringify(m)!==original)throw Error('Annulation a modifie le resultat');
+                const answers=['3-5','2-5','1-5'];
+                window.prompt=()=>answers.shift();
+                window.confirm=()=>true;
+                correctChallenge('ab');
+                if(m.status!=='done'||m.score.a!==0||m.score.b!==3||m.sets.length!==3)throw Error('Correction du vainqueur incorrecte');
+                const html=challengeStandings(t);
+                if(!html.includes('Bob TEST')||!html.includes('Alice TEST'))throw Error('Classement non disponible apres correction');
+                save();
+                return {score:m.score,sets:m.sets,done:t.matches.filter(x=>x.status==='done').length,standing:html.indexOf('Bob TEST')<html.indexOf('Alice TEST')};
+              }finally{window.prompt=originalPrompt;window.confirm=originalConfirm}
+            });
+            assert.equal(correction.standing,true,'Classement non recalcule apres inversion du vainqueur');
+            await p.reload();
+            const corrected=await p.evaluate(()=>{
+              const t=db.tournaments.find(x=>x.id==='annual-ci'),m=t.matches.find(x=>x.id==='ab'),html=challengeStandings(t);
+              return {score:m.score,sets:m.sets,done:t.matches.filter(x=>x.status==='done').length,standing:html.indexOf('Bob TEST')<html.indexOf('Alice TEST')};
+            });
+            assert.deepEqual(corrected,correction,'Correction perdue apres rechargement');
             assert.deepEqual(errors,[],'Erreurs JavaScript');
-            console.log('OK: absence, lancement, resultat, classement, ajout joueur, tables 1-4, deux seances et reprise.');
+            console.log('OK: absence, lancement, resultat, classement, ajout joueur, tables 1-4, deux seances, correction de vainqueur, annulation et reprise.');
             await browser.close();
           })().catch(e=>{console.error(e);process.exit(1)});
           JS
