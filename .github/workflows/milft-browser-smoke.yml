@@ -1144,14 +1144,19 @@ jobs:
                   t.juniorsSessionDate='2026-11-09';
                   milftGenerateDynamicMatch();
                   const generationBlocked=t.matches.length===1;
-                  return {dateBlocked,generationBlocked,messages};
+                  const manualBefore=t.matches[0].status;
+                  assignSpecific('junior-pending');
+                  const manualBlocked=t.matches[0].status===manualBefore;
+                  autoNow();
+                  const automaticBlocked=t.matches[0].status===manualBefore;
+                  return {dateBlocked,generationBlocked,manualBlocked,automaticBlocked,messages};
                 }finally{
                   db.tournaments=previous;db.selected=previousSelected;tab=previousTab;window.alert=previousAlert;
                 }
               });
-              if(!juniorsSessionGuard.dateBlocked||!juniorsSessionGuard.generationBlocked)
+              if(!juniorsSessionGuard.dateBlocked||!juniorsSessionGuard.generationBlocked||!juniorsSessionGuard.manualBlocked||!juniorsSessionGuard.automaticBlocked)
                 throw Error('Protection des seances Juniors incorrecte : '+JSON.stringify(juniorsSessionGuard));
-              console.log('OK : changement de date et generation Juniors bloques si une rencontre reste en attente.');
+              console.log('OK : changement de date, generation, lancement manuel et attribution auto proteges entre seances Juniors.');
 
 
 
