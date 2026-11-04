@@ -1121,6 +1121,38 @@ jobs:
                 throw Error('Reutilisation de table incorrecte : '+JSON.stringify(tableReuse));
               console.log('OK : une table 1 liberee est reutilisee avant la table 4.');
 
+              const juniorsSessionGuard=await page.evaluate(()=>{
+                const previous=db.tournaments;
+                const previousSelected=db.selected;
+                const previousTab=tab;
+                const previousAlert=window.alert;
+                let messages=[];
+                try{
+                  window.alert=msg=>messages.push(String(msg));
+                  const t={id:'juniors-guard-ci',name:'Junior CI',mode:'monster',monsterMode:'season',dynamicSeason:true,
+                    juniorsSessionDate:'2026-11-08',roster:[
+                      {id:'j1',first:'A',last:''},{id:'j2',first:'B',last:''},
+                      {id:'j3',first:'C',last:''},{id:'j4',first:'D',last:''}],
+                    presence:{j1:true,j2:true,j3:true,j4:true},matches:[
+                      {id:'junior-pending',a:'a1',b:'b1',teamA:['j1','j2'],teamB:['j3','j4'],
+                        status:'waiting',sessionDate:'2026-11-08',round:1}],
+                    tables:[{id:1,state:'free'}],closed:false,created:Date.now()};
+                  db.tournaments=[t];db.selected=t.id;
+                  milftChangeJuniorsDate('2026-11-09');
+                  const dateBlocked=t.juniorsSessionDate==='2026-11-08';
+                  t.juniorsSessionDate='2026-11-09';
+                  milftGenerateDynamicMatch();
+                  const generationBlocked=t.matches.length===1;
+                  return {dateBlocked,generationBlocked,messages};
+                }finally{
+                  db.tournaments=previous;db.selected=previousSelected;tab=previousTab;window.alert=previousAlert;
+                }
+              });
+              if(!juniorsSessionGuard.dateBlocked||!juniorsSessionGuard.generationBlocked)
+                throw Error('Protection des seances Juniors incorrecte : '+JSON.stringify(juniorsSessionGuard));
+              console.log('OK : changement de date et generation Juniors bloques si une rencontre reste en attente.');
+
+
 
 
 
