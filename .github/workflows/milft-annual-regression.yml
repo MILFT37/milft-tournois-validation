@@ -397,6 +397,13 @@ jobs:
             assert.equal(capClubScores.refusedDecrease,1,'CAP clubs : score cumulatif decroissant accepte');
             assert.deepEqual(capClubScores.relays,[{a:5,b:3},{a:8,b:10}],'CAP clubs : scores cumules incorrects');
             assert.equal(capClubScores.status,'done','CAP clubs : rencontre non terminee apres dernier relais');
+            // Departage CAP : confrontation directe favorable au vainqueur, y compris ordre inverse.
+            const capHeadToHead=await p.evaluate(()=>{
+              const t={cap:{matches:[{id:'h2h',phase:'league',status:'done',a:'club-a',b:'club-b',relays:[{a:30,b:26}]}]}};
+              return [capCompHead(t,'club-a','club-b','league'),
+                capCompHead(t,'club-b','club-a','league')];
+            });
+            assert.deepEqual(capHeadToHead,[4,-4],'CAP : departage confrontation directe inverse');
             // Regression UI : les presences restent depliees a chaque coche/decochage.
             await p.evaluate(()=>{
               db.players=[{id:'a',first:'Alice',last:'TEST'},{id:'b',first:'Bob',last:'TEST'},{id:'c',first:'Chloe',last:'TEST'}];
