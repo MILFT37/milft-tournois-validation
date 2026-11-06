@@ -246,6 +246,29 @@ jobs:
             });
             assert.ok(preservedAnnual.same,'Fusion : metadonnees de saison ou resultats modifies');
             assert.equal(preservedAnnual.players,2,'Fusion : joueurs de saison manquants');
+            // Attribution manuelle CAP : une table occupee ne peut etre attribuee deux fois.
+            const capManualConflict=await p.evaluate(()=>{
+              const snapshot=JSON.parse(JSON.stringify(db)),oldAlert=window.alert;
+              const alerts=[];
+              try{
+                const matches=[{id:'cap-1',a:'club-a',b:'club-b',status:'waiting',tableId:1},
+                  {id:'cap-2',a:'club-c',b:'club-d',status:'waiting',tableId:null}];
+                db={...snapshot,selected:'cap-test',tournaments:[{
+                  id:'cap-test',mode:'cap',closed:false,
+                  tables:[{id:1,state:'free'},{id:2,state:'free'}],
+                  cap:{competition:true,phase:'league',matches}
+                }]};
+                window.alert=msg=>alerts.push(String(msg));
+                const select=document.createElement('select');
+                select.id='cap-table-cap-2';select.innerHTML='<option value="1" selected>Table 1</option>';
+                document.body.appendChild(select);
+                try{capAssignTable('cap-2')}finally{select.remove()}
+                return {first:matches[0].tableId,second:matches[1].tableId,alerts};
+              }finally{db=snapshot;save();window.alert=oldAlert}
+            });
+            assert.equal(capManualConflict.first,1,'Attribution manuelle CAP : premiere table modifiee');
+            assert.equal(capManualConflict.second,null,'Attribution manuelle CAP : double attribution autorisee');
+            assert.ok(capManualConflict.alerts.some(x=>x.includes('déjà attribuée')),'Attribution manuelle CAP : refus absent');
             // Regression UI : les presences restent depliees a chaque coche/decochage.
             await p.evaluate(()=>{
               db.players=[{id:'a',first:'Alice',last:'TEST'},{id:'b',first:'Bob',last:'TEST'},{id:'c',first:'Chloe',last:'TEST'}];
