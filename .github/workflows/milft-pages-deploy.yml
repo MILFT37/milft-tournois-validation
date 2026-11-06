@@ -1,0 +1,36 @@
+name: Publier V1.1 validation sur GitHub Pages
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'MILFT_Tournois_V1_1_VALIDATION_HEBERGEMENT_STABLE_2026-11-02.html'
+      - 'MILFT_Tournois_V1_1_FUSION_ANNUELLE_2026-11-06.html'
+      - '.github/workflows/milft-pages-deploy.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+concurrency:
+  group: pages
+  cancel-in-progress: false
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare public files
+        run: |
+          mkdir -p _site
+          cp MILFT_Tournois_V1_1_VALIDATION_HEBERGEMENT_STABLE_2026-11-02.html _site/
+          cp MILFT_Tournois_V1_1_FUSION_ANNUELLE_2026-11-06.html _site/
+          printf '%s\n' '<meta http-equiv="refresh" content="0;url=MILFT_Tournois_V1_1_FUSION_ANNUELLE_2026-11-06.html">' > _site/index.html
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+      - id: deployment
+        uses: actions/deploy-pages@v4
