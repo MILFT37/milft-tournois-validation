@@ -5,6 +5,8 @@ on:
     paths:
       - 'MILFT_Tournois_V1_1_VALIDATION_HEBERGEMENT_STABLE_2026-11-02.html'
       - '.github/workflows/milft-cap-tables.yml'
+      - '.github/workflows/milft-annual-regression.yml'
+      - 'MILFT_CHAMPIONNAT_SIMPLE_2026-11-05.html'
   workflow_dispatch:
 jobs:
   cap-tables:
