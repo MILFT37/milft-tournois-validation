@@ -176,6 +176,29 @@ jobs:
             });
             assert.ok(missingPlayer.unchanged,'Import joueur manquant : donnees modifiees');
             assert.ok(missingPlayer.alerts.some(x=>x.includes('Joueur manquant')),'Import joueur manquant : refus absent');
+            // Si la sauvegarde de secours echoue, l'import doit rester strictement sans effet.
+            const failedProtection=await p.evaluate(async()=>{
+              const snapshot=JSON.parse(JSON.stringify(db));
+              const oldConfirm=window.confirm,oldAlert=window.alert,oldPreserve=milftPreserverAvantRestauration;
+              const alerts=[];
+              try{
+                db={...snapshot,players:[],tournaments:[]};
+                window.confirm=()=>true;window.alert=msg=>alerts.push(String(msg));
+                milftPreserverAvantRestauration=async()=>{throw Error('Secours indisponible')};
+                const source={format:'MILFT-TOURNOIS-BACKUP',version:1,data:{
+                  players:[],tournaments:[{id:'annual-protected',mode:'challenge',name:'Saison',
+                    roster:[],matches:[],tables:[{id:1,state:'free'}]}]}};
+                const before=JSON.stringify(db);
+                const file=new File([JSON.stringify(source)],'secours.json',{type:'application/json'});
+                await milftMergeAnnualBackup({files:[file],value:'secours.json'});
+                return {unchanged:JSON.stringify(db)===before,alerts};
+              }finally{
+                db=snapshot;save();window.confirm=oldConfirm;window.alert=oldAlert;
+                milftPreserverAvantRestauration=oldPreserve;
+              }
+            });
+            assert.ok(failedProtection.unchanged,'Echec sauvegarde de secours : donnees modifiees');
+            assert.ok(failedProtection.alerts.some(x=>x.includes('Secours indisponible')),'Echec sauvegarde de secours : erreur non signalee');
             // Regression UI : les presences restent depliees a chaque coche/decochage.
             await p.evaluate(()=>{
               db.players=[{id:'a',first:'Alice',last:'TEST'},{id:'b',first:'Bob',last:'TEST'},{id:'c',first:'Chloe',last:'TEST'}];
