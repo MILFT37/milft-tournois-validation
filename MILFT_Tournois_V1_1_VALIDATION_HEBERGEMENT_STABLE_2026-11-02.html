@@ -1695,7 +1695,7 @@ capCompLive=function(t){
  const c=t.cap,limit=capLimits(c);
  const current=c.matches.filter(m=>m.phase===c.phase&&(c.phase!=='bracket'||m.round===c.round));
  const tableCards=`<div class="card"><h2>Attribution des rencontres</h2>${current.filter(m=>!m.bye&&m.status!=='done').map(m=>`<div class="item"><b>${esc(capCompName(c,m.a))} — ${esc(capCompName(c,m.b))}</b><div class="row"><select id="cap-table-${m.id}" ${t.closed?'disabled':''}><option value="">Sans table</option>${t.tables.filter(x=>x.state==='free'||x.id===m.tableId).map(x=>`<option value="${x.id}" ${x.id===m.tableId?'selected':''}>Table ${x.id}</option>`).join('')}</select><button class="mutedbtn" onclick="capAssignTable('${m.id}')" ${t.closed?'disabled':''}>Attribuer</button></div></div>`).join('')||'<p class="muted">Aucune rencontre à attribuer.</p>'}</div>`;
- return capTableControls(t)+tableCards+html;
+ return capTableControlsModern(t)+tableCards+html;
 };
 
 // V1.1 TEST : cohérence immédiate des sélections, prévisions Course aux points.
@@ -1847,7 +1847,7 @@ const capOriginalLiveV2=capCompLive;
 capCompLive=function(t){
  let html=capOriginalLiveV2(t),c=t.cap;
  // Replace experimental table management with harmonized table panel.
- html=html.replace(/<div class="card"><h2>Gestion des tables<\/h2>[\s\S]*?<\/div>(?=<div class="card"><h2>Attribution des rencontres)/,capTableControlsModern(t));
+ // The modern table panel is inserted directly by the competition renderer.
  // Prevent selecting a table already in use by another unfinished match.
  html=html.replace(/<option value="(\d+)"( selected)?>Table (\d+)<\/option>/g,(full,num,sel,label)=>{return capFreeTable(t,Number(num))||sel?full:full.replace('<option','<option disabled')});
  return html;
