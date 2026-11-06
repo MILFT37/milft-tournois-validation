@@ -290,6 +290,23 @@ jobs:
           assert.equal(bracket.cap.matches[2].b,'D');
           assert.equal(nextSaves,1);
           console.log('OK: score absent refuse, tour suivant cree avec les vainqueurs.');
+          const undoStart=html.indexOf('function capCompUndo(id){');
+          const undoEnd=html.indexOf(String.fromCharCode(10)+'function capCompNext()',undoStart);
+          assert.ok(undoStart>=0&&undoEnd>undoStart,'Correction relais introuvable');
+          const undoCode=html.slice(undoStart,undoEnd);
+          const undoMatch={id:'undo',phase:'groups',status:'done',relays:[{a:10,b:5}]};
+          const undoTournament={closed:false,cap:{phase:'bracket',matches:[undoMatch,{phase:'bracket',round:1}]}};
+          let undoSaves=0,undoAlerts=[];
+          const undoFn=new Function('active','alert','confirm','save',undoCode+';return capCompUndo;')(
+            ()=>undoTournament,s=>undoAlerts.push(s),()=>true,()=>undoSaves++);
+          undoFn('undo');
+          assert.equal(undoMatch.relays.length,1,'Poules verrouillees apres tableau');
+          assert.equal(undoSaves,0);
+          undoTournament.cap.matches.pop();
+          undoFn('undo');
+          assert.equal(undoMatch.relays.length,0,'Correction avant tableau autorisee');
+          assert.equal(undoSaves,1);
+          console.log('OK: correction de poule verrouillee apres tableau final.');
 
 
 
