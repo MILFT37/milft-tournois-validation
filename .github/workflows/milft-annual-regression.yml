@@ -347,6 +347,26 @@ jobs:
             });
             assert.equal(capCloseCompleted.closed,true,'CAP : cloture d une rencontre terminee impossible');
             assert.equal(capCloseCompleted.reopened,false,'CAP : reouverture d une rencontre impossible');
+            // Championnat CAP : refus de cloture tant qu une rencontre reste en attente.
+            const capLeagueClose=await p.evaluate(()=>{
+              const original=JSON.parse(JSON.stringify(db)),oldAlert=window.alert;
+              const alerts=[];
+              try{
+                db={...original,selected:'cap-league-ci',tournaments:[{
+                  id:'cap-league-ci',name:'Ligue CAP',mode:'cap',closed:false,matches:[],roster:[],
+                  tables:[],cap:{competition:true,structure:'league',phase:'league',bracket:false,
+                    matches:[{id:'fixture-1',status:'waiting',relays:[],a:'a',b:'b'}]}
+                }]};
+                window.alert=x=>alerts.push(String(x));
+                capCompClose();const blocked=db.tournaments[0].closed;
+                db.tournaments[0].cap.matches[0].status='done';
+                capCompClose();const closed=db.tournaments[0].closed;
+                return {blocked,closed,alerts};
+              }finally{db=original;save();window.alert=oldAlert}
+            });
+            assert.equal(capLeagueClose.blocked,false,'Championnat CAP : cloture prematuree autorisee');
+            assert.equal(capLeagueClose.closed,true,'Championnat CAP : cloture terminee refusee');
+            assert.ok(capLeagueClose.alerts.some(x=>x.includes('non terminées')),'Championnat CAP : avertissement absent');
             // Regression UI : les presences restent depliees a chaque coche/decochage.
             await p.evaluate(()=>{
               db.players=[{id:'a',first:'Alice',last:'TEST'},{id:'b',first:'Bob',last:'TEST'},{id:'c',first:'Chloe',last:'TEST'}];
