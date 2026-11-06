@@ -1182,7 +1182,7 @@ async function milftMergeAnnualBackup(input){
    }
    const matchIds=new Set();
    for(const m of t.matches){
-    if(!m||typeof m.id!=='string'||matchIds.has(m.id)||!['waiting','playing','done'].includes(m.status)||!Array.isArray(m.sets)||m.a&&!rosterIds.has(m.a)||m.b&&!rosterIds.has(m.b)||(m.status==='done'&&(!m.score||!Number.isFinite(m.score.a)||!Number.isFinite(m.score.b))))throw Error('Rencontres invalides : '+t.name);
+    if(!m||typeof m.id!=='string'||!m.id||matchIds.has(m.id)||!['waiting','playing','done'].includes(m.status)||!Array.isArray(m.sets)||m.a&&!rosterIds.has(m.a)||m.b&&!rosterIds.has(m.b)||(m.status==='done'&&(!m.score||!Number.isFinite(m.score.a)||!Number.isFinite(m.score.b))))throw Error('Rencontres invalides : '+t.name);
     matchIds.add(m.id);
    }
    if(t.tables.some(x=>!x||x.id==null||!['free','playing','maintenance','excluded'].includes(x.state)))throw Error('Tables invalides : '+t.name);
@@ -1216,7 +1216,9 @@ async function milftMergeAnnualBackup(input){
   const ignored=annual.length-additions.length;
   if(!additions.length){alert('Tous les championnats de cette sauvegarde existent déjà. Aucune modification.');return;}
   const playerIds=new Set(db.players.map(p=>p.id));
-  const incomingPlayers=payload.data.players.filter(p=>p&&typeof p.id==='string'&&typeof p.first==='string'&&typeof p.last==='string');
+  if(!payload.data.players.every(p=>p&&typeof p.id==='string'&&p.id&&typeof p.first==='string'&&typeof p.last==='string'))throw Error('Fiches joueurs invalides dans la sauvegarde.');
+  const incomingPlayers=payload.data.players;
+  if(new Set(incomingPlayers.map(p=>p.id)).size!==incomingPlayers.length)throw Error('Identifiants joueurs en double dans la sauvegarde.');
   const newPlayers=incomingPlayers.filter(p=>!playerIds.has(p.id));
   // Ne jamais integrer un championnat qui reference une fiche joueur absente du fichier
   // et du repertoire local : les classements deviendraient illisibles.
