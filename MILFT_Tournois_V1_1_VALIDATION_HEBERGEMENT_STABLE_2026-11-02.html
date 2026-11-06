@@ -1242,12 +1242,21 @@ async function milftMergeAnnualBackup(input){
   next.players.push(...JSON.parse(JSON.stringify(newPlayers)));
   next.tournaments.push(...JSON.parse(JSON.stringify(additions)));
   const before=db;
+  const previousRaw=localStorage.getItem(KEY);
+  const nextRaw=JSON.stringify(next);
   try{
-   db=next;save();
-   if(localStorage.getItem(KEY)!==JSON.stringify(next))throw Error('Vérification de sauvegarde impossible après intégration.');
+   localStorage.setItem(KEY,nextRaw);
+   if(localStorage.getItem(KEY)!==nextRaw)throw Error('Vérification de sauvegarde impossible après intégration.');
+   db=next;
   }catch(e){
    db=before;
-   try{save();}catch{}
+   let rollbackOk=false;
+   try{
+    if(previousRaw===null)localStorage.removeItem(KEY);
+    else localStorage.setItem(KEY,previousRaw);
+    rollbackOk=localStorage.getItem(KEY)===previousRaw;
+   }catch{}
+   if(!rollbackOk)throw Error('Échec de la fusion et du retour arrière du stockage. Conserver la sauvegarde de secours. '+e.message);
    throw e;
   }
   flash(additions.length+' championnat(s) annuel(s) intégré(s). Sauvegarde de secours : '+protection.protectedId);
