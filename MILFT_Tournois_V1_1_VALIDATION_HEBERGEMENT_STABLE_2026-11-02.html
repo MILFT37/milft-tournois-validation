@@ -1187,6 +1187,15 @@ async function milftMergeAnnualBackup(input){
    }
    if(t.tables.some(x=>!x||x.id==null||!['free','playing','maintenance','excluded'].includes(x.state)))throw Error('Tables invalides : '+t.name);
   }
+  // Un identifiant deja present avec des resultats differents n'est pas un doublon innocent.
+  // Refuser plutot que masquer silencieusement une saison plus recente.
+  const currentTournaments=new Map(db.tournaments.map(t=>[t.id,t]));
+  for(const t of annual){
+   const current=currentTournaments.get(t.id);
+   if(current&&JSON.stringify(current)!==JSON.stringify(t)){
+    throw Error('Championnat déjà présent mais différent : '+String(t.name||t.id)+'. Aucun résultat remplacé. Exporter et comparer les sauvegardes avant de poursuivre.');
+   }
+  }
   const existingIds=new Set(db.tournaments.map(t=>t.id));
   const additions=annual.filter(t=>!existingIds.has(t.id));
   const ignored=annual.length-additions.length;
