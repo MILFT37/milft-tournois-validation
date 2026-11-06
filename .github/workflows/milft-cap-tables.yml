@@ -25,6 +25,7 @@ jobs:
           has("if(m?.bye){m.tableId=null;save();}");
           has("if(removed.some(x=>capTableBusy(t,x.id)))");
           has("if(n===current)return;");
+          has("if(x.state===state)return;x.state=state;save();");
           has("if(m.tableId===n)return;");
           has("if(m.tableId!=null){m.tableId=null;save();flash('Attribution de table retirée.');}");
           // Contrôles de non-régression : commandes communes et disposition 2 colonnes.
