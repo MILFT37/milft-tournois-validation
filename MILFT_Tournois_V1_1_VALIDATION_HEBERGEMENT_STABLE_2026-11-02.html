@@ -1186,6 +1186,21 @@ async function milftMergeAnnualBackup(input){
     matchIds.add(m.id);
    }
    if(t.tables.some(x=>!x||x.id==null||!['free','playing','maintenance','excluded'].includes(x.state)))throw Error('Tables invalides : '+t.name);
+   const tables=new Map(t.tables.map(x=>[String(x.id),x]));
+   if(tables.size!==t.tables.length)throw Error('Numéros de tables en double : '+t.name);
+   const occupied=new Set(),engaged=new Set();
+   for(const m of t.matches){
+    if(m.status==='playing'){
+     const table=String(m.table);
+     if(m.table==null||!tables.has(table)||tables.get(table).state!=='playing'||occupied.has(table))throw Error('Affectation de table incohérente : '+t.name);
+     occupied.add(table);
+     for(const id of [m.a,m.b]){
+      if(!id||engaged.has(id))throw Error('Joueur engagé dans plusieurs rencontres : '+t.name);
+      engaged.add(id);
+     }
+    }else if(m.table!=null)throw Error('Table affectée à une rencontre non active : '+t.name);
+   }
+   if(t.tables.some(x=>x.state==='playing'&&!occupied.has(String(x.id))))throw Error('Table occupée sans rencontre : '+t.name);
   }
   // Un identifiant deja present avec des resultats differents n'est pas un doublon innocent.
   // Refuser plutot que masquer silencieusement une saison plus recente.
@@ -1225,7 +1240,14 @@ async function milftMergeAnnualBackup(input){
   next.players.push(...JSON.parse(JSON.stringify(newPlayers)));
   next.tournaments.push(...JSON.parse(JSON.stringify(additions)));
   const before=db;
-  try{db=next;save();}catch(e){db=before;throw e;}
+  try{
+   db=next;save();
+   if(localStorage.getItem(KEY)!==JSON.stringify(next))throw Error('Vérification de sauvegarde impossible après intégration.');
+  }catch(e){
+   db=before;
+   try{save();}catch{}
+   throw e;
+  }
   flash(additions.length+' championnat(s) annuel(s) intégré(s). Sauvegarde de secours : '+protection.protectedId);
  }catch(e){alert('Import sélectif annulé : '+e.message);}
 }
