@@ -360,6 +360,7 @@ jobs:
                 window.alert=x=>alerts.push(String(x));
                 capCompClose();const blocked=db.tournaments[0].closed;
                 db.tournaments[0].cap.matches[0].status='done';
+                db.tournaments[0].cap.matches[0].relays=[{a:30,b:20}];
                 capCompClose();const closed=db.tournaments[0].closed;
                 return {blocked,closed,alerts};
               }finally{db=original;save();window.alert=oldAlert}
