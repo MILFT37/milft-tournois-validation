@@ -184,6 +184,33 @@ jobs:
           countTournament.closed=true;requested=3;setCount();
           assert.equal(countTournament.tables.length,1,'Clôture protégée');
           console.log('OK: agrandissement, réduction, occupation, bornes et clôture.');
+          // Parcours de clôture : refus des matchs en attente, validation, puis réouverture.
+          const closeStart=html.indexOf('function capCompClose(){');
+          const closeEnd=html.indexOf(String.fromCharCode(10)+'function capCompLive(t)',closeStart);
+          assert.ok(closeStart>=0&&closeEnd>closeStart,'Clôture Course aux points introuvable');
+          const closeCode=html.slice(closeStart,closeEnd);
+          const closeTournament={closed:false,cap:{phase:'league',bracket:false,matches:[
+            {id:'a',status:'done'},{id:'b',status:'waiting'}]}};
+          let closeSaves=0,closeAlerts=[];
+          const closeFn=new Function('active','alert','save','flash','capCompScore',
+            closeCode+';return capCompClose;')(
+            ()=>closeTournament,s=>closeAlerts.push(s),()=>closeSaves++,()=>{},()=>({a:30,b:24}));
+          closeFn();
+          assert.equal(closeTournament.closed,false,'Rencontre en attente : clôture refusée');
+          assert.equal(closeSaves,0);
+          assert.equal(closeAlerts.length,1);
+          closeTournament.cap.matches[1].status='done';
+          closeFn();
+          assert.equal(closeTournament.closed,true,'Championnat terminé clôturable');
+          assert.equal(closeSaves,1);
+          closeFn();
+          assert.equal(closeTournament.closed,false,'Réouverture possible');
+          assert.equal(closeSaves,2);
+          closeTournament.cap.bracket=true;closeTournament.cap.phase='groups';
+          closeFn();
+          assert.equal(closeTournament.closed,false,'Tableau final requis');
+          console.log('OK: clôture, refus si incomplet, réouverture et tableau final requis.');
+
 
 
           console.log('OK: BYE, absence de doublon, réattribution et maintenance.');
