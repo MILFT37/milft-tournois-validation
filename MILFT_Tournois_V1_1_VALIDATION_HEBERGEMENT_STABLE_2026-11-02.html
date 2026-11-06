@@ -1194,6 +1194,15 @@ async function milftMergeAnnualBackup(input){
   const playerIds=new Set(db.players.map(p=>p.id));
   const incomingPlayers=payload.data.players.filter(p=>p&&typeof p.id==='string'&&typeof p.first==='string'&&typeof p.last==='string');
   const newPlayers=incomingPlayers.filter(p=>!playerIds.has(p.id));
+  // Ne jamais integrer un championnat qui reference une fiche joueur absente du fichier
+  // et du repertoire local : les classements deviendraient illisibles.
+  const availablePlayers=new Set([...db.players.map(p=>p.id),...incomingPlayers.map(p=>p.id)]);
+  for(const t of additions){
+   for(const p of t.roster){
+    if(!availablePlayers.has(p.id))throw Error('Joueur manquant dans la sauvegarde : '+p.id+'. Import annulé.');
+   }
+  }
+
   const currentById=new Map(db.players.map(p=>[p.id,p]));
   for(const p of incomingPlayers){
    const old=currentById.get(p.id);
