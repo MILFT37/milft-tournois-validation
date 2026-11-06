@@ -228,7 +228,7 @@ jobs:
                 milftPreserverAvantRestauration=async()=>({protectedId:'test-secours'});
                 const season={id:'season-metadata',mode:'challenge',name:'Championnat test',
                   roster:[{id:'p1',first:'A',last:'TEST'},{id:'p2',first:'B',last:'TEST'}],
-                  matches:[{id:'m1',a:'p1',b:'p2',status:'done',sets:[[5,3],[5,2],[5,4]],winner:'p1'}],
+                  matches:[{id:'m1',a:'p1',b:'p2',status:'done',sets:[[5,3],[5,2],[5,4]],score:{a:3,b:0},winner:'p1'}],
                   tables:[{id:1,state:'free'}],
                   sessions:[{id:'s1',date:'2026-11-05',present:['p1'],absent:['p2']}],
                   attendance:{s1:['p1']},customSeasonField:{preserve:true}};
