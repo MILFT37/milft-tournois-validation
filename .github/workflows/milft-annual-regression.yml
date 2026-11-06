@@ -404,6 +404,21 @@ jobs:
                 capCompHead(t,'club-b','club-a','league')];
             });
             assert.deepEqual(capHeadToHead,[4,-4],'CAP : departage confrontation directe inverse');
+            // CAP : egalite aux points departagee par la difference cumulee.
+            const capRankingTie=await p.evaluate(()=>{
+              const match=(id,a,b,sa,sb)=>({id,phase:'league',status:'done',a,b,relays:[{a:sa,b:sb}]});
+              const t={cap:{matches:[
+                match('ab','a','b',10,8),
+                match('ac','a','c',5,10),
+                match('bc','b','c',10,5)
+              ]}};
+              return capCompRanking(t,['a','b','c'],'league').map(r=>({id:r.id,pts:r.pts,diff:r.for-r.against}));
+            });
+            assert.deepEqual(capRankingTie,[
+              {id:'b',pts:2,diff:3},
+              {id:'c',pts:2,diff:0},
+              {id:'a',pts:2,diff:-3}
+            ],'CAP : departage a points egaux par difference cumulee incorrect');
             // Regression UI : les presences restent depliees a chaque coche/decochage.
             await p.evaluate(()=>{
               db.players=[{id:'a',first:'Alice',last:'TEST'},{id:'b',first:'Bob',last:'TEST'},{id:'c',first:'Chloe',last:'TEST'}];
