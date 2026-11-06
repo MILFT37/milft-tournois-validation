@@ -87,6 +87,17 @@ jobs:
             });
             assert.deepEqual(capTables,[{id:'m1',tableId:1},{id:'m2',tableId:null},{id:'m3',tableId:2}],
               'Attribution : un club ne doit pas jouer sur deux tables, table exclue interdite');
+            // Import selectif annuel : controles et presence du parcours sans ecraser l'existant.
+            const mergeUi=await p.evaluate(()=>{
+              const input=document.getElementById('milft-annual-merge-file');
+              const btn=[...document.querySelectorAll('button')].find(b=>b.textContent.includes('Intégrer un championnat annuel'));
+              return {input:!!input,accept:input?.accept,handler:input?.getAttribute('onchange'),button:!!btn,fn:typeof milftMergeAnnualBackup};
+            });
+            assert.equal(mergeUi.input,true,'Champ de fichier import selectif absent');
+            assert.match(mergeUi.accept,/json/,'Import selectif : JSON attendu');
+            assert.equal(mergeUi.handler,'milftMergeAnnualBackup(this)','Import selectif mal relie');
+            assert.equal(mergeUi.button,true,'Bouton import selectif absent');
+            assert.equal(mergeUi.fn,'function','Fonction import selectif absente');
             // Regression UI : les presences restent depliees a chaque coche/decochage.
             await p.evaluate(()=>{
               db.players=[{id:'a',first:'Alice',last:'TEST'},{id:'b',first:'Bob',last:'TEST'},{id:'c',first:'Chloe',last:'TEST'}];
