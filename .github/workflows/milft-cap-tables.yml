@@ -44,5 +44,22 @@ jobs:
           assert.equal(t.cap.matches[2].tableId,2);
           assert.equal(t.cap.matches[3].tableId,undefined);
           assert.equal(saved,1);
-          console.log('OK: protections, BYE, attribution sans doublon et limite des tables.');
+          // Second passage : aucune attribution supplémentaire et aucune collision.
+          eval(code+';capAutoAssign();');
+          assert.equal(t.cap.matches[1].tableId,1);
+          assert.equal(t.cap.matches[2].tableId,2);
+          assert.equal(t.cap.matches[3].tableId,undefined);
+          // Une table libérée ne doit être réattribuée qu'à une rencontre complète.
+          t.cap.matches[1].status='done';
+          t.cap.matches[1].tableId=null;
+          eval(code+';capAutoAssign();');
+          assert.equal(t.cap.matches[3].tableId,1);
+          assert.equal(t.cap.matches[0].tableId,undefined);
+          // Une table en maintenance ne peut pas être attribuée.
+          t.cap.matches[3].status='done';
+          t.cap.matches[3].tableId=null;
+          t.tables[0].state='maintenance';
+          eval(code+';capAutoAssign();');
+          assert.equal(t.cap.matches[0].tableId,undefined);
+          console.log('OK: BYE, absence de doublon, réattribution et maintenance.');
           JS
