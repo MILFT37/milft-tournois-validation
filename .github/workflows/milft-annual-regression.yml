@@ -44,7 +44,7 @@ jobs:
             });
             assert.equal(capUi.count,4,'Course aux points : quatre commandes attendues');
             assert.deepEqual(capUi.labels,['Tournois en cours','Avancement','Terminer','Abandonner'],'Ordre des commandes non conforme');
-            assert.match(capUi.columns,/repeat\\(2,/,'Grille commandes : deux colonnes attendues');
+            assert.ok(capUi.columns.includes('repeat(2,'),'Grille commandes : deux colonnes attendues');
             assert.equal(capUi.gap,'10px','Espacement des commandes non harmonise');
             assert.equal(capUi.finish,'finishbtn','Bouton Terminer non conforme');
             assert.equal(capUi.abandon,'danger','Bouton Abandonner non conforme');
