@@ -269,6 +269,33 @@ jobs:
             assert.equal(capManualConflict.first,1,'Attribution manuelle CAP : premiere table modifiee');
             assert.equal(capManualConflict.second,null,'Attribution manuelle CAP : double attribution autorisee');
             assert.ok(capManualConflict.alerts.some(x=>x.includes('déjà attribuée')),'Attribution manuelle CAP : refus absent');
+            // CAP : attribution manuelle valide, refus table exclue et persistance apres rechargement.
+            const capManualPaths=await p.evaluate(()=>{
+              const original=JSON.parse(JSON.stringify(db)),oldAlert=window.alert;
+              const warnings=[];
+              const select=document.createElement('select');
+              select.id='cap-table-cap-m';select.innerHTML='<option value="1">1</option><option value="2">2</option>';
+              document.body.appendChild(select);
+              try{
+                const match={id:'cap-m',a:'a',b:'b',status:'waiting',tableId:null};
+                db={...original,selected:'cap-manual-check',tournaments:[{
+                  id:'cap-manual-check',mode:'cap',closed:false,
+                  tables:[{id:1,state:'excluded'},{id:2,state:'free'}],
+                  cap:{competition:true,phase:'league',matches:[match]}
+                }]};
+                window.alert=x=>warnings.push(String(x));
+                select.value='1';capAssignTable('cap-m');
+                const excluded=match.tableId;
+                select.value='2';capAssignTable('cap-m');
+                const valid=match.tableId;
+                const persisted=JSON.parse(localStorage.getItem(KEY)).tournaments[0].cap.matches[0].tableId;
+                return {excluded,valid,persisted,warnings};
+              }finally{select.remove();db=original;save();window.alert=oldAlert}
+            });
+            assert.equal(capManualPaths.excluded,null,'CAP : table exclue attribuee');
+            assert.equal(capManualPaths.valid,2,'CAP : table libre non attribuee');
+            assert.equal(capManualPaths.persisted,2,'CAP : attribution non sauvegardee');
+            assert.ok(capManualPaths.warnings.some(x=>x.includes('exclue')),'CAP : refus table exclue non signale');
             // Regression UI : les presences restent depliees a chaque coche/decochage.
             await p.evaluate(()=>{
               db.players=[{id:'a',first:'Alice',last:'TEST'},{id:'b',first:'Bob',last:'TEST'},{id:'c',first:'Chloe',last:'TEST'}];
