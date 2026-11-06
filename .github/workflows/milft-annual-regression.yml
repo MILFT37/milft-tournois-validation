@@ -19,7 +19,7 @@ jobs:
           npm config set fetch-retries 1
           npm config set fetch-timeout 30000
           timeout 120s npm install --no-save playwright
-          timeout 150s npx playwright install --with-deps chromium
+          timeout 150s npx playwright install chromium
       - run: python3 -m http.server 8766 --bind 127.0.0.1 >/tmp/milft-annual-http.log 2>&1 &
       - name: Tester presences, rencontres, ajout joueur, classement, tables et reprise
         run: |
