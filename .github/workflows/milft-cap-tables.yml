@@ -21,8 +21,8 @@ jobs:
           has("if(m.bye||!m.a||!m.b)");
           has("!\u005b\u0027waiting\u0027,\u0027playing\u0027\u005d.includes(m.status)");
           has("if(m.status!=='waiting'||m.bye||m.tableId||!m.a||!m.b)continue;");
-          has("if(old!=='done'&&m.status==='done'){m.tableId=null;save();}");
-          has("if(m?.bye){m.tableId=null;save();}");
+          has("if(old!=='done'&&m.status==='done'&&m.tableId!=null){m.tableId=null;save();}");
+          has("if(m?.bye&&m.tableId!=null){m.tableId=null;save();}");
           has("if(removed.some(x=>capTableBusy(t,x.id)))");
           has("if(n===current)return;");
           has("if(x.state===state)return;x.state=state;save();");
