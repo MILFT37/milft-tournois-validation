@@ -1846,8 +1846,6 @@ function capTableControlsModern(t){
 const capOriginalLiveV2=capCompLive;
 capCompLive=function(t){
  let html=capOriginalLiveV2(t),c=t.cap;
- // Replace experimental command block with the same actions and visual grouping as standard tournaments.
- html=html.replace(/<div class="card"><div class="row between"><div><h2>Commandes de compétition<\/h2>[\s\S]*?<\/div><\/div>/,`<div class="card"><h2>${esc(t.name)}</h2><p class="muted">${c.structure==='league'?'Championnat':'Coupe'} · ${capActiveMatches(t).filter(m=>m.status==='done').length}/${capActiveMatches(t).length} rencontres terminées</p><div class="milft-cap-actions" style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:14px"><button type="button" class="mutedbtn" onclick="setTab('live')">Tournois en cours</button><button type="button" class="mutedbtn" onclick="setTab('avancement')">Avancement</button><button type="button" class="${t.closed?'mutedbtn':'finishbtn'}" onclick="capCompClose()">${t.closed?'Rouvrir':'Terminer'} la compétition</button><button type="button" class="danger" onclick="capAbandon()" ${t.closed?'disabled':''}>Abandonner</button></div></div>`);
  // Replace experimental table management with harmonized table panel.
  html=html.replace(/<div class="card"><h2>Gestion des tables<\/h2>[\s\S]*?<\/div>(?=<div class="card"><h2>Attribution des rencontres)/,capTableControlsModern(t));
  // Prevent selecting a table already in use by another unfinished match.
