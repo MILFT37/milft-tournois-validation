@@ -33,6 +33,21 @@ jobs:
             p.on('dialog',d=>d.accept());
             const errors=[];p.on('pageerror',e=>errors.push(e.message));
             await p.goto('http://127.0.0.1:8766/MILFT_Tournois_V1_1_VALIDATION_HEBERGEMENT_STABLE_2026-11-02.html');
+            // Course aux points : commandes harmonisees, 2 colonnes et Terminer/Abandonner en ligne 2.
+            const capUi=await p.evaluate(()=>{
+              const t={name:'Coupe test',closed:false};
+              const host=document.createElement('div');
+              host.innerHTML=milftCapUnifiedHeader(t,'Course aux points','0/6 relais','capClose()','Terminer');
+              const buttons=[...host.querySelectorAll('.milft-cap-actions button')];
+              const grid=host.querySelector('.milft-cap-actions');
+              return {count:buttons.length,labels:buttons.map(b=>b.textContent.trim()),columns:grid?.style.gridTemplateColumns,gap:grid?.style.gap,finish:buttons[2]?.className,abandon:buttons[3]?.className};
+            });
+            assert.equal(capUi.count,4,'Course aux points : quatre commandes attendues');
+            assert.deepEqual(capUi.labels,['Tournois en cours','Avancement','Terminer','Abandonner'],'Ordre des commandes non conforme');
+            assert.match(capUi.columns,/repeat\\(2,/,'Grille commandes : deux colonnes attendues');
+            assert.equal(capUi.gap,'10px','Espacement des commandes non harmonise');
+            assert.equal(capUi.finish,'finishbtn','Bouton Terminer non conforme');
+            assert.equal(capUi.abandon,'danger','Bouton Abandonner non conforme');
             // Regression UI : les presences restent depliees a chaque coche/decochage.
             await p.evaluate(()=>{
               db.players=[{id:'a',first:'Alice',last:'TEST'},{id:'b',first:'Bob',last:'TEST'},{id:'c',first:'Chloe',last:'TEST'}];
