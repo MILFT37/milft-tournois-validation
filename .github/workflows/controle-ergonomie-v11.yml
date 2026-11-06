@@ -27,7 +27,9 @@ jobs:
             'abandon CAP':/onclick="capAbandon\(\)"/,
             'présences repliables':/class="card milft-annual-presence"><details>/,
             'état du repli préservé':/function renderAfterPresenceChange\(\)/,
+            'bouton attribution seul pleine largeur':/\.cap-command-row:not\(:has\(>\.cap-next-round\)\)>\.cap-assign-command\{grid-column:1\/-1\}/,
+            'bouton terminer seul pleine largeur':/\.cap-command-row>\.cap-finish-command:last-child\{grid-column:1\/-1\}/,
           };
           for(const [label,re] of Object.entries(checks)){assert.match(s,re,label);console.log('OK '+label)}
-          console.log('8 controles statiques conformes (ne remplace pas un test navigateur)');
+          console.log('10 controles statiques conformes (ne remplace pas un test navigateur)');
           JS
