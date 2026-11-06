@@ -383,8 +383,10 @@ jobs:
                 a.value='4';b.value='2';capCompRecord('ci-club');
                 const refusedPalier=db.tournaments[0].cap.matches[0].relays.length;
                 a.value='5';b.value='3';capCompRecord('ci-club');
+                document.body.append(a,b);
                 a.value='4';b.value='10';capCompRecord('ci-club');
                 const refusedDecrease=db.tournaments[0].cap.matches[0].relays.length;
+                document.body.append(a,b);
                 a.value='8';b.value='10';capCompRecord('ci-club');
                 const m=db.tournaments[0].cap.matches[0];
                 return {refusedPalier,refusedDecrease,relays:m.relays,status:m.status,alerts};
