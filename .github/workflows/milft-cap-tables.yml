@@ -153,6 +153,38 @@ jobs:
           assert.equal(manualTournament.tables[1].state,'free','Compétition close protégée');
           assert.equal(stateSaves,3);
           console.log('OK: états des tables, occupation, exclusion, réouverture et clôture.');
+          // Parcours du dimensionnement : agrandir, réduire, refuser table occupée.
+          const countStart=html.indexOf('function capSetTableCount(){');
+          const countEnd=html.indexOf(String.fromCharCode(10)+'function capTableControlsModern(',countStart);
+          assert.ok(countStart>=0&&countEnd>countStart,'Gestion du nombre de tables introuvable');
+          const countCode=html.slice(countStart,countEnd);
+          const countTournament={closed:false,tables:[{id:1,state:'free'},{id:2,state:'free'}],cap:{matches:[{id:'match',tableId:2,status:'playing'}]}};
+          let requested=4,countSaves=0,confirmations=0,countAlerts=[];
+          const setCount=new Function('active','document','capTableBusy','confirm','alert','save','flash',
+            countCode+';return capSetTableCount;')(
+            ()=>countTournament,
+            {getElementById:()=>({get value(){return String(requested);}})},
+            (x,id)=>x.cap.matches.some(m=>m.tableId===id&&m.status!=='done'),
+            ()=>{confirmations++;return true;},
+            s=>countAlerts.push(s),()=>countSaves++,()=>{});
+          setCount();
+          assert.equal(countTournament.tables.length,4);
+          assert.equal(countSaves,1);
+          setCount();assert.equal(countSaves,1,'Nombre inchangé sans sauvegarde');
+          requested=1;setCount();
+          assert.equal(countTournament.tables.length,4,'Table occupée conservée');
+          assert.equal(countAlerts.length,1);
+          countTournament.cap.matches[0].status='done';
+          setCount();
+          assert.equal(countTournament.tables.length,1);
+          assert.equal(confirmations,1);
+          assert.equal(countSaves,2);
+          requested=33;setCount();
+          assert.equal(countTournament.tables.length,1,'Limite supérieure respectée');
+          countTournament.closed=true;requested=3;setCount();
+          assert.equal(countTournament.tables.length,1,'Clôture protégée');
+          console.log('OK: agrandissement, réduction, occupation, bornes et clôture.');
+
 
           console.log('OK: BYE, absence de doublon, réattribution et maintenance.');
           JS
