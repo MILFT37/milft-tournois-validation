@@ -30,6 +30,23 @@ jobs:
           has("label:'Abandonner',action:'capAbandon()'");
           has("action:'capCompClose()'");
           has("action:'capAutoAssign()'");
+          // Vérifier le rendu généré des commandes, et non leur seule présence dans le fichier.
+          const headerStart=html.indexOf('function milftSharedCommandHeader({name,pills,actions})');
+          const headerEnd=html.indexOf('\\nconst milftCapLiveBeforeShared',headerStart);
+          assert.ok(headerStart>=0&&headerEnd>headerStart,'Générateur de commandes introuvable');
+          const esc=(s)=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+          const headerCode=html.slice(headerStart,headerEnd);
+          const renderHeader=new Function('esc',headerCode+';return milftSharedCommandHeader;')(esc);
+          const rendered=renderHeader({name:'Coupe test',pills:['2/4 rencontres'],actions:[
+            {label:'Tour suivant',action:'capCompNext()'},
+            {label:'Attribuer',action:'capAutoAssign()'},
+            {label:'Terminer',action:'capCompClose()',css:'finishbtn'},
+            {label:'Abandonner',action:'capAbandon()',css:'danger'}
+          ]});
+          assert.ok(rendered.includes('data-shared-commands="true"'));
+          assert.equal((rendered.match(/<button /g)||[]).length,4);
+          assert.ok(rendered.indexOf('Terminer')<rendered.indexOf('Abandonner'));
+          assert.ok(rendered.includes('milft-classic-command-row'));
           const start=html.indexOf('function capAutoAssign(){');
           const end=html.indexOf('\nconst capOriginalRecordV2',start);
           assert.ok(start>=0&&end>start);
