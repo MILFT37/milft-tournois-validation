@@ -323,6 +323,16 @@ jobs:
             assert.deepEqual(c.matches.flatMap(m=>[m.a,m.b].filter(Boolean)).sort(),ids.sort());
           }
           console.log('OK: tableaux de 3 a 15 clubs sans rencontres vides.');
+          const cup={phase:'groups',round:0,bracket:true,matches:[],byeWin:5,byeLose:3};
+          buildBracket(cup,['A','B','C','D','E']);
+          for(const m of cup.matches)if(!m.bye){m.status='done';m.score={a:30,b:20};}
+          let cupSaves=0;
+          const cupNext=new Function('active','capCompScore','alert','save','uid','capCompRanking','capCompBuildBracket',nextCode+';return capCompNext;')(
+            ()=>({closed:false,cap:cup}),m=>m.score,()=>{},()=>cupSaves++,()=>String(++seedSerial),()=>[],buildBracket);
+          cupNext();
+          assert.equal(cup.round,2);
+          assert.equal(cup.matches.filter(m=>m.round===2).length,2);
+          assert.equal(cupSaves,1);
 
 
 
