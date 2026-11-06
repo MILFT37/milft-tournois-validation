@@ -220,6 +220,24 @@ jobs:
             assert.deepEqual(scoreIntegrity.after,scoreIntegrity.before,'Attribution a modifie une rencontre existante');
             assert.equal(scoreIntegrity.newMatch.status,'playing','Rencontre independante non attribuee');
             assert.equal(scoreIntegrity.newMatch.table,2,'Table deja occupee reutilisee');
+            // Tables desordonnees : attribution numerique stable, sans modifier la configuration.
+            const sortedTables=await p.evaluate(()=>{
+              const original=db.tournaments.find(t=>t.id==='annual-ci');
+              const t={...original,mode:'challenge',roundLimit:false,roster:[],
+                presence:{a:true,b:true,c:true,d:true,e:true,f:true},
+                tables:[{id:12,state:'free'},{id:3,state:'free'},{id:7,state:'free'}],
+                matches:[
+                  {id:'m1',a:'a',b:'b',status:'waiting',hold:false,sets:[]},
+                  {id:'m2',a:'c',b:'d',status:'waiting',hold:false,sets:[]},
+                  {id:'m3',a:'e',b:'f',status:'waiting',hold:false,sets:[]}
+                ]};
+              const orderBefore=t.tables.map(x=>x.id);
+              autoAssign(t);
+              return {assigned:t.matches.map(m=>m.table),orderBefore,orderAfter:t.tables.map(x=>x.id),states:t.tables.map(x=>x.state)};
+            });
+            assert.deepEqual(sortedTables.assigned,[3,7,12],'Tables non attribuees dans ordre numerique');
+            assert.deepEqual(sortedTables.orderAfter,sortedTables.orderBefore,'Ordre de configuration des tables modifie');
+            assert.deepEqual(sortedTables.states,['playing','playing','playing'],'Tables attribuees non marquees occupees');
             // Ajout de joueurs : plusieurs cases doivent pouvoir etre cochees sans repli.
             await p.evaluate(()=>{
               db.players.push({id:'d',first:'David',last:'TEST'},{id:'e',first:'Emma',last:'TEST'});
