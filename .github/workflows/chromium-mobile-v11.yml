@@ -38,12 +38,13 @@ jobs:
               const result = await page.evaluate(() => ({
                 width: document.documentElement.scrollWidth,
                 viewport: window.innerWidth,
-                capGrid: getComputedStyle(Object.assign(document.createElement('div'),{className:'cap-command-row'})).display,
+                capGrid: (() => { const el=document.createElement('div');el.className='cap-command-row';document.body.appendChild(el);const display=getComputedStyle(el).display;el.remove();return display; })(),
                 hasCap: typeof window.capAutoAssign === 'function' && typeof window.capCompClose === 'function',
                 hasAnnual: typeof window.renderAfterPresenceChange === 'function',
                 hasBody: document.body.innerText.length > 100
               }));
               assert.equal(result.hasBody,true,'interface visible');
+              assert.equal(result.capGrid,'grid','commandes CAP en grille sur mobile');
               assert.equal(result.hasCap,true,'fonctions CAP disponibles');
               assert.equal(result.hasAnnual,true,'fonction repli présences disponible');
               assert.deepEqual(errors,[],'aucune erreur JavaScript au chargement');
