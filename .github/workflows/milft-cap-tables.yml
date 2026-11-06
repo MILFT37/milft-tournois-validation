@@ -266,6 +266,30 @@ jobs:
           tieCase.cap.matches[2].score={a:42,b:30};
           assert.deepEqual(ranking(tieCase,['A','B'],'league').map(r=>r.id),['B','A']);
           console.log('OK: departage par difference puis confrontation directe.');
+          const nextStart=html.indexOf('function capCompNext(){');
+          const nextEnd=html.indexOf(String.fromCharCode(10)+'function capCompBye(id)',nextStart);
+          assert.ok(nextStart>=0&&nextEnd>nextStart,'Progression tableau introuvable');
+          const nextCode=html.slice(nextStart,nextEnd);
+          const bracket={closed:false,cap:{phase:'bracket',round:1,matches:[
+            {id:'q1',phase:'bracket',round:1,status:'done',a:'A',b:'B',score:{a:30,b:20}},
+            {id:'q2',phase:'bracket',round:1,status:'done',a:'C',b:'D',score:null}
+          ]}};
+          let nextSaves=0,nextAlerts=[];
+          let serial=0;
+          const nextFn=new Function('active','capCompScore','alert','save','uid','capCompRanking','capCompBuildBracket',
+            nextCode+';return capCompNext;')(
+            ()=>bracket,m=>m.score,s=>nextAlerts.push(s),()=>nextSaves++,()=>String(++serial),()=>[],()=>{});
+          nextFn();
+          assert.equal(bracket.cap.round,1,'Score manquant : tour bloque');
+          assert.equal(nextSaves,0);
+          bracket.cap.matches[1].score={a:22,b:30};
+          nextFn();
+          assert.equal(bracket.cap.round,2);
+          assert.equal(bracket.cap.matches.length,3);
+          assert.equal(bracket.cap.matches[2].a,'A');
+          assert.equal(bracket.cap.matches[2].b,'D');
+          assert.equal(nextSaves,1);
+          console.log('OK: score absent refuse, tour suivant cree avec les vainqueurs.');
 
 
 
