@@ -109,6 +109,33 @@ jobs:
             assert.equal(assignment.matches.find(m=>m.id==='independant').table,2,'Seconde table libre non utilisee');
             assert.ok(assignment.tables.every(t=>t.state==='playing'),'Etat des tables non synchronise');
             assert.deepEqual(assignment.afterSecond,assignment.matches.map(m=>({id:m.id,status:m.status,table:m.table})),'Seconde attribution a modifie des matchs en cours');
+            // Une table indisponible reste exclue ; une liberation permet la reprise.
+            const tableRecovery=await p.evaluate(()=>{
+              const original=db.tournaments.find(t=>t.id==='annual-ci');
+              const t={...original,mode:'challenge',roundLimit:false,roster:[],
+                presence:{a:true,b:true,c:true,d:true},
+                tables:[{id:1,state:'playing'},{id:2,state:'free'},{id:3,state:'excluded'}],
+                matches:[
+                  {id:'actif',a:'a',b:'b',status:'playing',table:1,hold:false,sets:[]},
+                  {id:'attente',a:'c',b:'d',status:'waiting',hold:false,sets:[]}
+                ]};
+              autoAssign(t);
+              const first={waiting:t.matches[1].status,table:t.matches[1].table,excluded:t.tables[2].state,active:t.matches[0].status};
+              // Nouvelle rencontre eligible, mais aucune table libre.
+              t.matches.push({id:'suivant',a:'a',b:'b',status:'waiting',hold:false,sets:[]});
+              autoAssign(t);
+              const noFree=t.matches[2].status;
+              t.matches[0].status='done';t.tables[0].state='free';
+              autoAssign(t);
+              return {first,noFree,recovered:{status:t.matches[2].status,table:t.matches[2].table},excluded:t.tables[2].state};
+            });
+            assert.equal(tableRecovery.first.waiting,'playing','Table libre non utilisee');
+            assert.equal(tableRecovery.first.table,2,'Table indisponible utilisee');
+            assert.equal(tableRecovery.first.active,'playing','Match deja en cours modifie');
+            assert.equal(tableRecovery.noFree,'waiting','Match attribue sans table libre');
+            assert.equal(tableRecovery.recovered.status,'playing','Match non repris apres liberation');
+            assert.equal(tableRecovery.recovered.table,1,'Table liberee non reutilisee');
+            assert.equal(tableRecovery.excluded,'excluded','Table exclue modifiee');
             // Ajout de joueurs : plusieurs cases doivent pouvoir etre cochees sans repli.
             await p.evaluate(()=>{
               db.players.push({id:'d',first:'David',last:'TEST'},{id:'e',first:'Emma',last:'TEST'});
