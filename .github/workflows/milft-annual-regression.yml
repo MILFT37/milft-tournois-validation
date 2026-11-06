@@ -112,6 +112,25 @@ jobs:
               return {score:m.score,sets:m.sets,done:t.matches.filter(x=>x.status==='done').length,standing:html.indexOf('Bob TEST')<html.indexOf('Alice TEST')};
             });
             assert.deepEqual(corrected,correction,'Correction perdue apres rechargement');
+            // Isolation : une seconde competition ne doit pas etre modifiee par les operations sur l'annuel.
+            const isolated=await p.evaluate(()=>{
+              const annual=db.tournaments.find(t=>t.id==='annual-ci');
+              const other=JSON.parse(JSON.stringify(annual));
+              other.id='other-ci';other.name='Autre tournoi independant';
+              other.matches=other.matches.map(m=>({...m,id:'other-'+m.id}));
+              db.tournaments.push(other);
+              db.selected='annual-ci';save();
+              return JSON.stringify(other);
+            });
+            await p.reload();
+            assert.equal(await p.evaluate(()=>JSON.stringify(db.tournaments.find(t=>t.id==='other-ci'))),isolated,'Autre tournoi modifie au rechargement');
+            await p.evaluate(()=>{
+              const annual=db.tournaments.find(t=>t.id==='annual-ci');
+              annual.presence.a=false;save();
+            });
+            assert.equal(await p.evaluate(()=>JSON.stringify(db.tournaments.find(t=>t.id==='other-ci'))),isolated,'Modification de presence annuelle repercutee sur un autre tournoi');
+            await p.reload();
+            assert.equal(await p.evaluate(()=>JSON.stringify(db.tournaments.find(t=>t.id==='other-ci'))),isolated,'Isolation perdue apres rechargement');
             // Export complet de la saison apres deux seances et correction.
             const [backup]=await Promise.all([
               p.waitForEvent('download'),
@@ -129,11 +148,14 @@ jobs:
             await q.waitForFunction(()=>typeof db!=='undefined'&&db.tournaments.some(t=>t.id==='annual-ci'));
             const inspect=()=>{const t=db.tournaments.find(x=>x.id==='annual-ci');if(!t)return null;const m=t.matches.find(x=>x.id==='ab');const second=t.matches.find(x=>x.status==='done'&&x.id!=='ab');const html=challengeStandings(t);return {roster:t.roster.map(x=>x.id),matchCount:t.matches.length,done:t.matches.filter(x=>x.status==='done').length,first:m.score,firstSets:m.sets,secondId:second?.id,second:second?.score,presence:t.presence,rankingBobBeforeAlice:html.indexOf('Bob TEST')<html.indexOf('Alice TEST')};};
             const reference=await p.evaluate(inspect);
+            const otherReference=await p.evaluate(()=>JSON.stringify(db.tournaments.find(t=>t.id==='other-ci')));
             const imported=await q.evaluate(inspect);
             assert.deepEqual(imported,reference,'Import de la saison complete non conforme');
+            assert.equal(await q.evaluate(()=>JSON.stringify(db.tournaments.find(t=>t.id==='other-ci'))),otherReference,'Autre tournoi perdu pendant restauration');
             await q.reload();
             const reopened=await q.evaluate(inspect);
             assert.deepEqual(reopened,reference,'Reprise de la saison restauree non conforme');
+            assert.equal(await q.evaluate(()=>JSON.stringify(db.tournaments.find(t=>t.id==='other-ci'))),otherReference,'Autre tournoi perdu apres rechargement');
             // Une archive malformee ne doit jamais remplacer la saison restauree.
             const beforeInvalid=await q.evaluate(inspect);
             await q.locator('#milft-backup-file').setInputFiles({
