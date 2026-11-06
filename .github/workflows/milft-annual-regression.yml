@@ -48,6 +48,26 @@ jobs:
             assert.equal(capUi.gap,'10px','Espacement des commandes non harmonise');
             assert.equal(capUi.finish,'finishbtn','Bouton Terminer non conforme');
             assert.equal(capUi.abandon,'danger','Bouton Abandonner non conforme');
+            // Geometrie reelle en viewport mobile : deux lignes, deux colonnes, tailles egales.
+            await p.setViewportSize({width:390,height:844});
+            const capMobile=await p.evaluate(()=>{
+              const host=document.createElement('div');
+              host.style.cssText='width:100%;box-sizing:border-box;padding:12px';
+              host.innerHTML=milftCapUnifiedHeader({name:'Coupe test',closed:false},'Course aux points','0/6 relais','capClose()','Terminer');
+              document.body.append(host);
+              const boxes=[...host.querySelectorAll('.milft-cap-actions button')].map(b=>{
+                const r=b.getBoundingClientRect();return {x:r.x,y:r.y,width:r.width,height:r.height,right:r.right};
+              });
+              host.remove();
+              return boxes;
+            });
+            assert.equal(capMobile.length,4,'Quatre commandes attendues sur mobile');
+            assert.ok(capMobile.every(b=>b.width>80&&b.height>0&&b.right<=390),'Commandes mobiles hors ecran');
+            assert.ok(Math.abs(capMobile[0].y-capMobile[1].y)<2,'Premiere ligne mal alignee');
+            assert.ok(Math.abs(capMobile[2].y-capMobile[3].y)<2,'Terminer/Abandonner non alignes');
+            assert.ok(capMobile[2].y>capMobile[0].y,'Terminer/Abandonner doivent etre en deuxieme ligne');
+            assert.ok(Math.max(...capMobile.map(b=>b.width))-Math.min(...capMobile.map(b=>b.width))<2,'Largeurs des commandes incoherentes');
+            await p.setViewportSize({width:1280,height:720});
             // Regression UI : les presences restent depliees a chaque coche/decochage.
             await p.evaluate(()=>{
               db.players=[{id:'a',first:'Alice',last:'TEST'},{id:'b',first:'Bob',last:'TEST'},{id:'c',first:'Chloe',last:'TEST'}];
