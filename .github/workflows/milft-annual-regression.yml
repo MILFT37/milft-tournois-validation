@@ -181,6 +181,27 @@ jobs:
             assert.equal(roundAssignment.second[0].status,'playing','Tour suivant non attribue apres changement');
             assert.equal(roundAssignment.second[0].table,2,'Table deja occupee reutilisee');
             assert.equal(roundAssignment.second[1].table,1,'Table du match precedent modifiee');
+            // Etats exclus : terminer, reporter ou exempter ne doit pas occuper de table.
+            const excludedMatches=await p.evaluate(()=>{
+              const original=db.tournaments.find(t=>t.id==='annual-ci');
+              const t={...original,mode:'challenge',roundLimit:false,roster:[],
+                presence:{a:true,b:true,c:true,d:true,e:true,f:true},
+                tables:[{id:1,state:'free'},{id:2,state:'free'}],
+                matches:[
+                  {id:'termine',a:'a',b:'b',status:'done',hold:false,sets:[]},
+                  {id:'reporte',a:'a',b:'c',status:'waiting',hold:true,sets:[]},
+                  {id:'exempt',a:'d',b:'e',status:'waiting',bye:true,hold:false,sets:[]},
+                  {id:'eligible',a:'e',b:'f',status:'waiting',hold:false,sets:[]}
+                ]};
+              autoAssign(t);
+              return {matches:t.matches.map(m=>({id:m.id,status:m.status,table:m.table})),tables:t.tables.map(x=>x.state)};
+            });
+            assert.equal(excludedMatches.matches[0].status,'done','Match termine reattribue');
+            assert.equal(excludedMatches.matches[1].status,'waiting','Match reporte attribue');
+            assert.equal(excludedMatches.matches[2].status,'waiting','Exemption attribuee');
+            assert.equal(excludedMatches.matches[3].status,'playing','Match eligible non attribue');
+            assert.equal(excludedMatches.matches[3].table,1,'Premiere table non utilisee');
+            assert.deepEqual(excludedMatches.tables,['playing','free'],'Une table a ete occupee inutilement');
             // Ajout de joueurs : plusieurs cases doivent pouvoir etre cochees sans repli.
             await p.evaluate(()=>{
               db.players.push({id:'d',first:'David',last:'TEST'},{id:'e',first:'Emma',last:'TEST'});
