@@ -210,6 +210,33 @@ jobs:
           closeFn();
           assert.equal(closeTournament.closed,false,'Tableau final requis');
           console.log('OK: clôture, refus si incomplet, réouverture et tableau final requis.');
+          // Parcours saisie de scores : champs vides, palier, cumul et fin de rencontre.
+          const scoreStart=html.indexOf('function capCompRecord(id){');
+          const scoreEnd=html.indexOf(String.fromCharCode(10)+'function capCompUndo(id)',scoreStart);
+          assert.ok(scoreStart>=0&&scoreEnd>scoreStart,'Saisie des scores introuvable');
+          const scoreCode=html.slice(scoreStart,scoreEnd);
+          const scoreMatch={id:'score',status:'waiting',relays:[]};
+          const scoreTournament={closed:false,cap:{targets:[10,20],finish:'win',phase:'league',matches:[scoreMatch]}};
+          let scoreA='',scoreB='10',scoreSaves=0,scoreAlerts=[];
+          const recordScore=new Function('active','document','alert','save','flash',
+            scoreCode+';return capCompRecord;')(
+            ()=>scoreTournament,
+            {getElementById:id=>({get value(){return id.startsWith('capca-')?scoreA:scoreB;}})},
+            s=>scoreAlerts.push(s),()=>scoreSaves++,()=>{});
+          recordScore('score');
+          assert.equal(scoreMatch.relays.length,0,'Champ vide refusé');
+          scoreA='10';scoreB='0';recordScore('score');
+          assert.equal(scoreMatch.relays.length,1,'Premier relais enregistré');
+          assert.equal(scoreSaves,1);
+          scoreA='9';scoreB='20';recordScore('score');
+          assert.equal(scoreMatch.relays.length,1,'Cumul décroissant refusé');
+          scoreA='20';scoreB='12';recordScore('score');
+          assert.equal(scoreMatch.relays.length,2,'Deuxième relais enregistré');
+          assert.equal(scoreMatch.status,'done','Rencontre terminée');
+          assert.equal(scoreSaves,2);
+          recordScore('score');assert.equal(scoreSaves,2,'Résultat terminé protégé');
+          console.log('OK: champs vides, paliers, cumul, fin de rencontre et sauvegardes.');
+
 
 
 
