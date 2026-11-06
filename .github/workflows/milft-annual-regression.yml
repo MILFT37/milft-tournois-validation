@@ -202,6 +202,24 @@ jobs:
             assert.equal(excludedMatches.matches[3].status,'playing','Match eligible non attribue');
             assert.equal(excludedMatches.matches[3].table,1,'Premiere table non utilisee');
             assert.deepEqual(excludedMatches.tables,['playing','free'],'Une table a ete occupee inutilement');
+            // Non-regression : l'attribution ne doit pas alterer les scores existants.
+            const scoreIntegrity=await p.evaluate(()=>{
+              const original=db.tournaments.find(t=>t.id==='annual-ci');
+              const t={...original,mode:'challenge',roundLimit:false,roster:[],
+                presence:{a:true,b:true,c:true,d:true,e:true,f:true},
+                tables:[{id:1,state:'playing'},{id:2,state:'free'}],
+                matches:[
+                  {id:'termine',a:'a',b:'b',status:'done',hold:false,sets:[{a:5,b:3},{a:5,b:4}],scoreA:2,scoreB:0},
+                  {id:'en-cours',a:'c',b:'d',status:'playing',table:1,hold:false,sets:[{a:5,b:2}],scoreA:1,scoreB:0},
+                  {id:'nouveau',a:'e',b:'f',status:'waiting',hold:false,sets:[]}
+                ]};
+              const before=t.matches.slice(0,2).map(m=>JSON.stringify(m));
+              autoAssign(t);
+              return {before,after:t.matches.slice(0,2).map(m=>JSON.stringify(m)),newMatch:{status:t.matches[2].status,table:t.matches[2].table}};
+            });
+            assert.deepEqual(scoreIntegrity.after,scoreIntegrity.before,'Attribution a modifie une rencontre existante');
+            assert.equal(scoreIntegrity.newMatch.status,'playing','Rencontre independante non attribuee');
+            assert.equal(scoreIntegrity.newMatch.table,2,'Table deja occupee reutilisee');
             // Ajout de joueurs : plusieurs cases doivent pouvoir etre cochees sans repli.
             await p.evaluate(()=>{
               db.players.push({id:'d',first:'David',last:'TEST'},{id:'e',first:'Emma',last:'TEST'});
