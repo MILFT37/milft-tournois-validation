@@ -419,20 +419,20 @@ jobs:
               {id:'c',pts:2,diff:0},
               {id:'a',pts:2,diff:-3}
             ],'CAP : departage a points egaux par difference cumulee incorrect');
-            // CAP : a egalite de points et difference, la confrontation directe tranche.
+            // CAP : meme total de points et meme difference, victoire directe prioritaire.
             const capHeadRanking=await p.evaluate(()=>{
               const match=(id,a,b,sa,sb)=>({id,phase:'league',status:'done',a,b,relays:[{a:sa,b:sb}]});
               const t={cap:{matches:[
                 match('ab','a','b',10,8),
-                match('ac','a','c',5,10),
-                match('bc','b','c',10,5),
-                match('ad','a','d',10,5),
-                match('bd','b','d',8,10)
+                match('ac','a','c',8,10),
+                match('ad','a','d',10,8),
+                match('bc','b','c',10,8),
+                match('bd','b','d',10,8)
               ]}};
               return capCompRanking(t,['a','b'],'league').map(r=>({id:r.id,pts:r.pts,diff:r.for-r.against}));
             });
-            assert.deepEqual(capHeadRanking,[{id:'a',pts:4,diff:2},{id:'b',pts:2,diff:1}],
-              'CAP : classement clubs incoherent');
+            assert.deepEqual(capHeadRanking,[{id:'a',pts:4,diff:2},{id:'b',pts:4,diff:2}],
+              'CAP : confrontation directe non prioritaire a egalite parfaite');
             // Regression UI : les presences restent depliees a chaque coche/decochage.
             await p.evaluate(()=>{
               db.players=[{id:'a',first:'Alice',last:'TEST'},{id:'b',first:'Bob',last:'TEST'},{id:'c',first:'Chloe',last:'TEST'}];
