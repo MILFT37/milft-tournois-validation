@@ -136,6 +136,29 @@ jobs:
             assert.equal(tableRecovery.recovered.status,'playing','Match non repris apres liberation');
             assert.equal(tableRecovery.recovered.table,1,'Table liberee non reutilisee');
             assert.equal(tableRecovery.excluded,'excluded','Table exclue modifiee');
+            // Presence : ne jamais attribuer un match avec un absent ; reprise apres retour.
+            const presenceAssignment=await p.evaluate(()=>{
+              const original=db.tournaments.find(t=>t.id==='annual-ci');
+              const t={...original,mode:'challenge',roundLimit:false,roster:[],
+                presence:{a:true,b:false,c:true,d:true},
+                tables:[{id:1,state:'free'},{id:2,state:'free'}],
+                matches:[
+                  {id:'absent',a:'a',b:'b',status:'waiting',hold:false,sets:[]},
+                  {id:'present',a:'c',b:'d',status:'waiting',hold:false,sets:[]}
+                ]};
+              autoAssign(t);
+              const first={absent:t.matches[0].status,present:t.matches[1].status,presentTable:t.matches[1].table,free:t.tables[1].state};
+              t.presence.b=true;
+              autoAssign(t);
+              return {first,after:{absent:t.matches[0].status,table:t.matches[0].table,playing:t.matches[1].status}};
+            });
+            assert.equal(presenceAssignment.first.absent,'waiting','Match attribue avec joueur absent');
+            assert.equal(presenceAssignment.first.present,'playing','Match de joueurs presents non attribue');
+            assert.equal(presenceAssignment.first.presentTable,1,'Table libre non attribuee aux presents');
+            assert.equal(presenceAssignment.first.free,'free','Table reservee pour un joueur absent');
+            assert.equal(presenceAssignment.after.absent,'playing','Match non attribue apres retour du joueur');
+            assert.equal(presenceAssignment.after.table,2,'Mauvaise table attribuee apres retour');
+            assert.equal(presenceAssignment.after.playing,'playing','Match precedent interrompu');
             // Ajout de joueurs : plusieurs cases doivent pouvoir etre cochees sans repli.
             await p.evaluate(()=>{
               db.players.push({id:'d',first:'David',last:'TEST'},{id:'e',first:'Emma',last:'TEST'});
