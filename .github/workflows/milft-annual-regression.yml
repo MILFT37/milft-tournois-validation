@@ -47,6 +47,20 @@ jobs:
             await checks.nth(1).uncheck();
             assert.equal(await presencePanel.evaluate(el=>el.open),true,'Panneau replie apres deselection');
             assert.ok((await presencePanel.locator('summary').innerText()).includes('2/3'),'Compteur apres deselection incorrect');
+            // Ajout de joueurs : plusieurs cases doivent pouvoir etre cochees sans repli.
+            await p.evaluate(()=>{
+              db.players.push({id:'d',first:'David',last:'TEST'},{id:'e',first:'Emma',last:'TEST'});
+              save();render();
+            });
+            const addPanel=p.locator('.milft-annual-add details');
+            await addPanel.locator('summary').click();
+            const newPlayerChecks=addPanel.locator('input[name="annualNew"]');
+            assert.equal(await newPlayerChecks.count(),2,'Deux joueurs disponibles attendus');
+            await newPlayerChecks.nth(0).check();
+            assert.equal(await addPanel.evaluate(el=>el.open),true,'Ajout replie apres premier choix');
+            await newPlayerChecks.nth(1).check();
+            assert.equal(await addPanel.evaluate(el=>el.open),true,'Ajout replie apres second choix');
+            assert.equal(await newPlayerChecks.filter({checked:true}).count(),2,'Selection multiple non conservee');
             await p.reload();
             assert.equal(await p.evaluate(()=>db.tournaments.find(t=>t.id==='annual-ci').presence.b),false,'Deselection non sauvegardee');
             assert.equal(await p.evaluate(()=>db.tournaments.find(t=>t.id==='annual-ci').presence.a),true,'Presence non sauvegardee');
