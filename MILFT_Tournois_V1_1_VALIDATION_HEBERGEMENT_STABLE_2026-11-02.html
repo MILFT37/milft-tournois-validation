@@ -1817,7 +1817,7 @@ function capAutoAssign(){
  const free=t.tables.filter(x=>capFreeTable(t,x.id));let count=0;
  for(const m of capActiveMatches(t)){
   if(!free.length)break;
-  if(m.status==='done'||m.bye||m.tableId)continue;
+  if(m.status!=='waiting'||m.bye||m.tableId||!m.a||!m.b)continue;
   m.tableId=free.shift().id;count++;
  }
  save();flash(count?count+' rencontre(s) attribuée(s) aux tables libres.':'Aucune table libre ou rencontre en attente.');
