@@ -429,7 +429,7 @@ jobs:
                 match('bc','b','c',10,8),
                 match('bd','b','d',10,8)
               ]}};
-              return capCompRanking(t,['a','b'],'league').map(r=>({id:r.id,pts:r.pts,diff:r.for-r.against}));
+              return capCompRanking(t,['a','b','c','d'],'league').filter(r=>r.id==='a'||r.id==='b').map(r=>({id:r.id,pts:r.pts,diff:r.for-r.against}));
             });
             assert.deepEqual(capHeadRanking,[{id:'a',pts:4,diff:2},{id:'b',pts:4,diff:2}],
               'CAP : confrontation directe non prioritaire a egalite parfaite');
