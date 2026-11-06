@@ -218,6 +218,34 @@ jobs:
             });
             assert.ok(divergentSeason.unchanged,'Saison divergente : donnees modifiees');
             assert.ok(divergentSeason.alerts.some(x=>x.includes('déjà présent mais différent')),'Saison divergente : refus absent');
+            // La fusion doit conserver les metadonnees de seances, presences et resultats sans les transformer.
+            const preservedAnnual=await p.evaluate(async()=>{
+              const snapshot=JSON.parse(JSON.stringify(db));
+              const oldConfirm=window.confirm,oldAlert=window.alert,oldPreserve=milftPreserverAvantRestauration;
+              try{
+                db={...snapshot,players:[],tournaments:[]};
+                window.confirm=()=>true;window.alert=()=>{};
+                milftPreserverAvantRestauration=async()=>({protectedId:'test-secours'});
+                const season={id:'season-metadata',mode:'challenge',name:'Championnat test',
+                  roster:[{id:'p1',first:'A',last:'TEST'},{id:'p2',first:'B',last:'TEST'}],
+                  matches:[{id:'m1',a:'p1',b:'p2',status:'done',sets:[[5,3],[5,2],[5,4]],winner:'p1'}],
+                  tables:[{id:1,state:'free'}],
+                  sessions:[{id:'s1',date:'2026-11-05',present:['p1'],absent:['p2']}],
+                  attendance:{s1:['p1']},customSeasonField:{preserve:true}};
+                const source={format:'MILFT-TOURNOIS-BACKUP',version:1,data:{
+                  players:[{id:'p1',first:'A',last:'TEST'},{id:'p2',first:'B',last:'TEST'}],
+                  tournaments:[season]}};
+                const file=new File([JSON.stringify(source)],'seances.json',{type:'application/json'});
+                await milftMergeAnnualBackup({files:[file],value:'seances.json'});
+                return {same:JSON.stringify(db.tournaments[0])===JSON.stringify(season),
+                  players:db.players.length};
+              }finally{
+                db=snapshot;save();window.confirm=oldConfirm;window.alert=oldAlert;
+                milftPreserverAvantRestauration=oldPreserve;
+              }
+            });
+            assert.ok(preservedAnnual.same,'Fusion : metadonnees de saison ou resultats modifies');
+            assert.equal(preservedAnnual.players,2,'Fusion : joueurs de saison manquants');
             // Regression UI : les presences restent depliees a chaque coche/decochage.
             await p.evaluate(()=>{
               db.players=[{id:'a',first:'Alice',last:'TEST'},{id:'b',first:'Bob',last:'TEST'},{id:'c',first:'Chloe',last:'TEST'}];
