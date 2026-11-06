@@ -831,7 +831,8 @@ jobs:
             const restoredPresence=q.locator('.milft-annual-presence details');
             assert.equal(await restoredPresence.count(),1,'Repli des presences absent apres import');
             const restoredCount=await restoredPresence.locator('summary').innerText();
-            assert.ok(restoredCount.includes('2/3'),'Compteur de presences perdu apres import : '+restoredCount);
+            const expectedPresent=Object.values(reference.presence).filter(Boolean).length;
+            assert.ok(restoredCount.includes(expectedPresent+'/3'),'Compteur de presences perdu apres import : '+restoredCount);
             await restoredPresence.locator('summary').click();
             assert.equal(await restoredPresence.evaluate(el=>el.open),true,'Repli non utilisable apres import');
             console.log('OK: migration saison isolee vers V1.1, presences et repli utilisables.');
