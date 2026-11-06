@@ -366,6 +366,25 @@ jobs:
                 return {blocked,missingScoreBlocked,closed,alerts};
               }finally{db=original;save();window.alert=oldAlert}
             });
+            // Garde-fous de livraison : archives BYE incompletes et phases vides.
+            const capEdgeCases=await p.evaluate(()=>{
+              const original=db,oldAlert=window.alert,oldFlash=flash,alerts=[];
+              try{
+                window.alert=x=>alerts.push(String(x));flash=()=>{};
+                const empty={id:'cap-empty',name:'Coupe vide',mode:'cap',closed:false,roster:[],matches:[],tables:[{id:1,state:'free'}],cap:{competition:true,structure:'cup',phase:'groups',bracket:true,pools:[['a','b']],qualifiers:1,matches:[],clubs:[{id:'a',name:'A'},{id:'b',name:'B'}]}};
+                db={players:[],selected:'cap-empty',tournaments:[empty]};
+                capCompClose();const emptyClosed=empty.closed;
+                capCompNext();const emptyPhase=empty.cap.phase;
+                const invalidBye=capCompScore({bye:true,score:null});
+                const validBye=capCompScore({bye:true,score:{a:30,b:20}});
+                return {emptyClosed,emptyPhase,invalidBye,validBye,alerts};
+              }finally{db=original;window.alert=oldAlert;flash=oldFlash;}
+            });
+            assert.equal(capEdgeCases.emptyClosed,false,'CAP : cloture de competition vide autorisee');
+            assert.equal(capEdgeCases.emptyPhase,'groups','CAP : transition de phase vide autorisee');
+            assert.equal(capEdgeCases.invalidBye,null,'CAP : BYE sans score non detecte');
+            assert.deepEqual(capEdgeCases.validBye,{a:30,b:20},'CAP : BYE valide non reconnu');
+            assert.ok(capEdgeCases.alerts.length>=2,'CAP : alertes de protection absentes');
             assert.equal(capLeagueClose.blocked,false,'Championnat CAP : cloture prematuree autorisee');
             assert.equal(capLeagueClose.missingScoreBlocked,false,'Championnat CAP : score manquant non bloque');
             assert.equal(capLeagueClose.closed,true,'Championnat CAP : cloture terminee refusee');
