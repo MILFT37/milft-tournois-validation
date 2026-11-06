@@ -380,6 +380,17 @@ jobs:
                 return {emptyClosed,emptyPhase,invalidBye,validBye,alerts};
               }finally{db=original;window.alert=oldAlert;flash=oldFlash;}
             });
+            const capInvalidTransition=await p.evaluate(()=>{
+              const original=db,oldAlert=window.alert,oldFlash=flash,alerts=[];
+              try{
+                window.alert=x=>alerts.push(String(x));flash=()=>{};
+                const cup={id:'cap-badscore',name:'Coupe',mode:'cap',closed:false,roster:[],matches:[],tables:[],cap:{competition:true,structure:'cup',phase:'groups',bracket:true,pools:[['a','b']],qualifiers:1,targets:[30],types:['S'],matches:[{id:'bad',a:'a',b:'b',phase:'groups',group:0,status:'done',relays:[]}],clubs:[{id:'a',name:'A'},{id:'b',name:'B'}]}};
+                db={players:[],selected:'cap-badscore',tournaments:[cup]};
+                capCompNext();return {phase:cup.cap.phase,alerts};
+              }finally{db=original;window.alert=oldAlert;flash=oldFlash;}
+            });
+            assert.equal(capInvalidTransition.phase,'groups','CAP : tableau genere sans score');
+            assert.ok(capInvalidTransition.alerts.some(x=>x.includes('score valide')),'CAP : alerte score absent manquante');
             assert.equal(capEdgeCases.emptyClosed,false,'CAP : cloture de competition vide autorisee');
             assert.equal(capEdgeCases.emptyPhase,'groups','CAP : transition de phase vide autorisee');
             assert.equal(capEdgeCases.invalidBye,null,'CAP : BYE sans score non detecte');
