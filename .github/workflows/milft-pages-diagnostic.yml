@@ -14,6 +14,9 @@ jobs:
         run: |
           set -uo pipefail
           base='https://milft37.github.io/milft-tournois-validation'
+          echo '=== Configuration GitHub Pages ==='
+          curl -sS -H 'Accept: application/vnd.github+json' 'https://api.github.com/repos/MILFT37/milft-tournois-validation/pages' | python3 -c 'import json,sys; j=json.load(sys.stdin); print({k:j.get(k) for k in ("status","build_type","source","html_url","message")})'
+          failures=0
           for page in 'MILFT_Tournois_V1_1_VALIDATION_HEBERGEMENT_STABLE_2026-11-02.html' 'MILFT_Tournois_V1_1_FUSION_ANNUELLE_2026-11-06.html'; do
             echo "::group::$page"
             status=$(curl -L -sS --retry 2 --max-time 30 -o /tmp/milft-page.html -w '%{http_code}' "$base/$page?check=${GITHUB_SHA}" ) || status='NETWORK_ERROR'
@@ -23,7 +26,8 @@ jobs:
               echo "RESULT=OK: page et bouton de fusion presents"
             else
               echo "RESULT=ECHEC: page absente ou bouton manquant"
-              exit 1
+              failures=1
             fi
             echo '::endgroup::'
           done
+          exit $failures
