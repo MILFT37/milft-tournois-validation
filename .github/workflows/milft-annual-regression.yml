@@ -51,6 +51,25 @@ jobs:
             await checks.nth(1).uncheck();
             assert.equal(await presencePanel.evaluate(el=>el.open),true,'Panneau replie apres deselection');
             assert.ok((await presencePanel.locator('summary').innerText()).includes('2/3'),'Compteur apres deselection incorrect');
+            // Priorite de relance : un match reporte et reactive passe devant un match ordinaire.
+            const priority=await p.evaluate(()=>{
+              const t=db.tournaments.find(t=>t.id==='annual-ci');
+              const old=t.matches,oldPresence={...t.presence};
+              t.matches=[
+                {id:'ordinaire',a:'a',b:'b',status:'waiting',hold:false,sets:[]},
+                {id:'reprise',a:'a',b:'c',status:'waiting',hold:true,sets:[{a:5,b:3}]}
+              ];
+              const before=milftAnnualNextMatch(t,new Set())?.id;
+              t.matches[1].hold=false;
+              t.matches[1].annualResumePriority=true;
+              const after=milftAnnualNextMatch(t,new Set())?.id;
+              const sets=t.matches[1].sets.length;
+              t.matches=old;t.presence=oldPresence;
+              return {before,after,sets};
+            });
+            assert.equal(priority.before,'ordinaire','Un match en attente ne doit pas etre attribue');
+            assert.equal(priority.after,'reprise','Le match relance doit etre prioritaire');
+            assert.equal(priority.sets,1,'La reprise doit conserver les manches');
             // Ajout de joueurs : plusieurs cases doivent pouvoir etre cochees sans repli.
             await p.evaluate(()=>{
               db.players.push({id:'d',first:'David',last:'TEST'},{id:'e',first:'Emma',last:'TEST'});
