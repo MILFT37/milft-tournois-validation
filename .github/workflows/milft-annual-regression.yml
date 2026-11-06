@@ -130,6 +130,31 @@ jobs:
             assert.deepEqual(mergeResult.first.players,['local','new'],'Import : preservation ou ajout des joueurs incorrect');
             assert.deepEqual(mergeResult.secondIds,['existing','incoming'],'Import repete : doublon de championnat');
             assert.ok(mergeResult.alerts.some(x=>x.includes('existent déjà')),'Import repete : avertissement manquant');
+            // Import selectif : rejeter les fichiers invalides et les collisions de joueurs sans modifier les donnees.
+            const mergeSafety=await p.evaluate(async()=>{
+              const snapshot=JSON.parse(JSON.stringify(db));
+              const alerts=[],oldAlert=window.alert;
+              try{
+                db={...snapshot,players:[{id:'same',first:'Alice',last:'EXISTANTE'}],tournaments:[]};
+                window.alert=msg=>alerts.push(String(msg));
+                const run=async source=>{
+                  const file=new File([JSON.stringify(source)],'test.json',{type:'application/json'});
+                  await milftMergeAnnualBackup({files:[file],value:'test.json'});
+                  return JSON.stringify(db);
+                };
+                const before=JSON.stringify(db);
+                const invalid=await run({format:'AUTRE',version:1,data:{players:[],tournaments:[]}});
+                const conflict=await run({format:'MILFT-TOURNOIS-BACKUP',version:1,data:{
+                  players:[{id:'same',first:'Autre',last:'PERSONNE'}],
+                  tournaments:[{id:'new',mode:'challenge',name:'Saison',roster:[],matches:[],tables:[]}]
+                }});
+                return {sameInvalid:invalid===before,sameConflict:conflict===before,alerts};
+              }finally{db=snapshot;save();window.alert=oldAlert}
+            });
+            assert.ok(mergeSafety.sameInvalid,'Import invalide : donnees modifiees');
+            assert.ok(mergeSafety.sameConflict,'Conflit joueur : donnees modifiees');
+            assert.ok(mergeSafety.alerts.some(x=>x.includes('non reconnue')),'Import invalide : refus absent');
+            assert.ok(mergeSafety.alerts.some(x=>x.includes('Conflit de fiche joueur')),'Conflit joueur : refus absent');
             // Regression UI : les presences restent depliees a chaque coche/decochage.
             await p.evaluate(()=>{
               db.players=[{id:'a',first:'Alice',last:'TEST'},{id:'b',first:'Bob',last:'TEST'},{id:'c',first:'Chloe',last:'TEST'}];
