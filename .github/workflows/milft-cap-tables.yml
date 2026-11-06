@@ -24,6 +24,9 @@ jobs:
           has("if(old!=='done'&&m.status==='done'){m.tableId=null;save();}");
           has("if(m?.bye){m.tableId=null;save();}");
           has("if(removed.some(x=>capTableBusy(t,x.id)))");
+          has("if(n===current)return;");
+          has("if(m.tableId===n)return;");
+          has("if(m.tableId!=null){m.tableId=null;save();flash('Attribution de table retirée.');}");
           // Contrôles de non-régression : commandes communes et disposition 2 colonnes.
           has('function milftSharedCommandHeader({name,pills,actions})');
           has('data-shared-commands="true"');
