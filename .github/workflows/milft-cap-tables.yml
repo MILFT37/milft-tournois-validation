@@ -23,6 +23,13 @@ jobs:
           has("if(old!=='done'&&m.status==='done'){m.tableId=null;save();}");
           has("if(m?.bye){m.tableId=null;save();}");
           has("if(removed.some(x=>capTableBusy(t,x.id)))");
+          // Contrôles de non-régression : commandes communes et disposition 2 colonnes.
+          has('function milftSharedCommandHeader({name,pills,actions})');
+          has('data-shared-commands="true"');
+          has('grid-template-columns:repeat(2,minmax(0,1fr))');
+          has("label:'Abandonner',action:'capAbandon()'");
+          has("action:'capCompClose()'");
+          has("action:'capAutoAssign()'");
           const start=html.indexOf('function capAutoAssign(){');
           const end=html.indexOf('\nconst capOriginalRecordV2',start);
           assert.ok(start>=0&&end>start);
