@@ -279,7 +279,7 @@ jobs:
               try{
                 const match={id:'cap-m',a:'a',b:'b',status:'waiting',tableId:null};
                 db={...original,selected:'cap-manual-check',tournaments:[{
-                  id:'cap-manual-check',mode:'cap',closed:false,
+                  id:'cap-manual-check',mode:'cap',closed:false,matches:[],roster:[],
                   tables:[{id:1,state:'excluded'},{id:2,state:'free'}],
                   cap:{competition:true,phase:'league',matches:[match]}
                 }]};
