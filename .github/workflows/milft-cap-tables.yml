@@ -307,6 +307,22 @@ jobs:
           assert.equal(undoMatch.relays.length,0,'Correction avant tableau autorisee');
           assert.equal(undoSaves,1);
           console.log('OK: correction de poule verrouillee apres tableau final.');
+          const buildStart=html.indexOf('function capCompBuildBracket(c,ids){');
+          const buildEnd=html.indexOf(String.fromCharCode(10)+'function capCompName(',buildStart);
+          assert.ok(buildStart>=0&&buildEnd>buildStart,'Construction tableau introuvable');
+          let seedSerial=0;
+          const buildBracket=new Function('uid',buildStart>=0?html.slice(buildStart,buildEnd)+';return capCompBuildBracket;':'')(()=>String(++seedSerial));
+          for(const n of [3,5,6,7,9,10,12,15]){
+            const c={phase:'groups',matches:[],byeWin:5,byeLose:3};
+            const ids=Array.from({length:n},(_,i)=>'club'+i);
+            buildBracket(c,ids);
+            const size=2**Math.ceil(Math.log2(n));
+            assert.equal(c.matches.length,size/2);
+            assert.equal(c.matches.filter(m=>m.bye).length,size-n);
+            assert.ok(c.matches.every(m=>m.a),'Aucune rencontre vide');
+            assert.deepEqual(c.matches.flatMap(m=>[m.a,m.b].filter(Boolean)).sort(),ids.sort());
+          }
+          console.log('OK: tableaux de 3 a 15 clubs sans rencontres vides.');
 
 
 
