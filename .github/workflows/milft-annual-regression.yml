@@ -330,6 +330,23 @@ jobs:
             assert.equal(relayChecks.complete,2,'CAP : second relais non enregistre');
             assert.equal(relayChecks.afterCorrection,1,'CAP : correction du dernier relais impossible');
             assert.equal(relayChecks.refusedClose,false,'CAP : cloture prematuree autorisee');
+            // Course aux points : une rencontre terminee se cloture puis peut etre rouverte.
+            const capCloseCompleted=await p.evaluate(()=>{
+              const original=JSON.parse(JSON.stringify(db)),oldAlert=window.alert;
+              try{
+                db={...original,selected:'cap-close-ci',tournaments:[{
+                  id:'cap-close-ci',name:'CAP termine',mode:'cap',closed:false,matches:[],roster:[],
+                  tables:[],cap:{teamA:'A',teamB:'B',targets:[5,10],types:['S','D'],
+                    relays:[{a:5,b:3},{a:10,b:8}],scoreMode:'cumulative',finish:'winner'}
+                }]};
+                window.alert=()=>{};
+                capClose();const closed=db.tournaments[0].closed;
+                capClose();const reopened=db.tournaments[0].closed;
+                return {closed,reopened};
+              }finally{db=original;save();window.alert=oldAlert}
+            });
+            assert.equal(capCloseCompleted.closed,true,'CAP : cloture d une rencontre terminee impossible');
+            assert.equal(capCloseCompleted.reopened,false,'CAP : reouverture d une rencontre impossible');
             // Regression UI : les presences restent depliees a chaque coche/decochage.
             await p.evaluate(()=>{
               db.players=[{id:'a',first:'Alice',last:'TEST'},{id:'b',first:'Bob',last:'TEST'},{id:'c',first:'Chloe',last:'TEST'}];
