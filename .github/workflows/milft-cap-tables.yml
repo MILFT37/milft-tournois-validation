@@ -19,11 +19,11 @@ jobs:
           const has=(s)=>assert.ok(html.includes(s),'Absent: '+s);
           // Validation globale : compiler chaque script embarqué, pas seulement le module CAP.
           const vm=require('node:vm');
-          const scripts=[...html.matchAll(/<script\\b([^>]*)>([\\s\\S]*?)<\\/script>/gi)];
+          const scripts=[...html.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi)];
           assert.ok(scripts.length>=1,'Aucun script embarque');
           let checked=0;
           for(const [,attrs,source] of scripts){
-            if(/\\bsrc\\s*=/.test(attrs))continue;
+            if(/\bsrc\s*=/.test(attrs))continue;
             new vm.Script(source,{filename:'milft-inline-'+(++checked)+'.js'});
           }
           assert.ok(checked>=1,'Aucun script compile');
