@@ -1,0 +1,33 @@
+name: Controle statique ergonomie V1.1
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'MILFT_Tournois_V1_1_VALIDATION_HEBERGEMENT_STABLE_2026-11-02.html'
+      - '.github/workflows/controle-ergonomie-v11.yml'
+  workflow_dispatch:
+jobs:
+  verification:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Vérifier les commandes et présences (statique)
+        shell: bash
+        run: |
+          node <<'JS'
+          const fs=require('node:fs');
+          const assert=require('node:assert/strict');
+          const s=fs.readFileSync('MILFT_Tournois_V1_1_VALIDATION_HEBERGEMENT_STABLE_2026-11-02.html','utf8');
+          const checks={
+            'grille CAP deux colonnes':/\.cap-command-row\{display:grid!important;grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/,
+            'Terminer en seconde ligne':/\.cap-command-row>\.cap-finish-command\{grid-column:1;grid-row:2\}/,
+            'Abandonner en seconde ligne':/\.cap-command-row>\.cap-abandon-command\{grid-column:2;grid-row:2\}/,
+            'attribuer les tables':/onclick="capAutoAssign\(\)"/,
+            'cloturer CAP':/onclick="capCompClose\(\)"/,
+            'abandon CAP':/onclick="capAbandon\(\)"/,
+            'présences repliables':/class="card milft-annual-presence"><details>/,
+            'état du repli préservé':/function renderAfterPresenceChange\(\)/,
+          };
+          for(const [label,re] of Object.entries(checks)){assert.match(s,re,label);console.log('OK '+label)}
+          console.log('8 controles statiques conformes (ne remplace pas un test navigateur)');
+          JS
