@@ -1679,7 +1679,7 @@ function capAssignTable(id){
  const v=document.getElementById('cap-table-'+id)?.value;
  if(!v){m.tableId=null;save();return}
  const n=Number(v),table=t.tables.find(x=>x.id===n);
- if(!table||table.state!=='free')return alert('Table indisponible.');
+ if(!table||table.state!=='free'||(m.tableId!==n&&!capFreeTable(t,n)))return alert('Table indisponible ou déjà attribuée à une autre rencontre.');
  m.tableId=n;save();
 }
 function capAbandon(){
