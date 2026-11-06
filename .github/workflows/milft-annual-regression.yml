@@ -155,6 +155,27 @@ jobs:
             assert.ok(mergeSafety.sameConflict,'Conflit joueur : donnees modifiees');
             assert.ok(mergeSafety.alerts.some(x=>x.includes('non reconnue')),'Import invalide : refus absent');
             assert.ok(mergeSafety.alerts.some(x=>x.includes('Conflit de fiche joueur')),'Conflit joueur : refus absent');
+            // Un joueur reference mais absent du repertoire ne doit pas etre importe.
+            const missingPlayer=await p.evaluate(async()=>{
+              const snapshot=JSON.parse(JSON.stringify(db)),oldAlert=window.alert;
+              const alerts=[];
+              try{
+                db={...snapshot,players:[],tournaments:[]};
+                window.alert=msg=>alerts.push(String(msg));
+                const source={format:'MILFT-TOURNOIS-BACKUP',version:1,data:{
+                  players:[],
+                  tournaments:[{id:'annual-orphan',mode:'challenge',name:'Saison orpheline',
+                    roster:[{id:'absent',first:'Joueur',last:'ABSENT'}],
+                    matches:[],tables:[{id:1,state:'free'}]}]
+                }};
+                const before=JSON.stringify(db);
+                const file=new File([JSON.stringify(source)],'orphelin.json',{type:'application/json'});
+                await milftMergeAnnualBackup({files:[file],value:'orphelin.json'});
+                return {unchanged:JSON.stringify(db)===before,alerts};
+              }finally{db=snapshot;save();window.alert=oldAlert}
+            });
+            assert.ok(missingPlayer.unchanged,'Import joueur manquant : donnees modifiees');
+            assert.ok(missingPlayer.alerts.some(x=>x.includes('Joueur manquant')),'Import joueur manquant : refus absent');
             // Regression UI : les presences restent depliees a chaque coche/decochage.
             await p.evaluate(()=>{
               db.players=[{id:'a',first:'Alice',last:'TEST'},{id:'b',first:'Bob',last:'TEST'},{id:'c',first:'Chloe',last:'TEST'}];
