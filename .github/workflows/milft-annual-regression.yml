@@ -199,6 +199,25 @@ jobs:
             });
             assert.ok(failedProtection.unchanged,'Echec sauvegarde de secours : donnees modifiees');
             assert.ok(failedProtection.alerts.some(x=>x.includes('Secours indisponible')),'Echec sauvegarde de secours : erreur non signalee');
+            // Meme ID de saison mais donnees divergentes : jamais ignorer ou remplacer silencieusement.
+            const divergentSeason=await p.evaluate(async()=>{
+              const snapshot=JSON.parse(JSON.stringify(db)),oldAlert=window.alert;
+              const alerts=[];
+              try{
+                db={...snapshot,players:[],tournaments:[{id:'season-1',mode:'challenge',name:'Saison locale',
+                  roster:[],matches:[{id:'result-1',status:'done',sets:[]}],tables:[]}]};
+                window.alert=msg=>alerts.push(String(msg));
+                const source={format:'MILFT-TOURNOIS-BACKUP',version:1,data:{
+                  players:[],tournaments:[{id:'season-1',mode:'challenge',name:'Saison locale',
+                    roster:[],matches:[],tables:[]}]}};
+                const before=JSON.stringify(db);
+                const file=new File([JSON.stringify(source)],'divergent.json',{type:'application/json'});
+                await milftMergeAnnualBackup({files:[file],value:'divergent.json'});
+                return {unchanged:JSON.stringify(db)===before,alerts};
+              }finally{db=snapshot;save();window.alert=oldAlert}
+            });
+            assert.ok(divergentSeason.unchanged,'Saison divergente : donnees modifiees');
+            assert.ok(divergentSeason.alerts.some(x=>x.includes('déjà présent mais différent')),'Saison divergente : refus absent');
             // Regression UI : les presences restent depliees a chaque coche/decochage.
             await p.evaluate(()=>{
               db.players=[{id:'a',first:'Alice',last:'TEST'},{id:'b',first:'Bob',last:'TEST'},{id:'c',first:'Chloe',last:'TEST'}];
