@@ -483,8 +483,9 @@ function toggleClosed(){
 }
 function toggleAllParticipants(master){const f=master.closest('form');f.querySelectorAll('input[name="participants"]').forEach(c=>c.checked=master.checked);updateFixedTeams(f)}
 function syncAllParticipants(input){const f=input.closest('form'),all=[...f.querySelectorAll('input[name="participants"]')],master=f.querySelector('.select-all input');if(master)master.checked=all.length>0&&all.every(c=>c.checked);updateFixedTeams(f)}
-function toggleAllPresence(checked){const t=active();if(!t||t.closed)return;t.presence??={};t.roster.forEach(p=>t.presence[p.id]=checked);save();render()}
-function setPresence(id,v){const t=active();t.presence??={};t.presence[id]=v;save();render()}
+function renderAfterPresenceChange(){const expanded=!!document.querySelector('.milft-annual-presence details')?.open;render();const panel=document.querySelector('.milft-annual-presence details');if(panel)panel.open=expanded}
+function toggleAllPresence(checked){const t=active();if(!t||t.closed)return;t.presence??={};t.roster.forEach(p=>t.presence[p.id]=checked);save();renderAfterPresenceChange()}
+function setPresence(id,v){const t=active();if(!t||t.closed)return;t.presence??={};if(!t.roster.some(p=>p.id===id))return;t.presence[id]=v;save();renderAfterPresenceChange()}
 function toggleHold(id){const t=active(),m=t.matches.find(m=>m.id===id);m.hold=!m.hold;if(t.mode==='challenge')m.annualResumePriority=!m.hold;save();render()}
 function challengeMatchCard(t,m){
  const wa=m.sets.filter(s=>s.a>s.b).length,wb=m.sets.filter(s=>s.b>s.a).length;
