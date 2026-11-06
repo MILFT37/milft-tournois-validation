@@ -1,0 +1,48 @@
+name: Verification tables Course aux points
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'MILFT_Tournois_V1_1_VALIDATION_HEBERGEMENT_STABLE_2026-11-02.html'
+      - '.github/workflows/milft-cap-tables.yml'
+  workflow_dispatch:
+jobs:
+  cap-tables:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Contrôler les protections des tables
+        run: |
+          node <<'JS'
+          const fs=require('fs'),assert=require('node:assert/strict');
+          const html=fs.readFileSync('MILFT_Tournois_V1_1_VALIDATION_HEBERGEMENT_STABLE_2026-11-02.html','utf8');
+          const has=(s)=>assert.ok(html.includes(s),'Absent: '+s);
+          has("if(state!=='free'&&capTableBusy(t,id))");
+          has("if(m.bye||!m.a||!m.b)");
+          has("if(m.status!=='waiting'||m.bye||m.tableId||!m.a||!m.b)continue;");
+          has("if(old!=='done'&&m.status==='done'){m.tableId=null;save();}");
+          has("if(m?.bye){m.tableId=null;save();}");
+          has("if(removed.some(x=>capTableBusy(t,x.id)))");
+          const start=html.indexOf('function capAutoAssign(){');
+          const end=html.indexOf('\nconst capOriginalRecordV2',start);
+          assert.ok(start>=0&&end>start);
+          const code=html.slice(start,end);
+          let saved=0, message='';
+          const t={closed:false,tables:[{id:1,state:'free'},{id:2,state:'free'}],cap:{competition:true,phase:'groups',matches:[
+            {id:'bye',phase:'groups',status:'waiting',a:'A',b:null,bye:false},
+            {id:'m1',phase:'groups',status:'waiting',a:'A',b:'B'},
+            {id:'m2',phase:'groups',status:'waiting',a:'C',b:'D'},
+            {id:'m3',phase:'groups',status:'waiting',a:'E',b:'F'}]}};
+          const active=()=>t;
+          const capActiveMatches=(x)=>x.cap.matches.filter(m=>m.phase===x.cap.phase);
+          const capFreeTable=(x,id)=>x.tables.some(v=>v.id===id&&v.state==='free')&&!x.cap.matches.some(m=>m.tableId===id&&m.status!=='done');
+          const save=()=>saved++;
+          const flash=(s)=>message=s;
+          eval(code+';capAutoAssign();');
+          assert.equal(t.cap.matches[0].tableId,undefined);
+          assert.equal(t.cap.matches[1].tableId,1);
+          assert.equal(t.cap.matches[2].tableId,2);
+          assert.equal(t.cap.matches[3].tableId,undefined);
+          assert.equal(saved,1);
+          console.log('OK: protections, BYE, attribution sans doublon et limite des tables.');
+          JS
