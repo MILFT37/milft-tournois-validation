@@ -1806,6 +1806,7 @@ function capTableBusy(t,id,except){return t.cap.matches.some(m=>m.id!==except&&m
 function capFreeTable(t,id,except){const table=t.tables.find(x=>x.id===id);return !!table&&table.state==='free'&&!capTableBusy(t,id,except)}
 capAssignTable=function(id){
  const t=active(),m=t?.cap?.matches.find(x=>x.id===id);if(!m||t.closed||m.status==='done')return;
+ if(m.bye||!m.a||!m.b)return alert('Cette rencontre ne peut pas être attribuée : un club est manquant ou un BYE est présent.');
  const v=document.getElementById('cap-table-'+id)?.value;
  if(!v){m.tableId=null;save();return}
  const n=Number(v);
