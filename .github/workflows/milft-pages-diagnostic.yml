@@ -3,6 +3,7 @@ on:
   push:
     paths:
       - '.github/workflows/milft-pages-diagnostic.yml'
+      - '.github/workflows/milft-pages-deploy.yml'
       - 'MILFT_Tournois_V1_1_FUSION_ANNUELLE_2026-11-06.html'
   workflow_dispatch:
 jobs:
