@@ -333,6 +333,16 @@ jobs:
           assert.equal(cup.round,2);
           assert.equal(cup.matches.filter(m=>m.round===2).length,2);
           assert.equal(cupSaves,1);
+          for(const m of cup.matches.filter(m=>m.round===2)){m.status='done';m.score={a:30,b:20};}
+          cupNext();
+          assert.equal(cup.round,3);
+          assert.equal(cup.matches.filter(m=>m.round===3).length,1);
+          assert.equal(cupSaves,2);
+          const finale=cup.matches.find(m=>m.round===3);
+          cupNext();assert.equal(cup.round,3);
+          finale.status='done';finale.score={a:30,b:20};
+          cupNext();assert.equal(cup.round,3);
+          assert.equal(cupSaves,2);
 
 
 
