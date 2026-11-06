@@ -1693,10 +1693,9 @@ const capOldCompLiveWithRosters=capCompLive;
 capCompLive=function(t){
  let html=capOldCompLiveWithRosters(t);
  const c=t.cap,limit=capLimits(c);
- const top=`<div class="card"><div class="row between"><div><h2>Commandes de compétition</h2><p class="muted">Effectif : ${limit.min} à ${limit.max} joueurs par club.</p></div>${!t.closed?'<button class="danger cap-abandon-command" onclick="capAbandon()">Abandonner</button>':'<span class="pill">'+(t.abandoned?'Abandonnée':'Terminée')+'</span>'}</div></div>`;
  const current=c.matches.filter(m=>m.phase===c.phase&&(c.phase!=='bracket'||m.round===c.round));
  const tableCards=`<div class="card"><h2>Attribution des rencontres</h2>${current.filter(m=>!m.bye&&m.status!=='done').map(m=>`<div class="item"><b>${esc(capCompName(c,m.a))} — ${esc(capCompName(c,m.b))}</b><div class="row"><select id="cap-table-${m.id}" ${t.closed?'disabled':''}><option value="">Sans table</option>${t.tables.filter(x=>x.state==='free'||x.id===m.tableId).map(x=>`<option value="${x.id}" ${x.id===m.tableId?'selected':''}>Table ${x.id}</option>`).join('')}</select><button class="mutedbtn" onclick="capAssignTable('${m.id}')" ${t.closed?'disabled':''}>Attribuer</button></div></div>`).join('')||'<p class="muted">Aucune rencontre à attribuer.</p>'}</div>`;
- return top+capTableControls(t)+tableCards+html;
+ return capTableControls(t)+tableCards+html;
 };
 
 // V1.1 TEST : cohérence immédiate des sélections, prévisions Course aux points.
