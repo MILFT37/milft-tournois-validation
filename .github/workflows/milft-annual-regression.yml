@@ -377,7 +377,7 @@ jobs:
                 db={...original,selected:'cap-club-ci',tournaments:[{
                   id:'cap-club-ci',name:'Clubs CI',mode:'cap',closed:false,matches:[],roster:[],
                   tables:[],cap:{competition:true,phase:'league',targets:[5,10],finish:'winner',
-                    matches:[{id:'ci-club',status:'waiting',relays:[],a:'a',b:'b'}]}
+                    matches:[{id:'ci-club',status:'waiting',relays:[],a:'a',b:'b',compositionsValidated:true}]}
                 }]};
                 window.alert=x=>alerts.push(String(x));
                 a.value='4';b.value='2';capCompRecord('ci-club');
