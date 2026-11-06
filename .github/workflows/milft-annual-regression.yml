@@ -281,6 +281,23 @@ jobs:
             assert.deepEqual(twoSeasons.counts,[0,210,190],'Fusion de deux saisons : rencontres perdues');
             assert.equal(twoSeasons.players,42,'Fusion de deux saisons : joueurs manquants');
             assert.ok(twoSeasons.preserved&&twoSeasons.exact,'Fusion de deux saisons : donnees alterees');
+            // Refus atomique des identifiants joueurs dupliques, sans alteration locale.
+            const duplicatePlayers=await p.evaluate(async()=>{
+              const snapshot=JSON.parse(JSON.stringify(db)),oldAlert=window.alert;
+              const alerts=[];
+              try{
+                window.alert=msg=>alerts.push(String(msg));
+                const source={format:'MILFT-TOURNOIS-BACKUP',version:1,data:{
+                  players:[{id:'same',first:'A',last:'TEST'},{id:'same',first:'B',last:'TEST'}],
+                  tournaments:[{id:'duplicate-season',mode:'challenge',name:'Test doublons',
+                    roster:[],matches:[],tables:[{id:1,state:'free'}]}]}};
+                const before=JSON.stringify(db);
+                await milftMergeAnnualBackup({files:[new File([JSON.stringify(source)],'doublons.json',{type:'application/json'})],value:'doublons.json'});
+                return {unchanged:JSON.stringify(db)===before,alerts};
+              }finally{db=snapshot;save();window.alert=oldAlert;}
+            });
+            assert.ok(duplicatePlayers.unchanged,'Doublons joueurs : donnees locales modifiees');
+            assert.ok(duplicatePlayers.alerts.some(x=>x.includes('Identifiants joueurs en double')),'Doublons joueurs non rejetes');
             // Attribution manuelle CAP : une table occupee ne peut etre attribuee deux fois.
             const capManualConflict=await p.evaluate(()=>{
               const snapshot=JSON.parse(JSON.stringify(db)),oldAlert=window.alert;
