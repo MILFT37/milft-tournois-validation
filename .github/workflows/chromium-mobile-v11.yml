@@ -60,7 +60,7 @@ jobs:
                   return result;
                 });
                 assert.equal(css.display,'grid','grille CAP à '+width+'px');
-                assert.equal(css.columns.trim().split(/\\s+/).length,2,'deux colonnes CAP à '+width+'px');
+                assert.equal(css.columns.trim().split(/\s+/).length,2,'deux colonnes CAP à '+width+'px');
                 console.log('RESPONSIVE OK',width,css);
               }
               assert.deepEqual(errors,[],'aucune erreur JavaScript au chargement');
