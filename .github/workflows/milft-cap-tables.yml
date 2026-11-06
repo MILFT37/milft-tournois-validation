@@ -17,6 +17,17 @@ jobs:
           const fs=require('fs'),assert=require('node:assert/strict');
           const html=fs.readFileSync('MILFT_Tournois_V1_1_VALIDATION_HEBERGEMENT_STABLE_2026-11-02.html','utf8');
           const has=(s)=>assert.ok(html.includes(s),'Absent: '+s);
+          // Validation globale : compiler chaque script embarqué, pas seulement le module CAP.
+          const vm=require('node:vm');
+          const scripts=[...html.matchAll(/<script\\b([^>]*)>([\\s\\S]*?)<\\/script>/gi)];
+          assert.ok(scripts.length>=1,'Aucun script embarque');
+          let checked=0;
+          for(const [,attrs,source] of scripts){
+            if(/\\bsrc\\s*=/.test(attrs))continue;
+            new vm.Script(source,{filename:'milft-inline-'+(++checked)+'.js'});
+          }
+          assert.ok(checked>=1,'Aucun script compile');
+          console.log('OK: syntaxe de '+checked+' scripts integres.');
           has("if(state!=='free'&&capTableBusy(t,id))");
           has("if(m.bye||!m.a||!m.b)");
           has("!\u005b\u0027waiting\u0027,\u0027playing\u0027\u005d.includes(m.status)");
