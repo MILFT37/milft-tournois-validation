@@ -1182,7 +1182,7 @@ async function milftMergeAnnualBackup(input){
    }
    const matchIds=new Set();
    for(const m of t.matches){
-    if(!m||typeof m.id!=='string'||matchIds.has(m.id)||!['waiting','playing','done'].includes(m.status)||!Array.isArray(m.sets)||m.a&&!rosterIds.has(m.a)||m.b&&!rosterIds.has(m.b))throw Error('Rencontres invalides : '+t.name);
+    if(!m||typeof m.id!=='string'||matchIds.has(m.id)||!['waiting','playing','done'].includes(m.status)||!Array.isArray(m.sets)||m.a&&!rosterIds.has(m.a)||m.b&&!rosterIds.has(m.b)||(m.status==='done'&&(!m.score||!Number.isFinite(m.score.a)||!Number.isFinite(m.score.b))))throw Error('Rencontres invalides : '+t.name);
     matchIds.add(m.id);
    }
    if(t.tables.some(x=>!x||x.id==null||!['free','playing','maintenance','excluded'].includes(x.state)))throw Error('Tables invalides : '+t.name);
