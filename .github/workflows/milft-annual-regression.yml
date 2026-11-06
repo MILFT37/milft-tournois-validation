@@ -835,6 +835,13 @@ jobs:
             assert.ok(restoredCount.includes(expectedPresent+'/3'),'Compteur de presences perdu apres import : '+restoredCount);
             await restoredPresence.locator('summary').click();
             assert.equal(await restoredPresence.evaluate(el=>el.open),true,'Repli non utilisable apres import');
+            await q.reload();
+            await q.evaluate(()=>{db.selected='annual-ci';tab='live-detail';render();});
+            const resumedPresence=q.locator('.milft-annual-presence details');
+            assert.equal(await resumedPresence.count(),1,'Panneau presences perdu apres rechargement');
+            assert.ok((await resumedPresence.locator('summary').innerText()).includes(expectedPresent+'/3'),'Presences modifiees apres rechargement');
+            await resumedPresence.locator('summary').click();
+            assert.equal(await resumedPresence.evaluate(el=>el.open),true,'Panneau non utilisable apres rechargement');
             console.log('OK: migration saison isolee vers V1.1, presences et repli utilisables.');
             // Une archive malformee ne doit jamais remplacer la saison restauree.
             const beforeInvalid=await q.evaluate(inspect);
