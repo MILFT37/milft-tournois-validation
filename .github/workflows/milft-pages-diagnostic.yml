@@ -1,0 +1,29 @@
+name: Diagnostic publication GitHub Pages
+on:
+  push:
+    paths:
+      - '.github/workflows/milft-pages-diagnostic.yml'
+      - 'MILFT_Tournois_V1_1_FUSION_ANNUELLE_2026-11-06.html'
+  workflow_dispatch:
+jobs:
+  pages:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verifier les deux URLs publiques et le bouton de fusion
+        shell: bash
+        run: |
+          set -uo pipefail
+          base='https://milft37.github.io/milft-tournois-validation'
+          for page in 'MILFT_Tournois_V1_1_VALIDATION_HEBERGEMENT_STABLE_2026-11-02.html' 'MILFT_Tournois_V1_1_FUSION_ANNUELLE_2026-11-06.html'; do
+            echo "::group::$page"
+            status=$(curl -L -sS --retry 2 --max-time 30 -o /tmp/milft-page.html -w '%{http_code}' "$base/$page?check=${GITHUB_SHA}" ) || status='NETWORK_ERROR'
+            echo "HTTP_STATUS=$status"
+            echo "RESPONSE_BYTES=$(wc -c </tmp/milft-page.html 2>/dev/null || echo 0)"
+            if [ "$status" = 200 ] && grep -q 'milft-annual-merge-file' /tmp/milft-page.html; then
+              echo "RESULT=OK: page et bouton de fusion presents"
+            else
+              echo "RESULT=ECHEC: page absente ou bouton manquant"
+              exit 1
+            fi
+            echo '::endgroup::'
+          done
