@@ -145,7 +145,7 @@ jobs:
             assert.deepEqual(await q.evaluate(inspect),beforeInvalid,'Archive invalide a modifie la sauvegarde locale');
             await clean.close();
             assert.deepEqual(errors,[],'Erreurs JavaScript');
-            console.log('OK: absence, lancement, resultat, classement, ajout joueur, tables 1-4, deux seances, correction de vainqueur, annulation, export JSON, restauration vierge, refus d'archive invalide et reprise.');
+            console.log('OK: absence, lancement, resultat, classement, ajout joueur, tables 1-4, deux seances, correction de vainqueur, annulation, export JSON, restauration vierge, refus de sauvegarde invalide et reprise.');
             await browser.close();
           })().catch(e=>{console.error(e);process.exit(1)});
           JS
