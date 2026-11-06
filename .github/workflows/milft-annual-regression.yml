@@ -367,6 +367,33 @@ jobs:
             assert.equal(capLeagueClose.blocked,false,'Championnat CAP : cloture prematuree autorisee');
             assert.equal(capLeagueClose.closed,true,'Championnat CAP : cloture terminee refusee');
             assert.ok(capLeagueClose.alerts.some(x=>x.includes('non terminées')),'Championnat CAP : avertissement absent');
+            // CAP clubs : palier, progression cumulative et fin de rencontre.
+            const capClubScores=await p.evaluate(()=>{
+              const original=JSON.parse(JSON.stringify(db)),oldAlert=window.alert;
+              const alerts=[];
+              const a=document.createElement('input'),b=document.createElement('input');
+              a.id='capca-ci-club';b.id='capcb-ci-club';document.body.append(a,b);
+              try{
+                db={...original,selected:'cap-club-ci',tournaments:[{
+                  id:'cap-club-ci',name:'Clubs CI',mode:'cap',closed:false,matches:[],roster:[],
+                  tables:[],cap:{competition:true,phase:'league',targets:[5,10],finish:'winner',
+                    matches:[{id:'ci-club',status:'waiting',relays:[],a:'a',b:'b'}]}
+                }]};
+                window.alert=x=>alerts.push(String(x));
+                a.value='4';b.value='2';capCompRecord('ci-club');
+                const refusedPalier=db.tournaments[0].cap.matches[0].relays.length;
+                a.value='5';b.value='3';capCompRecord('ci-club');
+                a.value='4';b.value='10';capCompRecord('ci-club');
+                const refusedDecrease=db.tournaments[0].cap.matches[0].relays.length;
+                a.value='8';b.value='10';capCompRecord('ci-club');
+                const m=db.tournaments[0].cap.matches[0];
+                return {refusedPalier,refusedDecrease,relays:m.relays,status:m.status,alerts};
+              }finally{a.remove();b.remove();db=original;save();window.alert=oldAlert}
+            });
+            assert.equal(capClubScores.refusedPalier,0,'CAP clubs : palier non atteint accepte');
+            assert.equal(capClubScores.refusedDecrease,1,'CAP clubs : score cumulatif decroissant accepte');
+            assert.deepEqual(capClubScores.relays,[{a:5,b:3},{a:8,b:10}],'CAP clubs : scores cumules incorrects');
+            assert.equal(capClubScores.status,'done','CAP clubs : rencontre non terminee apres dernier relais');
             // Regression UI : les presences restent depliees a chaque coche/decochage.
             await p.evaluate(()=>{
               db.players=[{id:'a',first:'Alice',last:'TEST'},{id:'b',first:'Bob',last:'TEST'},{id:'c',first:'Chloe',last:'TEST'}];
