@@ -1808,8 +1808,9 @@ capAssignTable=function(id){
  const t=active(),m=t?.cap?.matches.find(x=>x.id===id);if(!m||t.closed||!['waiting','playing'].includes(m.status))return;
  if(m.bye||!m.a||!m.b)return alert('Cette rencontre ne peut pas être attribuée : un club est manquant ou un BYE est présent.');
  const v=document.getElementById('cap-table-'+id)?.value;
- if(!v){m.tableId=null;save();return}
+ if(!v){if(m.tableId!=null){m.tableId=null;save();flash('Attribution de table retirée.');}return}
  const n=Number(v);
+ if(m.tableId===n)return;
  if(!capFreeTable(t,n,m.id))return alert('Cette table est exclue ou déjà attribuée à une rencontre non terminée.');
  m.tableId=n;save();flash('Table '+n+' attribuée.');
 };
@@ -1836,6 +1837,7 @@ function capSetTableCount(){
  const t=active(),n=Number(document.getElementById('cap-table-count')?.value);if(!t||t.closed)return;
  if(!Number.isInteger(n)||n<1||n>32)return alert('Nombre de tables : de 1 à 32.');
  const current=t.tables.length;
+ if(n===current)return;
  if(n<current){const removed=t.tables.slice(n);if(removed.some(x=>capTableBusy(t,x.id)))return alert('Impossible de retirer une table attribuée à une rencontre non terminée.');if(!confirm('Retirer '+(current-n)+' table(s) de cette compétition ?'))return;t.tables=t.tables.slice(0,n)}
  else for(let i=current;i<n;i++)t.tables.push({id:i+1,state:'free'});
  save();flash('Parc de '+n+' table(s) enregistré.');
