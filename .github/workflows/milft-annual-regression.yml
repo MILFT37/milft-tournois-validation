@@ -55,6 +55,8 @@ jobs:
             const priority=await p.evaluate(()=>{
               const t=db.tournaments.find(t=>t.id==='annual-ci');
               const old=t.matches,oldPresence={...t.presence};
+              // Isoler ce scenario des absences utilisees dans le test UI precedent.
+              t.presence={...t.presence,a:true,b:true,c:true};
               t.matches=[
                 {id:'ordinaire',a:'a',b:'b',status:'waiting',hold:false,sets:[]},
                 {id:'reprise',a:'a',b:'c',status:'waiting',hold:true,sets:[{a:5,b:3}]}
