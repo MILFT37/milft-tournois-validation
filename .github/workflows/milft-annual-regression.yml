@@ -238,6 +238,28 @@ jobs:
             assert.deepEqual(sortedTables.assigned,[3,7,12],'Tables non attribuees dans ordre numerique');
             assert.deepEqual(sortedTables.orderAfter,sortedTables.orderBefore,'Ordre de configuration des tables modifie');
             assert.deepEqual(sortedTables.states,['playing','playing','playing'],'Tables attribuees non marquees occupees');
+            // Conflit de joueur : une rencontre concurrente attend une table disponible.
+            const overlappingPlayers=await p.evaluate(()=>{
+              const original=db.tournaments.find(t=>t.id==='annual-ci');
+              const t={...original,mode:'challenge',roundLimit:false,roster:[],
+                presence:{a:true,b:true,c:true,d:true,e:true},
+                tables:[{id:1,state:'free'},{id:2,state:'free'},{id:3,state:'free'}],
+                matches:[
+                  {id:'m1',a:'a',b:'b',status:'waiting',hold:false,sets:[]},
+                  {id:'m2',a:'a',b:'c',status:'waiting',hold:false,sets:[]},
+                  {id:'m3',a:'d',b:'e',status:'waiting',hold:false,sets:[]}
+                ]};
+              autoAssign(t);
+              const first=t.matches.map(m=>({id:m.id,status:m.status,table:m.table}));
+              t.matches[0].status='done';t.tables[0].state='free';
+              autoAssign(t);
+              return {first,second:t.matches.map(m=>({id:m.id,status:m.status,table:m.table}))};
+            });
+            assert.equal(overlappingPlayers.first[0].status,'playing','Premiere rencontre non attribuee');
+            assert.equal(overlappingPlayers.first[1].status,'waiting','Joueur attribue a deux matchs simultanes');
+            assert.equal(overlappingPlayers.first[2].status,'playing','Match independant bloque a tort');
+            assert.equal(overlappingPlayers.second[1].status,'playing','Match en attente non repris apres liberation du joueur');
+            assert.equal(overlappingPlayers.second[1].table,1,'Table liberee non reutilisee');
             // Ajout de joueurs : plusieurs cases doivent pouvoir etre cochees sans repli.
             await p.evaluate(()=>{
               db.players.push({id:'d',first:'David',last:'TEST'},{id:'e',first:'Emma',last:'TEST'});
