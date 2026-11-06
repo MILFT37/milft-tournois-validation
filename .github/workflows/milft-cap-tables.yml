@@ -343,6 +343,17 @@ jobs:
           finale.status='done';finale.score={a:30,b:20};
           cupNext();assert.equal(cup.round,3);
           assert.equal(cupSaves,2);
+          const cupState={closed:false,cap:cup};
+          let finalCloseSaves=0,finalCloseAlerts=[];
+          const finishCup=new Function('active','alert','save','flash','capCompScore',closeCode+';return capCompClose;')(
+            ()=>cupState,msg=>finalCloseAlerts.push(msg),()=>finalCloseSaves++,()=>{},m=>m.score);
+          finishCup();
+          assert.equal(cupState.closed,true,'Finale terminee : cloture autorisee');
+          assert.equal(finalCloseSaves,1);
+          finishCup();
+          assert.equal(cupState.closed,false,'Reouverture de la coupe');
+          assert.equal(finalCloseSaves,2);
+          console.log('OK: coupe a cinq clubs jouee, cloturee puis rouverte.');
 
 
 
