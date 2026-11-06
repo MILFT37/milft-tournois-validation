@@ -91,5 +91,37 @@ jobs:
           t.tables[0].state='maintenance';
           eval(code+';capAutoAssign();');
           assert.equal(t.cap.matches[0].tableId,undefined);
+          // Parcours fonctionnel de l'attribution manuelle : état, collision, changement et retrait.
+          const manualStart=html.indexOf('capAssignTable=function(id){');
+          const manualEnd=html.indexOf('\\nfunction capAutoAssign(){',manualStart);
+          assert.ok(manualStart>=0&&manualEnd>manualStart,'Attribution manuelle introuvable');
+          const manualCode=html.slice(manualStart,manualEnd);
+          const manualMatch={id:'manual',status:'waiting',a:'A',b:'B',tableId:null};
+          const otherMatch={id:'other',status:'waiting',a:'C',b:'D',tableId:2};
+          const manualTournament={closed:false,tables:[{id:1,state:'free'},{id:2,state:'free'},{id:3,state:'maintenance'}],cap:{matches:[manualMatch,otherMatch]}};
+          let chosen='1',manualSaves=0,manualAlerts=[];
+          const manualAssign=new Function('active','document','capFreeTable','save','flash','alert',
+            manualCode+';return capAssignTable;')(
+            ()=>manualTournament,
+            {getElementById:()=>({get value(){return chosen;}})},
+            (x,id,except)=>x.tables.some(v=>v.id===id&&v.state==='free')&&!x.cap.matches.some(m=>m.id!==except&&m.tableId===id&&m.status!=='done'),
+            ()=>manualSaves++,()=>{},s=>manualAlerts.push(s));
+          manualAssign('manual');
+          assert.equal(manualMatch.tableId,1);assert.equal(manualSaves,1);
+          manualAssign('manual');
+          assert.equal(manualSaves,1,'Table identique : pas de sauvegarde');
+          chosen='2';manualAssign('manual');
+          assert.equal(manualMatch.tableId,1);assert.equal(manualAlerts.length,1,'Collision refusée');
+          chosen='3';manualAssign('manual');
+          assert.equal(manualMatch.tableId,1);assert.equal(manualAlerts.length,2,'Maintenance refusée');
+          chosen='';manualAssign('manual');
+          assert.equal(manualMatch.tableId,null);assert.equal(manualSaves,2);
+          manualAssign('manual');
+          assert.equal(manualSaves,2,'Retrait répété : pas de sauvegarde');
+          manualMatch.status='abandoned';chosen='1';manualAssign('manual');
+          assert.equal(manualMatch.tableId,null,'Rencontre abandonnée protégée');
+          manualMatch.status='waiting';manualMatch.bye=true;manualAssign('manual');
+          assert.equal(manualMatch.tableId,null,'BYE protégé');
+          console.log('OK: parcours manuel, collisions, maintenance, retrait, abandon et BYE.');
           console.log('OK: BYE, absence de doublon, réattribution et maintenance.');
           JS
