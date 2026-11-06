@@ -121,7 +121,8 @@ jobs:
             assert.ok(backupPath,'Export JSON absent');
             const clean=await browser.newContext({acceptDownloads:true});
             const q=await clean.newPage();
-            q.on('dialog',d=>d.accept());
+            let cancelNextRestore=false;
+            q.on('dialog',d=>cancelNextRestore&&d.type()==='confirm'?d.dismiss():d.accept());
             q.on('pageerror',e=>errors.push(e.message));
             await q.goto('http://127.0.0.1:8766/MILFT_Tournois_V1_1_VALIDATION_HEBERGEMENT_STABLE_2026-11-02.html');
             await q.locator('#milft-backup-file').setInputFiles(backupPath);
@@ -143,6 +144,21 @@ jobs:
             assert.deepEqual(await q.evaluate(inspect),beforeInvalid,'Archive invalide a ecrase les donnees');
             await q.reload();
             assert.deepEqual(await q.evaluate(inspect),beforeInvalid,'Archive invalide a modifie la sauvegarde locale');
+            // Une restauration valide annulee au premier avertissement ne remplace rien.
+            const fs=require('node:fs');
+            const altered=JSON.parse(fs.readFileSync(backupPath,'utf8'));
+            altered.data.tournaments.find(t=>t.id==='annual-ci').name='SAISON REMPLACEE';
+            cancelNextRestore=true;
+            await q.locator('#milft-backup-file').setInputFiles({
+              name:'archive-valide-modifiee.json',mimeType:'application/json',
+              buffer:Buffer.from(JSON.stringify(altered))
+            });
+            await q.waitForFunction(()=>document.querySelector('#milft-backup-file')?.value==='');
+            cancelNextRestore=false;
+            assert.deepEqual(await q.evaluate(inspect),beforeInvalid,'Annulation a modifie la saison');
+            assert.equal(await q.evaluate(()=>db.tournaments.find(t=>t.id==='annual-ci').name),'Saison fictive CI','Annulation a remplace le tournoi');
+            await q.reload();
+            assert.deepEqual(await q.evaluate(inspect),beforeInvalid,'Annulation non preservee apres rechargement');
             await clean.close();
             assert.deepEqual(errors,[],'Erreurs JavaScript');
             console.log('OK: absence, lancement, resultat, classement, ajout joueur, tables 1-4, deux seances, correction de vainqueur, annulation, export JSON, restauration vierge, refus de sauvegarde invalide et reprise.');
