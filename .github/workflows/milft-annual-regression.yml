@@ -2,7 +2,7 @@ name: Verification parcours championnat annuel Simple
 on:
   push:
     branches: [main]
-    paths: [.github/workflows/milft-annual-regression.yml, MILFT_Tournois_V1_1_VALIDATION_HEBERGEMENT_STABLE_2026-11-02.html]
+    paths: [.github/workflows/milft-annual-regression.yml, MILFT_Tournois_V1_1_VALIDATION_HEBERGEMENT_STABLE_2026-11-02.html, MILFT_CHAMPIONNAT_SIMPLE_2026-11-05.html]
   workflow_dispatch:
 jobs:
   annual:
@@ -51,6 +51,25 @@ jobs:
             await checks.nth(1).uncheck();
             assert.equal(await presencePanel.evaluate(el=>el.open),true,'Panneau replie apres deselection');
             assert.ok((await presencePanel.locator('summary').innerText()).includes('2/3'),'Compteur apres deselection incorrect');
+            // Le fichier isole conserve aussi le panneau de presences ouvert.
+            const isolated=await context.newPage();
+            await isolated.goto('http://127.0.0.1:8766/MILFT_CHAMPIONNAT_SIMPLE_2026-11-05.html');
+            await isolated.evaluate(()=>{
+              db.players=[{id:'a',first:'Alice',last:'TEST'},{id:'b',first:'Bob',last:'TEST'},{id:'c',first:'Chloe',last:'TEST'}];
+              db.tournaments=[{id:'annual-ci',name:'Saison fictive CI',mode:'challenge',discipline:'single',closed:false,legs:1,roster:db.players.slice(),presence:{a:false,b:false,c:false},matches:[],tables:[{id:1,state:'free'}]}];
+              db.selected='annual-ci';tab='live-detail';save();render();
+            });
+            const isolatedPanel=isolated.locator('.milft-annual-presence details');
+            await isolatedPanel.locator('summary').click();
+            const isolatedChecks=isolatedPanel.locator('.milft-presence-compact input[type="checkbox"]');
+            for(let i=0;i<3;i++){
+              await isolatedChecks.nth(i).check();
+              assert.equal(await isolatedPanel.evaluate(el=>el.open),true,'Module isole : presences repliees apres selection '+i);
+            }
+            await isolatedChecks.nth(1).uncheck();
+            assert.equal(await isolatedPanel.evaluate(el=>el.open),true,'Module isole : repli apres deselection');
+            assert.ok((await isolatedPanel.locator('summary').innerText()).includes('2/3'),'Module isole : compteur incorrect');
+            await isolated.close();
             // Priorite de relance : un match reporte et reactive passe devant un match ordinaire.
             const priority=await p.evaluate(()=>{
               const t=db.tournaments.find(t=>t.id==='annual-ci');
