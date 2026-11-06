@@ -1234,8 +1234,8 @@ async function milftMergeAnnualBackup(input){
    const old=currentById.get(p.id);
    if(old&&(old.first!==p.first||old.last!==p.last))throw Error('Conflit de fiche joueur : '+p.id+'. Import annulé pour éviter un écrasement.');
   }
-  const summary=additions.map(t=>'• '+String(t.name||'Sans nom')+' — '+t.matches.length+' rencontres').join('\\n');
-  if(!confirm('IMPORT SÉLECTIF SANS REMPLACEMENT\\n\\n'+summary+'\\n\\n'+ignored+' championnat(s) déjà présent(s) ignoré(s).\\n'+newPlayers.length+' nouvelle(s) fiche(s) joueur.\\n\\nLes autres tournois, simulations et résultats restent inchangés. Continuer ?'))return;
+  const summary=additions.map(t=>'• '+String(t.name||'Sans nom')+' — '+t.matches.length+' rencontres').join('\n');
+  if(!confirm('IMPORT SÉLECTIF SANS REMPLACEMENT\n\n'+summary+'\n\n'+ignored+' championnat(s) déjà présent(s) ignoré(s).\n'+newPlayers.length+' nouvelle(s) fiche(s) joueur.\n\nLes autres tournois, simulations et résultats restent inchangés. Continuer ?'))return;
   const protection=await milftPreserverAvantRestauration();
   // Calculer d'abord le résultat complet ; une seule écriture après protection vérifiée.
   const next=JSON.parse(JSON.stringify(db));
