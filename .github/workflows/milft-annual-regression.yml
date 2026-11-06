@@ -296,6 +296,40 @@ jobs:
             assert.equal(capManualPaths.valid,2,'CAP : table libre non attribuee');
             assert.equal(capManualPaths.persisted,2,'CAP : attribution non sauvegardee');
             assert.ok(capManualPaths.warnings.some(x=>x.includes('exclue')),'CAP : refus table exclue non signale');
+            // Course aux points : scores cumules, paliers, correction et cloture.
+            const relayChecks=await p.evaluate(()=>{
+              const original=JSON.parse(JSON.stringify(db)),oldAlert=window.alert,oldConfirm=window.confirm;
+              const warnings=[];
+              const a=document.createElement('input'),b=document.createElement('input');
+              a.id='cap-a';b.id='cap-b';document.body.append(a,b);
+              try{
+                db={...original,selected:'relay-ci',tournaments:[{
+                  id:'relay-ci',name:'Relais CI',mode:'cap',closed:false,matches:[],roster:[],
+                  tables:[],cap:{teamA:'A',teamB:'B',targets:[5,10],types:['S','D'],
+                    relays:[],scoreMode:'cumulative',finish:'winner'}
+                }]};
+                window.alert=x=>warnings.push(String(x));window.confirm=()=>true;
+                a.value='4';b.value='0';capRecord();
+                const refusedFirst=db.tournaments[0].cap.relays.length;
+                a.value='5';b.value='3';capRecord();
+                const first=JSON.stringify(db.tournaments[0].cap.relays);
+                a.value='4';b.value='10';capRecord();
+                const refusedDecrease=db.tournaments[0].cap.relays.length;
+                a.value='8';b.value='10';capRecord();
+                const complete=db.tournaments[0].cap.relays.length;
+                capEdit(1);
+                const afterCorrection=db.tournaments[0].cap.relays.length;
+                capClose();
+                const refusedClose=db.tournaments[0].closed;
+                return {refusedFirst,first,refusedDecrease,complete,afterCorrection,refusedClose,warnings};
+              }finally{a.remove();b.remove();db=original;save();window.alert=oldAlert;window.confirm=oldConfirm}
+            });
+            assert.equal(relayChecks.refusedFirst,0,'CAP : palier non atteint accepte');
+            assert.equal(relayChecks.first,JSON.stringify([{a:5,b:3}]),'CAP : premier relais incorrect');
+            assert.equal(relayChecks.refusedDecrease,1,'CAP : diminution de score acceptee');
+            assert.equal(relayChecks.complete,2,'CAP : second relais non enregistre');
+            assert.equal(relayChecks.afterCorrection,1,'CAP : correction du dernier relais impossible');
+            assert.equal(relayChecks.refusedClose,false,'CAP : cloture prematuree autorisee');
             // Regression UI : les presences restent depliees a chaque coche/decochage.
             await p.evaluate(()=>{
               db.players=[{id:'a',first:'Alice',last:'TEST'},{id:'b',first:'Bob',last:'TEST'},{id:'c',first:'Chloe',last:'TEST'}];
