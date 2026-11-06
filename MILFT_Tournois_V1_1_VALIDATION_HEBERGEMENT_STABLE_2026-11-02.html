@@ -155,7 +155,7 @@ html,body{background:var(--milft-page);color:var(--milft-ink)}header{background:
 <input id="playersMergeInput" type="file" accept=".xlsx" style="display:none" onchange="mergePlayersXlsx(this)">
 <p class="muted">L'export génère un nouveau fichier, sans modifier celui de Google Drive.</p></div></details>
 <details class="settings-panel settings-backup"><summary><span class="settings-panel-icon">▣</span><span class="settings-panel-label"><strong>Sauvegarde et restauration</strong><small>Données complètes de l'application</small></span><span class="settings-chevron">⌄</span></summary><div class="settings-panel-body"><div id="milft-backup-slot"></div></div></details>
-</section><nav class="tabs" id="tabs"></nav><div id="notice"></div><div id="milft-drive-indicator" role="status" aria-live="polite" style="margin:10px 0;padding:11px 13px;border-radius:10px;background:#fff4dd;color:#684500;border:1px solid #e5c780;font-weight:600">☁️ Google Drive non connecté — sauvegardes uniquement locales. Pense à exporter ton JSON.</div><div id="milft-backup" aria-label="Sauvegarder et restaurer"><details open><summary>💾 Sauvegarder / restaurer mes données</summary><div class="backup-actions"><button type="button" onclick="milftExportBackup()">⬇ Exporter une sauvegarde</button><button type="button" onclick="document.getElementById('milft-backup-file').click()">⬆ Importer une sauvegarde</button></div><input id="milft-backup-file" type="file" accept=".json,application/json" style="display:none" onchange="milftImportBackup(this)"><p>Conserve le fichier JSON en lieu sûr. Un aperçu et une sauvegarde de secours sont proposés avant toute restauration. L'importation remplace les données locales après confirmation explicite.</p></details></div><div id="milft-google-auth" style="margin:10px 0;padding:12px;border:1px solid #cbdcec;border-radius:12px;background:#edf4fc"><strong>☁️ Connexion Google Drive — version de travail</strong><p id="milft-google-auth-status" role="status">Initialisation…</p><div class="milft-drive-actions"><button type="button" id="milft-google-connect" disabled onclick="MILFTGoogleConnect()">Se connecter à Google Drive</button><button type="button" onclick="MILFTGoogleDisconnect()">Déconnecter Google</button><button type="button" onclick="MILFTDriveLister()">Voir mes sauvegardes Drive</button></div><div id="milft-drive-archives" style="margin-top:8px"></div><p id="milft-drive-archives-status" role="status" style="font-size:12px"></p><p style="font-size:12px">Archives dans l’espace privé Google Drive (drive.appdata), non visibles dans les dossiers ordinaires. MODE LECTURE SEULE : consultation et téléchargement uniquement, aucune écriture ni synchronisation. Ne pas utiliser pour un tournoi réel.</p></div><div id="milft-public-controls" style="margin:12px 0;padding:12px;background:#edf4fc;border:1px solid #cbdcec;border-radius:12px"><strong>📺 Affichage public (aperçu V1.1)</strong><p style="margin:6px 0">Ouvre une fenêtre indépendante à déplacer sur le deuxième écran du PC. Aucune commande de gestion n'y apparaît.</p><button type="button" onclick="milftOpenPublic()">Ouvrir l'écran public</button><p style="font-size:12px;margin:6px 0 0">Fonctionne sans Internet sur le même PC. Pour une TV connectée autonome, la synchronisation reste à développer.</p></div><section id="view"></section></main><footer>CHAMPIONNAT ANNUEL SIMPLE — STOCKAGE LOCAL • SAUVEGARDE JSON APRÈS CHAQUE SÉANCE</footer><script id="milft-capacity">
+</section><nav class="tabs" id="tabs"></nav><div id="notice"></div><div id="milft-drive-indicator" role="status" aria-live="polite" style="margin:10px 0;padding:11px 13px;border-radius:10px;background:#fff4dd;color:#684500;border:1px solid #e5c780;font-weight:600">☁️ Google Drive non connecté — sauvegardes uniquement locales. Pense à exporter ton JSON.</div><div id="milft-backup" aria-label="Sauvegarder et restaurer"><details open><summary>💾 Sauvegarder / restaurer mes données</summary><div class="backup-actions"><button type="button" onclick="milftExportBackup()">⬇ Exporter une sauvegarde</button><button type="button" onclick="document.getElementById('milft-backup-file').click()">⬆ Importer une sauvegarde</button><button type="button" class="mutedbtn" onclick="document.getElementById('milft-annual-merge-file').click()">＋ Intégrer un championnat annuel (sans remplacement)</button></div><input id="milft-backup-file" type="file" accept=".json,application/json" style="display:none" onchange="milftImportBackup(this)"><input id="milft-annual-merge-file" type="file" accept=".json,application/json" style="display:none" onchange="milftMergeAnnualBackup(this)"><p>Conserve le fichier JSON en lieu sûr. Un aperçu et une sauvegarde de secours sont proposés avant toute restauration. L'importation remplace les données locales après confirmation explicite.</p></details></div><div id="milft-google-auth" style="margin:10px 0;padding:12px;border:1px solid #cbdcec;border-radius:12px;background:#edf4fc"><strong>☁️ Connexion Google Drive — version de travail</strong><p id="milft-google-auth-status" role="status">Initialisation…</p><div class="milft-drive-actions"><button type="button" id="milft-google-connect" disabled onclick="MILFTGoogleConnect()">Se connecter à Google Drive</button><button type="button" onclick="MILFTGoogleDisconnect()">Déconnecter Google</button><button type="button" onclick="MILFTDriveLister()">Voir mes sauvegardes Drive</button></div><div id="milft-drive-archives" style="margin-top:8px"></div><p id="milft-drive-archives-status" role="status" style="font-size:12px"></p><p style="font-size:12px">Archives dans l’espace privé Google Drive (drive.appdata), non visibles dans les dossiers ordinaires. MODE LECTURE SEULE : consultation et téléchargement uniquement, aucune écriture ni synchronisation. Ne pas utiliser pour un tournoi réel.</p></div><div id="milft-public-controls" style="margin:12px 0;padding:12px;background:#edf4fc;border:1px solid #cbdcec;border-radius:12px"><strong>📺 Affichage public (aperçu V1.1)</strong><p style="margin:6px 0">Ouvre une fenêtre indépendante à déplacer sur le deuxième écran du PC. Aucune commande de gestion n'y apparaît.</p><button type="button" onclick="milftOpenPublic()">Ouvrir l'écran public</button><p style="font-size:12px;margin:6px 0 0">Fonctionne sans Internet sur le même PC. Pour une TV connectée autonome, la synchronisation reste à développer.</p></div><section id="view"></section></main><footer>CHAMPIONNAT ANNUEL SIMPLE — STOCKAGE LOCAL • SAUVEGARDE JSON APRÈS CHAQUE SÉANCE</footer><script id="milft-capacity">
 /* MILFT shared table scheduler. Pure functions; no tournament data is mutated. */
 (function(root,factory){
   const api=factory();
@@ -1162,6 +1162,54 @@ async function milftPreserverAvantRestauration(){
   }
   return {protectedId:copies[0].id,previousCount:current.data.tournaments.length,source:'données courantes',recoveredCount:copies.length>1?existing.payload.data.tournaments.length:null};
  }finally{database.close();}
+}
+
+async function milftMergeAnnualBackup(input){
+ const file=input.files&&input.files[0];input.value='';if(!file)return;
+ try{
+  if(file.size>30*1024*1024)throw Error('Fichier trop volumineux.');
+  const payload=JSON.parse(await file.text());
+  if(payload?.format!=='MILFT-TOURNOIS-BACKUP'||payload.version!==1||!Array.isArray(payload.data?.tournaments)||!Array.isArray(payload.data?.players))throw Error('Sauvegarde MILFT non reconnue.');
+  const annual=payload.data.tournaments.filter(t=>t?.mode==='challenge');
+  if(!annual.length)throw Error('Aucun championnat annuel trouvé dans cette sauvegarde.');
+  if(annual.some(t=>typeof t.id!=='string'||!t.id||!Array.isArray(t.roster)||!Array.isArray(t.matches)||!Array.isArray(t.tables)))throw Error('Championnat annuel incomplet.');
+  if(new Set(annual.map(t=>t.id)).size!==annual.length)throw Error('Identifiants de championnats dupliqués.');
+  for(const t of annual){
+   const rosterIds=new Set();
+   for(const p of t.roster){
+    if(!p||typeof p.id!=='string'||typeof p.first!=='string'||typeof p.last!=='string'||rosterIds.has(p.id))throw Error('Participants invalides : '+t.name);
+    rosterIds.add(p.id);
+   }
+   const matchIds=new Set();
+   for(const m of t.matches){
+    if(!m||typeof m.id!=='string'||matchIds.has(m.id)||!['waiting','playing','done'].includes(m.status)||!Array.isArray(m.sets)||m.a&&!rosterIds.has(m.a)||m.b&&!rosterIds.has(m.b))throw Error('Rencontres invalides : '+t.name);
+    matchIds.add(m.id);
+   }
+   if(t.tables.some(x=>!x||x.id==null||!['free','playing','maintenance','excluded'].includes(x.state)))throw Error('Tables invalides : '+t.name);
+  }
+  const existingIds=new Set(db.tournaments.map(t=>t.id));
+  const additions=annual.filter(t=>!existingIds.has(t.id));
+  const ignored=annual.length-additions.length;
+  if(!additions.length){alert('Tous les championnats de cette sauvegarde existent déjà. Aucune modification.');return;}
+  const playerIds=new Set(db.players.map(p=>p.id));
+  const incomingPlayers=payload.data.players.filter(p=>p&&typeof p.id==='string'&&typeof p.first==='string'&&typeof p.last==='string');
+  const newPlayers=incomingPlayers.filter(p=>!playerIds.has(p.id));
+  const currentById=new Map(db.players.map(p=>[p.id,p]));
+  for(const p of incomingPlayers){
+   const old=currentById.get(p.id);
+   if(old&&(old.first!==p.first||old.last!==p.last))throw Error('Conflit de fiche joueur : '+p.id+'. Import annulé pour éviter un écrasement.');
+  }
+  const summary=additions.map(t=>'• '+String(t.name||'Sans nom')+' — '+t.matches.length+' rencontres').join('\\n');
+  if(!confirm('IMPORT SÉLECTIF SANS REMPLACEMENT\\n\\n'+summary+'\\n\\n'+ignored+' championnat(s) déjà présent(s) ignoré(s).\\n'+newPlayers.length+' nouvelle(s) fiche(s) joueur.\\n\\nLes autres tournois, simulations et résultats restent inchangés. Continuer ?'))return;
+  const protection=await milftPreserverAvantRestauration();
+  // Calculer d'abord le résultat complet ; une seule écriture après protection vérifiée.
+  const next=JSON.parse(JSON.stringify(db));
+  next.players.push(...JSON.parse(JSON.stringify(newPlayers)));
+  next.tournaments.push(...JSON.parse(JSON.stringify(additions)));
+  const before=db;
+  try{db=next;save();}catch(e){db=before;throw e;}
+  flash(additions.length+' championnat(s) annuel(s) intégré(s). Sauvegarde de secours : '+protection.protectedId);
+ }catch(e){alert('Import sélectif annulé : '+e.message);}
 }
 async function milftImportBackup(input){
  const file=input.files&&input.files[0];input.value='';if(!file)return;
