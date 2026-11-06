@@ -293,9 +293,9 @@ jobs:
             {phase:'league',status:'done',a:'A',b:'D',score:{a:32,b:42}},
             {phase:'league',status:'done',a:'B',b:'D',score:{a:42,b:32}}
           ]}};
-          assert.deepEqual(ranking(tieCase,['A','B'],'league').map(r=>r.id),['A','B']);
+          assert.deepEqual(ranking(tieCase,['A','B','D'],'league').filter(r=>r.id!=='D').map(r=>r.id),['A','B']);
           tieCase.cap.matches[2].score={a:42,b:30};
-          assert.deepEqual(ranking(tieCase,['A','B'],'league').map(r=>r.id),['B','A']);
+          assert.deepEqual(ranking(tieCase,['A','B','D'],'league').filter(r=>r.id!=='D').map(r=>r.id),['B','A']);
           console.log('OK: departage par difference puis confrontation directe.');
           const nextStart=html.indexOf('function capCompNext(){');
           const nextEnd=html.indexOf(String.fromCharCode(10)+'function capCompBye(id)',nextStart);
