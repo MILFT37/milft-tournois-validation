@@ -47,6 +47,22 @@ jobs:
               assert.equal(result.capGrid,'grid','commandes CAP en grille sur mobile');
               assert.equal(result.hasCap,true,'fonctions CAP disponibles');
               assert.equal(result.hasAnnual,true,'fonction repli présences disponible');
+              // Lot responsive : vérification sur trois tailles d'écran.
+              for (const width of [360,390,768]) {
+                await page.setViewportSize({width,height:844});
+                const css = await page.evaluate(() => {
+                  const el=document.createElement('div');
+                  el.className='cap-command-row';
+                  document.body.appendChild(el);
+                  const style=getComputedStyle(el);
+                  const result={display:style.display,columns:style.gridTemplateColumns};
+                  el.remove();
+                  return result;
+                });
+                assert.equal(css.display,'grid','grille CAP à '+width+'px');
+                assert.equal(css.columns.trim().split(/\\s+/).length,2,'deux colonnes CAP à '+width+'px');
+                console.log('RESPONSIVE OK',width,css);
+              }
               assert.deepEqual(errors,[],'aucune erreur JavaScript au chargement');
               console.log('CHROMIUM MOBILE OK',result);
             } finally { await browser.close(); }
