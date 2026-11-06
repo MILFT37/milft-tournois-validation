@@ -826,6 +826,15 @@ jobs:
             const reopened=await q.evaluate(inspect);
             assert.deepEqual(reopened,reference,'Reprise de la saison restauree non conforme');
             assert.equal(await q.evaluate(()=>JSON.stringify(db.tournaments.find(t=>t.id==='other-ci'))),otherReference,'Autre tournoi perdu apres rechargement');
+            // Verification visuelle apres migration de la version isolee vers la V1.1 generale.
+            await q.evaluate(()=>{db.selected='annual-ci';tab='live-detail';render();});
+            const restoredPresence=q.locator('.milft-annual-presence details');
+            assert.equal(await restoredPresence.count(),1,'Repli des presences absent apres import');
+            const restoredCount=await restoredPresence.locator('summary').innerText();
+            assert.ok(restoredCount.includes('2/3'),'Compteur de presences perdu apres import : '+restoredCount);
+            await restoredPresence.locator('summary').click();
+            assert.equal(await restoredPresence.evaluate(el=>el.open),true,'Repli non utilisable apres import');
+            console.log('OK: migration saison isolee vers V1.1, presences et repli utilisables.');
             // Une archive malformee ne doit jamais remplacer la saison restauree.
             const beforeInvalid=await q.evaluate(inspect);
             await q.locator('#milft-backup-file').setInputFiles({
