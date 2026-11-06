@@ -246,6 +246,41 @@ jobs:
             });
             assert.ok(preservedAnnual.same,'Fusion : metadonnees de saison ou resultats modifies');
             assert.equal(preservedAnnual.players,2,'Fusion : joueurs de saison manquants');
+            // Simulation privee : deux saisons distinctes, sans publier de donnees nominatives.
+            const twoSeasons=await p.evaluate(async()=>{
+              const snapshot=JSON.parse(JSON.stringify(db));
+              const oldConfirm=window.confirm,oldAlert=window.alert,oldPreserve=milftPreserverAvantRestauration;
+              try{
+                const local={id:'existing-other',mode:'challenge',name:'Existant',roster:[],matches:[],tables:[]};
+                db={...snapshot,players:[],tournaments:[local]};
+                window.confirm=()=>true;window.alert=()=>{};
+                milftPreserverAvantRestauration=async()=>({protectedId:'test-secours'});
+                const players=Array.from({length:42},(_,i)=>({id:'synthetic-'+i,first:'TEST',last:String(i)}));
+                const seasons=[21,20].map((count,index)=>{
+                  const roster=players.slice(index?21:0,index?41:21);
+                  const matches=[];
+                  for(let i=0;i<count;i++)for(let j=i+1;j<count;j++){
+                    const done=matches.length<(index?5:21);
+                    matches.push({id:'season-'+index+'-match-'+i+'-'+j,a:roster[i].id,b:roster[j].id,
+                      status:done?'done':'waiting',table:null,sets:done?[[5,3],[5,2],[5,4]]:[],
+                      ...(done?{score:{a:3,b:0}}:{})});
+                  }
+                  return {id:'synthetic-season-'+index,mode:'challenge',name:'Saison '+index,
+                    roster,matches,tables:[{id:1,state:'free'}],sessions:[{id:'s'+index,present:roster.map(x=>x.id)}]};
+                });
+                const source={format:'MILFT-TOURNOIS-BACKUP',version:1,data:{players,tournaments:seasons}};
+                await milftMergeAnnualBackup({files:[new File([JSON.stringify(source)],'synthetic.json',{type:'application/json'})],value:'synthetic.json'});
+                return {counts:db.tournaments.map(t=>t.matches.length),players:db.players.length,
+                  preserved:JSON.stringify(db.tournaments[0])===JSON.stringify(local),
+                  exact:seasons.every((t,i)=>JSON.stringify(db.tournaments[i+1])===JSON.stringify(t))};
+              }finally{
+                db=snapshot;save();window.confirm=oldConfirm;window.alert=oldAlert;
+                milftPreserverAvantRestauration=oldPreserve;
+              }
+            });
+            assert.deepEqual(twoSeasons.counts,[0,210,190],'Fusion de deux saisons : rencontres perdues');
+            assert.equal(twoSeasons.players,42,'Fusion de deux saisons : joueurs manquants');
+            assert.ok(twoSeasons.preserved&&twoSeasons.exact,'Fusion de deux saisons : donnees alterees');
             // Attribution manuelle CAP : une table occupee ne peut etre attribuee deux fois.
             const capManualConflict=await p.evaluate(()=>{
               const snapshot=JSON.parse(JSON.stringify(db)),oldAlert=window.alert;
