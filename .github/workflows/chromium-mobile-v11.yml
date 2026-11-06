@@ -124,7 +124,14 @@ jobs:
               assert.ok(positions[2].y>positions[0].y,'Terminer sur seconde ligne');
               assert.ok(positions[3].x>positions[2].x,'Abandonner à droite');
               console.log('PLACEMENTS CAP OK',positions);
-              assert.deepEqual(errors,[],'aucune erreur JavaScript au chargement');
+              // Persistance réelle : stockage navigateur et rechargement.
+              await page.evaluate(() => localStorage.setItem('milft-ci-persistence','verification'));
+              await page.reload({waitUntil:'load'});
+              assert.equal(await page.evaluate(() => localStorage.getItem('milft-ci-persistence')),'verification','localStorage conserve au rechargement');
+              await page.evaluate(() => localStorage.removeItem('milft-ci-persistence'));
+              assert.match(await page.title(),/MILFT Tournois/,'application encore chargée après reload');
+              console.log('RECHARGEMENT ET STOCKAGE OK');
+              assert.deepEqual(errors,[],'aucune erreur JavaScript au chargement et au rechargement');
               console.log('CHROMIUM MOBILE OK',result);
             } finally { await browser.close(); }
           })().catch(error=>{console.error(error);process.exitCode=1});
