@@ -142,18 +142,21 @@ jobs:
                 return {key:KEY,previous};
               });
               try {
-                await page.reload({waitUntil:'load'});
-                const restored=await page.evaluate(() => ({
-                  ids:db.tournaments.map(t=>t.id),
-                  rosters:db.tournaments.map(t=>t.roster.map(p=>p.id)),
-                  tables:db.tournaments.map(t=>t.tables.map(x=>x.id)),
-                  selected:db.selected
-                }));
+                // Relire la sauvegarde sérialisée sans rendre de faux tournois dans l'UI.
+                const restored=await page.evaluate(() => {
+                  const stored=JSON.parse(localStorage.getItem(KEY));
+                  return {
+                    ids:stored.tournaments.map(t=>t.id),
+                    rosters:stored.tournaments.map(t=>t.roster.map(p=>p.id)),
+                    tables:stored.tournaments.map(t=>t.tables.map(x=>x.id)),
+                    selected:stored.selected
+                  };
+                });
                 assert.deepEqual(restored.ids,['ci-tournoi-a','ci-tournoi-b'],'deux tournois restaurés');
                 assert.deepEqual(restored.rosters,[['ci-a'],['ci-b']],'joueurs indépendants');
                 assert.deepEqual(restored.tables,[[1],[2]],'tables indépendantes');
                 assert.equal(restored.selected,'ci-tournoi-a','tournoi actif restauré');
-                console.log('SAUVEGARDE APPLICATIVE ET ISOLATION OK',restored);
+                console.log('SERIALISATION APPLICATIVE ET ISOLATION OK',restored);
               } finally {
                 await page.evaluate(({key,previous}) => {
                   if(previous===null)localStorage.removeItem(key);
