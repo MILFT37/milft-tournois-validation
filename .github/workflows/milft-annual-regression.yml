@@ -369,8 +369,9 @@ jobs:
             assert.ok(capLeagueClose.alerts.some(x=>x.includes('non terminées')),'Championnat CAP : avertissement absent');
             // CAP clubs : palier, progression cumulative et fin de rencontre.
             const capClubScores=await p.evaluate(()=>{
-              const original=JSON.parse(JSON.stringify(db)),oldAlert=window.alert;
+              const original=JSON.parse(JSON.stringify(db)),oldAlert=window.alert,oldFlash=flash;
               const alerts=[];
+              flash=()=>{}; // test unitaire des scores sans rerendu de la page fictive
               const a=document.createElement('input'),b=document.createElement('input');
               a.id='capca-ci-club';b.id='capcb-ci-club';document.body.append(a,b);
               try{
@@ -390,7 +391,7 @@ jobs:
                 a.value='8';b.value='10';capCompRecord('ci-club');
                 const m=db.tournaments[0].cap.matches[0];
                 return {refusedPalier,refusedDecrease,relays:m.relays,status:m.status,alerts};
-              }finally{a.remove();b.remove();db=original;save();window.alert=oldAlert}
+              }finally{a.remove();b.remove();db=original;save();window.alert=oldAlert;flash=oldFlash}
             });
             assert.equal(capClubScores.refusedPalier,0,'CAP clubs : palier non atteint accepte');
             assert.equal(capClubScores.refusedDecrease,1,'CAP clubs : score cumulatif decroissant accepte');
