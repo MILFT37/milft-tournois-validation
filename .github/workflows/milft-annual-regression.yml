@@ -360,12 +360,14 @@ jobs:
                 window.alert=x=>alerts.push(String(x));
                 capCompClose();const blocked=db.tournaments[0].closed;
                 db.tournaments[0].cap.matches[0].status='done';
+                capCompClose();const missingScoreBlocked=db.tournaments[0].closed;
                 db.tournaments[0].cap.matches[0].relays=[{a:30,b:20}];
                 capCompClose();const closed=db.tournaments[0].closed;
-                return {blocked,closed,alerts};
+                return {blocked,missingScoreBlocked,closed,alerts};
               }finally{db=original;save();window.alert=oldAlert}
             });
             assert.equal(capLeagueClose.blocked,false,'Championnat CAP : cloture prematuree autorisee');
+            assert.equal(capLeagueClose.missingScoreBlocked,false,'Championnat CAP : score manquant non bloque');
             assert.equal(capLeagueClose.closed,true,'Championnat CAP : cloture terminee refusee');
             assert.ok(capLeagueClose.alerts.some(x=>x.includes('non terminées')),'Championnat CAP : avertissement absent');
             // CAP clubs : palier, progression cumulative et fin de rencontre.
