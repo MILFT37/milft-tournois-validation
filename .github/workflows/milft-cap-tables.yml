@@ -123,5 +123,36 @@ jobs:
           manualMatch.status='waiting';manualMatch.bye=true;manualAssign('manual');
           assert.equal(manualMatch.tableId,null,'BYE protégé');
           console.log('OK: parcours manuel, collisions, maintenance, retrait, abandon et BYE.');
+          // Parcours de gestion du parc : exclusion, maintenance, occupation et réouverture.
+          const stateStart=html.indexOf('function capSetTable(id){');
+          const stateEnd=html.indexOf(String.fromCharCode(10)+'function capAssignTable(id){',stateStart);
+          assert.ok(stateStart>=0&&stateEnd>stateStart,'Gestion des états introuvable');
+          const stateCode=html.slice(stateStart,stateEnd);
+          let stateChoice='maintenance',stateSaves=0,stateAlerts=[];
+          const stateSet=new Function('active','document','capTableBusy','save','flash','alert',
+            stateCode+';return capSetTable;')(
+            ()=>manualTournament,
+            {getElementById:()=>({get value(){return stateChoice;}})},
+            (x,id)=>x.cap.matches.some(m=>m.tableId===id&&m.status!=='done'&&m.status!=='abandoned'),
+            ()=>stateSaves++,()=>{},s=>stateAlerts.push(s));
+          stateSet(1);
+          assert.equal(manualTournament.tables[0].state,'maintenance');
+          assert.equal(stateSaves,1);
+          stateSet(1);
+          assert.equal(stateSaves,1,'Etat identique sans nouvelle sauvegarde');
+          stateChoice='excluded';stateSet(2);
+          assert.equal(manualTournament.tables[1].state,'free','Table occupée non exclue');
+          assert.equal(stateAlerts.length,1);
+          otherMatch.status='done';stateSet(2);
+          assert.equal(manualTournament.tables[1].state,'excluded','Table libérée excluable');
+          assert.equal(stateSaves,2);
+          stateChoice='free';stateSet(2);
+          assert.equal(manualTournament.tables[1].state,'free','Table réouverte');
+          assert.equal(stateSaves,3);
+          manualTournament.closed=true;stateChoice='maintenance';stateSet(2);
+          assert.equal(manualTournament.tables[1].state,'free','Compétition close protégée');
+          assert.equal(stateSaves,3);
+          console.log('OK: états des tables, occupation, exclusion, réouverture et clôture.');
+
           console.log('OK: BYE, absence de doublon, réattribution et maintenance.');
           JS
