@@ -28,6 +28,26 @@ jobs:
           }
           assert.ok(checked>=1,'Aucun script compile');
           console.log('OK: syntaxe de '+checked+' scripts integres.');
+          // Sauvegarde et reprise : deux tournois restent independants.
+          const saveStart=html.indexOf('function save(){localStorage.setItem(KEY,JSON.stringify(db))}');
+          const activeStart=html.indexOf('function active(){return db.tournaments.find(t=>t.id===db.selected)||null}');
+          assert.ok(saveStart>=0&&activeStart>saveStart,'Persistance principale introuvable');
+          const storage=new Map();
+          const localStorage={setItem:(k,v)=>storage.set(k,v),getItem:k=>storage.get(k)||null};
+          const db={selected:'one',tournaments:[
+            {id:'one',tables:[{id:1,state:'free'}],matches:[{id:'a',status:'waiting'}]},
+            {id:'two',tables:[{id:1,state:'maintenance'}],matches:[{id:'b',status:'done'}]}
+          ]};
+          const KEY='milft-validation-persistence';
+          const saveCode=html.slice(saveStart,saveStart+'function save(){localStorage.setItem(KEY,JSON.stringify(db))}'.length);
+          const saveTest=new Function('localStorage','KEY','db',saveCode+';return save;')(localStorage,KEY,db);
+          saveTest();
+          const recovered=JSON.parse(localStorage.getItem(KEY));
+          assert.deepEqual(recovered,db,'Sauvegarde complete recuperee');
+          recovered.tournaments[0].tables[0].state='excluded';
+          assert.equal(recovered.tournaments[1].tables[0].state,'maintenance','Tournois independants');
+          assert.equal(recovered.selected,'one','Selection restauree');
+          console.log('OK: sauvegarde, reprise et independance de deux tournois.');
           has("if(state!=='free'&&capTableBusy(t,id))");
           has("if(m.bye||!m.a||!m.b)");
           has("!\u005b\u0027waiting\u0027,\u0027playing\u0027\u005d.includes(m.status)");
