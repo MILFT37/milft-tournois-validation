@@ -68,6 +68,25 @@ jobs:
             assert.ok(capMobile[2].y>capMobile[0].y,'Terminer/Abandonner doivent etre en deuxieme ligne');
             assert.ok(Math.max(...capMobile.map(b=>b.width))-Math.min(...capMobile.map(b=>b.width))<2,'Largeurs des commandes incoherentes');
             await p.setViewportSize({width:1280,height:720});
+            // Course aux points : une table ou un club ne peut etre affecte deux fois.
+            const capTables=await p.evaluate(()=>{
+              const t={
+                closed:false,tables:[{id:1,state:'free'},{id:2,state:'free'},{id:3,state:'excluded'}],
+                cap:{competition:true,phase:'league',matches:[
+                  {id:'m1',phase:'league',a:'A',b:'B',status:'waiting',tableId:null},
+                  {id:'m2',phase:'league',a:'A',b:'C',status:'waiting',tableId:null},
+                  {id:'m3',phase:'league',a:'D',b:'E',status:'waiting',tableId:null}
+                ]}
+              };
+              const originalActive=active,originalSave=save,originalFlash=flash;
+              try{
+                active=()=>t;save=()=>{};flash=()=>{};
+                capAutoAssign();
+                return t.cap.matches.map(m=>({id:m.id,tableId:m.tableId}));
+              }finally{active=originalActive;save=originalSave;flash=originalFlash}
+            });
+            assert.deepEqual(capTables,[{id:'m1',tableId:1},{id:'m2',tableId:null},{id:'m3',tableId:2}],
+              'Attribution : un club ne doit pas jouer sur deux tables, table exclue interdite');
             // Regression UI : les presences restent depliees a chaque coche/decochage.
             await p.evaluate(()=>{
               db.players=[{id:'a',first:'Alice',last:'TEST'},{id:'b',first:'Bob',last:'TEST'},{id:'c',first:'Chloe',last:'TEST'}];
