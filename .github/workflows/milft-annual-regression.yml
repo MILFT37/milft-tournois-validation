@@ -33,7 +33,7 @@ jobs:
             await p.evaluate(()=>{
               db.players=[{id:'a',first:'Alice',last:'TEST'},{id:'b',first:'Bob',last:'TEST'},{id:'c',first:'Chloe',last:'TEST'}];
               db.tournaments=[{id:'annual-ci',name:'Saison fictive CI',mode:'challenge',discipline:'single',closed:false,legs:1,roster:db.players.slice(),presence:{a:false,b:false,c:false},matches:[],tables:[{id:1,state:'free'}]}];
-              db.selected='annual-ci';tab='live';save();render();
+              db.selected='annual-ci';tab='live-detail';save();render();
             });
             const presencePanel=p.locator('.milft-annual-presence details');
             await presencePanel.locator('summary').click();
