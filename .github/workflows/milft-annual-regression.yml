@@ -133,9 +133,19 @@ jobs:
             await q.reload();
             const reopened=await q.evaluate(inspect);
             assert.deepEqual(reopened,reference,'Reprise de la saison restauree non conforme');
+            // Une archive malformee ne doit jamais remplacer la saison restauree.
+            const beforeInvalid=await q.evaluate(inspect);
+            await q.locator('#milft-backup-file').setInputFiles({
+              name:'archive-invalide.json',mimeType:'application/json',
+              buffer:Buffer.from(JSON.stringify({format:'MILFT-TOURNOIS-BACKUP',version:1,data:{players:[],tournaments:[{id:'bad',mode:'challenge',roster:[],matches:[],tables:[{id:1,state:'playing'}]}]}}))
+            });
+            await q.waitForFunction(()=>document.querySelector('#milft-backup-file')?.value==='');
+            assert.deepEqual(await q.evaluate(inspect),beforeInvalid,'Archive invalide a ecrase les donnees');
+            await q.reload();
+            assert.deepEqual(await q.evaluate(inspect),beforeInvalid,'Archive invalide a modifie la sauvegarde locale');
             await clean.close();
             assert.deepEqual(errors,[],'Erreurs JavaScript');
-            console.log('OK: absence, lancement, resultat, classement, ajout joueur, tables 1-4, deux seances, correction de vainqueur, annulation, export JSON, restauration vierge et reprise.');
+            console.log('OK: absence, lancement, resultat, classement, ajout joueur, tables 1-4, deux seances, correction de vainqueur, annulation, export JSON, restauration vierge, refus d'archive invalide et reprise.');
             await browser.close();
           })().catch(e=>{console.error(e);process.exit(1)});
           JS
