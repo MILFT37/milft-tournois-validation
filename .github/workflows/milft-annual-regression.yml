@@ -98,6 +98,38 @@ jobs:
             assert.equal(mergeUi.handler,'milftMergeAnnualBackup(this)','Import selectif mal relie');
             assert.equal(mergeUi.button,true,'Bouton import selectif absent');
             assert.equal(mergeUi.fn,'function','Fonction import selectif absente');
+            // Simulation complete de fusion : conserver les donnees locales et ignorer les doublons.
+            const mergeResult=await p.evaluate(async()=>{
+              const snapshot=JSON.parse(JSON.stringify(db));
+              const oldConfirm=window.confirm,oldAlert=window.alert,oldPreserve=milftPreserverAvantRestauration;
+              const saved=[];
+              try{
+                db={...snapshot,players:[{id:'local',first:'Locale',last:'GARDEE'}],
+                  tournaments:[{id:'existing',mode:'challenge',name:'Saison existante',roster:[],matches:[],tables:[]}]};
+                window.confirm=()=>true;window.alert=msg=>{saved.push(String(msg))};
+                milftPreserverAvantRestauration=async()=>({protectedId:'test-secours'});
+                const source={format:'MILFT-TOURNOIS-BACKUP',version:1,data:{
+                  players:[{id:'local',first:'Locale',last:'GARDEE'},{id:'new',first:'Nouvelle',last:'JOUEUSE'}],
+                  tournaments:[
+                    {id:'existing',mode:'challenge',name:'Saison existante',roster:[],matches:[],tables:[]},
+                    {id:'incoming',mode:'challenge',name:'Saison importee',
+                     roster:[{id:'new',first:'Nouvelle',last:'JOUEUSE'}],matches:[],tables:[{id:1,state:'free'}]}
+                  ]}};
+                const file=new File([JSON.stringify(source)],'championnat.json',{type:'application/json'});
+                await milftMergeAnnualBackup({files:[file],value:'championnat.json'});
+                const first={ids:db.tournaments.map(t=>t.id),players:db.players.map(x=>x.id)};
+                await milftMergeAnnualBackup({files:[file],value:'championnat.json'});
+                return {first,secondIds:db.tournaments.map(t=>t.id),alerts:saved};
+              }finally{
+                db=snapshot;save();
+                window.confirm=oldConfirm;window.alert=oldAlert;
+                milftPreserverAvantRestauration=oldPreserve;
+              }
+            });
+            assert.deepEqual(mergeResult.first.ids,['existing','incoming'],'Import : preservation des tournois ou ajout incorrect');
+            assert.deepEqual(mergeResult.first.players,['local','new'],'Import : preservation ou ajout des joueurs incorrect');
+            assert.deepEqual(mergeResult.secondIds,['existing','incoming'],'Import repete : doublon de championnat');
+            assert.ok(mergeResult.alerts.some(x=>x.includes('existent déjà')),'Import repete : avertissement manquant');
             // Regression UI : les presences restent depliees a chaque coche/decochage.
             await p.evaluate(()=>{
               db.players=[{id:'a',first:'Alice',last:'TEST'},{id:'b',first:'Bob',last:'TEST'},{id:'c',first:'Chloe',last:'TEST'}];
