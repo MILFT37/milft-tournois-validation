@@ -63,6 +63,43 @@ jobs:
                 assert.equal(css.columns.trim().split(/\s+/).length,2,'deux colonnes CAP à '+width+'px');
                 console.log('RESPONSIVE OK',width,css);
               }
+              // Lot commandes : scénarios sans/sur commande de tour suivant.
+              const layouts = await page.evaluate(() => {
+                const cases = [
+                  ['complet',['cap-next-round','cap-assign-command','cap-finish-command','cap-abandon-command']],
+                  ['sans-tour-suivant',['cap-assign-command','cap-finish-command','cap-abandon-command']],
+                  ['termine',['cap-assign-command','cap-finish-command']]
+                ];
+                return cases.map(([name,classes]) => {
+                  const row=document.createElement('div');
+                  row.className='row cap-command-row';
+                  for(const cls of classes) {
+                    const button=document.createElement('button');
+                    button.className=cls;
+                    button.textContent=cls;
+                    row.appendChild(button);
+                  }
+                  document.body.appendChild(row);
+                  const result={name,buttons:[...row.children].map(b=>{
+                    const style=getComputedStyle(b);
+                    const rect=b.getBoundingClientRect();
+                    return {name:b.className,column:style.gridColumnStart,width:rect.width,height:rect.height};
+                  })};
+                  row.remove();
+                  return result;
+                });
+              });
+              for(const layout of layouts){
+                assert.ok(layout.buttons.every(b=>b.height>=44),'cible tactile 44px : '+layout.name);
+                assert.ok(layout.buttons.every(b=>b.width>0),'boutons visibles : '+layout.name);
+                if(layout.name==='sans-tour-suivant'){
+                  assert.equal(layout.buttons[0].column,'1','attribution commence colonne 1');
+                }
+                if(layout.name==='termine'){
+                  assert.equal(layout.buttons[1].column,'1','terminer commence colonne 1');
+                }
+                console.log('COMMANDES OK',layout.name,layout.buttons);
+              }
               assert.deepEqual(errors,[],'aucune erreur JavaScript au chargement');
               console.log('CHROMIUM MOBILE OK',result);
             } finally { await browser.close(); }
