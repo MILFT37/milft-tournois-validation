@@ -84,6 +84,31 @@ jobs:
             assert.equal(priority.occupied,'ordinaire','Relance attribuee malgre joueur occupe');
             assert.equal(priority.allBusy,undefined,'Rencontre attribuee malgre joueur commun occupe');
             assert.equal(priority.held,'ordinaire','Rencontre encore reportee attribuee');
+            // Attribution auto : tables libres, joueurs non doubles, reprise prioritaire.
+            const assignment=await p.evaluate(()=>{
+              const original=db.tournaments.find(t=>t.id==='annual-ci');
+              const t={...original,mode:'challenge',roundLimit:false,
+                roster:[],presence:{a:true,b:true,c:true,d:true,e:true,f:true},
+                tables:[{id:1,state:'free'},{id:2,state:'free'}],
+                matches:[
+                  {id:'ordinaire',a:'a',b:'b',status:'waiting',hold:false,sets:[]},
+                  {id:'reprise',a:'a',b:'c',status:'waiting',hold:false,annualResumePriority:true,sets:[{a:5,b:3}]},
+                  {id:'independant',a:'d',b:'e',status:'waiting',hold:false,sets:[]}
+                ]};
+              autoAssign(t);
+              const result={matches:t.matches.map(m=>({id:m.id,status:m.status,table:m.table,priority:m.annualResumePriority,sets:m.sets.length})),tables:t.tables.map(x=>({id:x.id,state:x.state}))};
+              autoAssign(t);
+              result.afterSecond=t.matches.map(m=>({id:m.id,status:m.status,table:m.table}));
+              return result;
+            });
+            assert.equal(assignment.matches.find(m=>m.id==='reprise').status,'playing','Relance non attribuee en priorite');
+            assert.equal(assignment.matches.find(m=>m.id==='reprise').table,1,'Premiere table libre non utilisee');
+            assert.equal(assignment.matches.find(m=>m.id==='reprise').sets,1,'Manches perdues pendant attribution');
+            assert.equal(assignment.matches.find(m=>m.id==='reprise').priority,false,'Priorite non effacee apres attribution');
+            assert.equal(assignment.matches.find(m=>m.id==='ordinaire').status,'waiting','Joueur affecte a deux rencontres');
+            assert.equal(assignment.matches.find(m=>m.id==='independant').table,2,'Seconde table libre non utilisee');
+            assert.ok(assignment.tables.every(t=>t.state==='playing'),'Etat des tables non synchronise');
+            assert.deepEqual(assignment.afterSecond,assignment.matches.map(m=>({id:m.id,status:m.status,table:m.table})),'Seconde attribution a modifie des matchs en cours');
             // Ajout de joueurs : plusieurs cases doivent pouvoir etre cochees sans repli.
             await p.evaluate(()=>{
               db.players.push({id:'d',first:'David',last:'TEST'},{id:'e',first:'Emma',last:'TEST'});
