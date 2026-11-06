@@ -1821,7 +1821,7 @@ function capAutoAssign(){
   if(m.status!=='waiting'||m.bye||m.tableId||!m.a||!m.b)continue;
   m.tableId=free.shift().id;count++;
  }
- save();flash(count?count+' rencontre(s) attribuée(s) aux tables libres.':'Aucune table libre ou rencontre en attente.');
+ if(count)save();flash(count?count+' rencontre(s) attribuée(s) aux tables libres.':'Aucune table libre ou rencontre en attente.');
 }
 const capOriginalRecordV2=capCompRecord;
 capCompRecord=function(id){
