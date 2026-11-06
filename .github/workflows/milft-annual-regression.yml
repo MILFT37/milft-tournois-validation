@@ -2,7 +2,7 @@ name: Verification parcours championnat annuel Simple
 on:
   push:
     branches: [main]
-    paths: [.github/workflows/milft-annual-regression.yml]
+    paths: [.github/workflows/milft-annual-regression.yml, MILFT_Tournois_V1_1_VALIDATION_HEBERGEMENT_STABLE_2026-11-02.html]
   workflow_dispatch:
 jobs:
   annual:
@@ -29,6 +29,27 @@ jobs:
             p.on('dialog',d=>d.accept());
             const errors=[];p.on('pageerror',e=>errors.push(e.message));
             await p.goto('http://127.0.0.1:8766/MILFT_Tournois_V1_1_VALIDATION_HEBERGEMENT_STABLE_2026-11-02.html');
+            // Regression UI : les presences restent depliees a chaque coche/decochage.
+            await p.evaluate(()=>{
+              db.players=[{id:'a',first:'Alice',last:'TEST'},{id:'b',first:'Bob',last:'TEST'},{id:'c',first:'Chloe',last:'TEST'}];
+              db.tournaments=[{id:'annual-ci',name:'Saison fictive CI',mode:'challenge',discipline:'single',closed:false,legs:1,roster:db.players.slice(),presence:{a:false,b:false,c:false},matches:[],tables:[{id:1,state:'free'}]}];
+              db.selected='annual-ci';tab='live';save();render();
+            });
+            const presencePanel=p.locator('.milft-annual-presence details');
+            await presencePanel.locator('summary').click();
+            assert.equal(await presencePanel.evaluate(el=>el.open),true,'Impossible de depl ier les presences');
+            const checks=presencePanel.locator('.milft-presence-compact input[type="checkbox"]');
+            for(let i=0;i<3;i++){
+              await checks.nth(i).check();
+              assert.equal(await presencePanel.evaluate(el=>el.open),true,'Panneau replie apres presence '+i);
+            }
+            assert.match(await presencePanel.locator('summary').innerText(),/3\\/3/,'Compteur de presences non actualise');
+            await checks.nth(1).uncheck();
+            assert.equal(await presencePanel.evaluate(el=>el.open),true,'Panneau replie apres deselection');
+            assert.match(await presencePanel.locator('summary').innerText(),/2\\/3/,'Compteur apres deselection incorrect');
+            await p.reload();
+            assert.equal(await p.evaluate(()=>db.tournaments.find(t=>t.id==='annual-ci').presence.b),false,'Deselection non sauvegardee');
+            assert.equal(await p.evaluate(()=>db.tournaments.find(t=>t.id==='annual-ci').presence.a),true,'Presence non sauvegardee');
             const state=await p.evaluate(()=>{
               const check=(ok,msg)=>{if(!ok)throw Error(msg)};
               db.players=[{id:'a',first:'Alice',last:'TEST'},{id:'b',first:'Bob',last:'TEST'},{id:'c',first:'Chloe',last:'TEST'}];
