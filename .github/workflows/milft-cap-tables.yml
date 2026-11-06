@@ -73,6 +73,7 @@ jobs:
           assert.equal(t.cap.matches[1].tableId,1);
           assert.equal(t.cap.matches[2].tableId,2);
           assert.equal(t.cap.matches[3].tableId,undefined);
+          assert.equal(saved,1,'Une attribution sans changement ne doit pas sauvegarder');
           // Une table libérée ne doit être réattribuée qu'à une rencontre complète.
           t.cap.matches[1].status='done';
           t.cap.matches[1].tableId=null;
