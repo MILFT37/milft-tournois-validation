@@ -236,6 +236,28 @@ jobs:
           assert.equal(scoreSaves,2);
           recordScore('score');assert.equal(scoreSaves,2,'Résultat terminé protégé');
           console.log('OK: champs vides, paliers, cumul, fin de rencontre et sauvegardes.');
+          // Classement Championnat : victoire 2, nul 1, défaite 0 et différence cumulée.
+          const rankStart=html.indexOf('function capCompRanking(t,ids,phase,group){');
+          const rankEnd=html.indexOf(String.fromCharCode(10)+'function capCompNewFields()',rankStart);
+          assert.ok(rankStart>=0&&rankEnd>rankStart,'Classement Course aux points introuvable');
+          const rankCode=html.slice(rankStart,rankEnd);
+          const ranking=new Function('capCompScore',rankCode+';return capCompRanking;')(
+            m=>m.score);
+          const rankTournament={cap:{matches:[
+            {phase:'league',status:'done',a:'A',b:'B',score:{a:42,b:31}},
+            {phase:'league',status:'done',a:'C',b:'D',score:{a:42,b:37}},
+            {phase:'league',status:'done',a:'A',b:'C',score:{a:41,b:41}},
+            {phase:'league',status:'done',a:'B',b:'D',score:{a:42,b:30}},
+            {phase:'league',status:'waiting',a:'A',b:'D',score:{a:42,b:0}}
+          ]}};
+          const ranks=ranking(rankTournament,['A','B','C','D'],'league');
+          assert.deepEqual(ranks.map(x=>x.id),['A','C','B','D']);
+          assert.deepEqual(ranks.map(x=>x.pts),[3,3,2,0]);
+          assert.equal(ranks[0].for-ranks[0].against,11);
+          assert.equal(ranks[1].for-ranks[1].against,5);
+          assert.equal(ranks[0].played,2,'Match non terminé exclu');
+          console.log('OK: classement, points, nuls, différence cumulée et matchs en attente.');
+
 
 
 
