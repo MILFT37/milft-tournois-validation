@@ -100,6 +100,30 @@ jobs:
                 }
                 console.log('COMMANDES OK',layout.name,layout.buttons);
               }
+              // Vérification des placements réels (pas seulement des classes CSS).
+              const positions = await page.evaluate(() => {
+                const row=document.createElement('div');
+                row.className='row cap-command-row';
+                row.style.width='340px';
+                for(const cls of ['cap-next-round','cap-assign-command','cap-finish-command','cap-abandon-command']){
+                  const button=document.createElement('button');
+                  button.className=cls;
+                  button.textContent=cls;
+                  row.appendChild(button);
+                }
+                document.body.appendChild(row);
+                const result=[...row.children].map(el=>{
+                  const box=el.getBoundingClientRect();
+                  return {name:el.className,x:box.x,y:box.y,w:box.width,h:box.height};
+                });
+                row.remove();
+                return result;
+              });
+              assert.ok(Math.abs(positions[0].y-positions[1].y)<2,'première ligne côte à côte');
+              assert.ok(Math.abs(positions[2].y-positions[3].y)<2,'seconde ligne côte à côte');
+              assert.ok(positions[2].y>positions[0].y,'Terminer sur seconde ligne');
+              assert.ok(positions[3].x>positions[2].x,'Abandonner à droite');
+              console.log('PLACEMENTS CAP OK',positions);
               assert.deepEqual(errors,[],'aucune erreur JavaScript au chargement');
               console.log('CHROMIUM MOBILE OK',result);
             } finally { await browser.close(); }
