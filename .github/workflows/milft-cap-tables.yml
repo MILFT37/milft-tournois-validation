@@ -93,7 +93,7 @@ jobs:
           assert.equal(t.cap.matches[0].tableId,undefined);
           // Parcours fonctionnel de l'attribution manuelle : état, collision, changement et retrait.
           const manualStart=html.indexOf('capAssignTable=function(id){');
-          const manualEnd=html.indexOf('\\nfunction capAutoAssign(){',manualStart);
+          const manualEnd=html.indexOf(String.fromCharCode(10)+'function capAutoAssign(){',manualStart);
           assert.ok(manualStart>=0&&manualEnd>manualStart,'Attribution manuelle introuvable');
           const manualCode=html.slice(manualStart,manualEnd);
           const manualMatch={id:'manual',status:'waiting',a:'A',b:'B',tableId:null};
