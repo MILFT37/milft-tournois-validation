@@ -32,7 +32,7 @@ jobs:
           has("action:'capAutoAssign()'");
           // Vérifier le rendu généré des commandes, et non leur seule présence dans le fichier.
           const headerStart=html.indexOf('function milftSharedCommandHeader({name,pills,actions})');
-          const headerEnd=html.indexOf('\\nconst milftCapLiveBeforeShared',headerStart);
+          const headerEnd=html.indexOf(String.fromCharCode(10)+'const milftCapLiveBeforeShared',headerStart);
           assert.ok(headerStart>=0&&headerEnd>headerStart,'Générateur de commandes introuvable');
           const esc=(s)=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
           const headerCode=html.slice(headerStart,headerEnd);
