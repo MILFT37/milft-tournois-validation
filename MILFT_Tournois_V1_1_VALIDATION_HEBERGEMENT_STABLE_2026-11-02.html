@@ -1829,10 +1829,10 @@ capCompRecord=function(id){
  const t=active(),m=t?.cap?.matches.find(x=>x.id===id);if(!m)return;
  const old=m.status;
  capOriginalRecordV2(id);
- if(old!=='done'&&m.status==='done'){m.tableId=null;save();}
+ if(old!=='done'&&m.status==='done'&&m.tableId!=null){m.tableId=null;save();}
 };
 const capOriginalByeV2=capCompBye;
-capCompBye=function(id){const t=active(),m=t?.cap?.matches.find(x=>x.id===id);capOriginalByeV2(id);if(m?.bye){m.tableId=null;save();}};
+capCompBye=function(id){const t=active(),m=t?.cap?.matches.find(x=>x.id===id);capOriginalByeV2(id);if(m?.bye&&m.tableId!=null){m.tableId=null;save();}};
 function capSetTableCount(){
  const t=active(),n=Number(document.getElementById('cap-table-count')?.value);if(!t||t.closed)return;
  if(!Number.isInteger(n)||n<1||n>32)return alert('Nombre de tables : de 1 à 32.');
