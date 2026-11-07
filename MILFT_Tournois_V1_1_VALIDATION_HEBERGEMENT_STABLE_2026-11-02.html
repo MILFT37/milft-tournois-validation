@@ -1885,10 +1885,20 @@ capAssignTable=function(id){
 function capAutoAssign(){
  const t=active();if(!t?.cap?.competition||t.closed)return;
  const free=t.tables.filter(x=>capFreeTable(t,x.id));let count=0;
+ // Ne pas lancer simultanément deux rencontres impliquant la même équipe.
+ const occupied=new Set();
+ for(const match of t.cap.matches){
+  if(match.tableId!=null&&match.status!=='done'&&match.status!=='abandoned'&&!match.bye){
+   if(match.a!=null)occupied.add(String(match.a));
+   if(match.b!=null)occupied.add(String(match.b));
+  }
+ }
  for(const m of capActiveMatches(t)){
   if(!free.length)break;
   if(m.status!=='waiting'||m.bye||m.tableId||!m.a||!m.b)continue;
-  m.tableId=free.shift().id;count++;
+  if(occupied.has(String(m.a))||occupied.has(String(m.b)))continue;
+  m.tableId=free.shift().id;
+  occupied.add(String(m.a));occupied.add(String(m.b));count++;
  }
  if(count)save();flash(count?count+' rencontre(s) attribuée(s) aux tables libres.':'Aucune table libre ou rencontre en attente.');
 }
