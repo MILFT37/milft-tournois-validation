@@ -975,9 +975,9 @@ function createFinalFromQualifications(){
  if(t.finalId){
   const final=db.tournaments.find(x=>x.id===t.finalId);
   if(!final)return alert('Phase finale liée introuvable.');
-  db.selected=final.id;tab='live';save();render();window.scrollTo(0,0);return;
+  db.selected=final.id;tab='live-detail';save();render();window.scrollTo(0,0);return;
  }
- if(t.currentRound<t.roundLimit||t.matches.some(m=>m.status!=='done'))return alert('Termine toutes les rondes et tous les matchs avant de créer la phase finale.');
+ if(t.currentRound<t.roundLimit||t.matches.some(m=>m.status!=='done'))return alert('Termine tous les tours de poule et toutes les rencontres avant de créer la phase finale.');
  const ranking=qualificationRanking(t),countA=Number(t.qualifiers),countB=Number(t.qualifiersB)||0;
  const aIds=ranking.slice(0,countA),bIds=countB?ranking.slice(countA,countA+countB):[];
  if(aIds.length!==countA||(countB&&bIds.length!==countB)||countA<2||(countB&&countB<2))return alert('Nombre de qualifiés A ou B insuffisant (minimum 2 par tableau).');
@@ -985,7 +985,7 @@ function createFinalFromQualifications(){
  if(!confirm('Créer le tableau A ('+aIds.length+' qualifiés)'+(countB?' et le tableau B ('+bIds.length+' qualifiés)':'')+' ? Cette action termine les qualifications.'))return;
  const a=milftBuildQualifiedBracket(t,aIds,'A'),b=countB?milftBuildQualifiedBracket(t,bIds,'B'):null;
  t.finalId=a.id;t.finalBId=b?.id||null;db.tournaments.push(a);if(b)db.tournaments.push(b);
- db.selected=a.id;tab='live';save();flash(b?'Tableaux A et B créés séparément.':'Tableau A créé.');window.scrollTo(0,0);
+ db.selected=a.id;tab='live-detail';save();flash(b?'Tableaux A et B créés : ils appartiennent au même tournoi et partagent les tables.':'Tableau A créé et lié au tournoi.');window.scrollTo(0,0);
 }
 function matchPlayerIds(t,m){return t.mode==='monster'?[...(m.teamA||[]),...(m.teamB||[])].filter(Boolean):[...participantMembers(t,m.a),...participantMembers(t,m.b)]}
 function busyPlayers(t){const busy=new Set();for(const m of t.matches||[])if(m.status==='playing')for(const id of matchPlayerIds(t,m))busy.add(id);for(const p of t.roster||[])if(p.members?.some(id=>busy.has(id)))busy.add(p.id);return busy}
@@ -1099,7 +1099,7 @@ function moveMatch(id){
  m.table=next.id;next.state='playing';save();flash('Match déplacé vers la table '+next.id+'.');
 }
 function milftLaunchSelectedAnnual(){const id=document.getElementById('milft-annual-manual-match')?.value;if(!id)return alert('Sélectionne une rencontre disponible.');assignSpecific(id);}
-function assignSpecific(id){const t=active();if(!t||t.closed||t.abandoned)return alert('Tournoi terminé : rouvre-le pour effectuer une modification.');const m=t.matches.find(x=>x.id===id);if(!m||m.status!=='waiting'||m.bye)return;const busy=(t.sourceId||t.finalId)?milftSharedBusyPlayers(t):busyPlayers(t),requested=document.getElementById('milft-annual-manual-table')?.value,free=requested?milftFreeTables(t).find(x=>String(x.id)===requested):milftFreeTables(t)[0];if(!m.a||!m.b)return alert('Les deux adversaires doivent être connus.');if(t.roundLimit&&m.round!==t.currentRound)return alert('Cette ronde n’est pas la ronde en cours.');if(m.hold||(t.mode==='challenge'&&(!t.presence?.[m.a]||!t.presence?.[m.b])))return alert('Rencontre indisponible : vérifie les présences ou le report.');if(!free||matchPlayerIds(t,m).some(id=>busy.has(id)))return alert('Pas de table libre ou joueur déjà occupé dans ce tournoi.');m.status='playing';m.milftPriority=false;m.milftPriorityAt=null;m.annualResumePriority=false;m.table=free.id;m.startedAt=Date.now();free.state='playing';save();flash('Match affecté à la table '+free.id+'.')}
+function assignSpecific(id){const t=active();if(!t||t.closed||t.abandoned)return alert('Tournoi terminé : rouvre-le pour effectuer une modification.');const m=t.matches.find(x=>x.id===id);if(!m||m.status!=='waiting'||m.bye)return;const busy=(t.sourceId||t.finalId)?milftSharedBusyPlayers(t):busyPlayers(t),requested=document.getElementById('milft-annual-manual-table')?.value,free=requested?milftFreeTables(t).find(x=>String(x.id)===requested):milftFreeTables(t)[0];if(!m.a||!m.b)return alert('Les deux adversaires doivent être connus.');if(t.roundLimit&&m.round!==t.currentRound)return alert('Ce tour de poule n’est pas le tour en cours.');if(m.hold||(t.mode==='challenge'&&(!t.presence?.[m.a]||!t.presence?.[m.b])))return alert('Rencontre indisponible : vérifie les présences ou le report.');if(!free||matchPlayerIds(t,m).some(id=>busy.has(id)))return alert('Pas de table libre ou joueur déjà occupé dans ce tournoi.');m.status='playing';m.milftPriority=false;m.milftPriorityAt=null;m.annualResumePriority=false;m.table=free.id;m.startedAt=Date.now();free.state='playing';save();flash('Match affecté à la table '+free.id+'.')}
 function autoNow(){
  const t=active();if(!t||t.closed)return;
  if(milftRoundReadyForNext(t)){alert('Tour '+t.currentRound+' terminé : toutes les rencontres sont jouées. Lance le tour '+(t.currentRound+1)+' avant d’attribuer les tables.');return;}if(!t.sourceId&&!t.finalId&&t.matches.length&&t.matches.every(m=>m.status==='done')){alert(t.finalPhase&&!t.finalId?'Qualifications terminées : choisis de créer les tableaux A/B ou de prolonger les poules.':'Toutes les rencontres sont jouées : aucune attribution nécessaire.');return;}
