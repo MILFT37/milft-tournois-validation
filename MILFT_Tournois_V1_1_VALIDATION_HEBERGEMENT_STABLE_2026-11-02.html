@@ -1886,26 +1886,6 @@ capAssignTable=function(id){
  if(occupied)return alert('Impossible : une équipe de cette rencontre joue déjà sur une autre table.');
  m.tableId=n;save();flash('Table '+n+' attribuée.');
 };
-function capAutoAssign(){
- const t=active();if(!t?.cap?.competition||t.closed)return;
- const free=t.tables.filter(x=>capFreeTable(t,x.id));let count=0;
- // Ne pas lancer simultanément deux rencontres impliquant la même équipe.
- const occupied=new Set();
- for(const match of t.cap.matches){
-  if((match.tableId!=null||match.status==='playing')&&match.status!=='done'&&match.status!=='abandoned'&&!match.bye){
-   if(match.a!=null)occupied.add(String(match.a));
-   if(match.b!=null)occupied.add(String(match.b));
-  }
- }
- for(const m of capActiveMatches(t)){
-  if(!free.length)break;
-  if(m.status!=='waiting'||m.bye||m.tableId||!m.a||!m.b)continue;
-  if(occupied.has(String(m.a))||occupied.has(String(m.b)))continue;
-  m.tableId=free.shift().id;
-  occupied.add(String(m.a));occupied.add(String(m.b));count++;
- }
- if(count)save();flash(count?count+' rencontre(s) attribuée(s) aux tables libres.':'Aucune table libre ou rencontre en attente.');
-}
 const capOriginalRecordV2=capCompRecord;
 capCompRecord=function(id){
  const t=active(),m=t?.cap?.matches.find(x=>x.id===id);if(!m)return;
@@ -1991,16 +1971,6 @@ capSetTable=function(id){
  x.state=state;save();flash('État de la table '+id+' mis à jour.');
 };
 // Une attribution automatique ne doit jamais attribuer une table déjà utilisée.
-capAutoAssign=function(){
- const t=active();if(!t?.cap?.competition||t.closed)return;
- let count=0;
- for(const m of capActiveMatches(t)){
-  if(m.status==='done'||m.bye||m.tableId)continue;
-  const table=t.tables.find(x=>capFreeTable(t,x.id));if(!table)break;
-  m.tableId=table.id;count++;
- }
- save();flash(count+' rencontre(s) attribuée(s) aux tables libres.');
-};
 // Affichage des commandes au même endroit que dans les autres formats, sans panneaux redondants.
 const capQALive=capCompLive;
 capCompLive=function(t){
