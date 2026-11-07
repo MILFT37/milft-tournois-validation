@@ -211,6 +211,33 @@ jobs:
               assert.equal(manualGuard.tableId,null,'attribution manuelle refusée si équipe occupée');
               assert.ok(manualGuard.messages.some(m=>m.includes('joue déjà')),'alerte conflit équipe');
               console.log('PROTECTION ATTRIBUTION MANUELLE OK',manualGuard);
+              // Chemin positif : attribution manuelle autorisée puis réaffectation en attente.
+              const manualSuccess=await page.evaluate(()=>{
+                const oldDb=db,oldSave=save,oldFlash=flash,oldAlert=window.alert;
+                const select=document.createElement('select');
+                select.id='cap-table-ci-ok';
+                select.innerHTML='<option value="2" selected>Table 2</option><option value="3">Table 3</option>';
+                document.body.appendChild(select);
+                const messages=[];
+                try {
+                  save=()=>{};flash=()=>{};window.alert=msg=>messages.push(msg);
+                  const match={id:'ci-ok',phase:'groups',status:'waiting',a:'c',b:'d',tableId:null};
+                  const t={id:'ci-ok',closed:false,tables:[{id:1,state:'free'},{id:2,state:'free'},{id:3,state:'free'}],
+                    cap:{competition:true,phase:'groups',matches:[
+                      {id:'ci-other',phase:'groups',status:'playing',a:'a',b:'b',tableId:1},match
+                    ]}};
+                  db={players:[],tournaments:[t],selected:t.id};
+                  capAssignTable('ci-ok');
+                  const assigned=match.tableId;
+                  select.value='3';
+                  capAssignTable('ci-ok');
+                  return {assigned,moved:match.tableId,messages};
+                } finally {select.remove();db=oldDb;save=oldSave;flash=oldFlash;window.alert=oldAlert;}
+              });
+              assert.equal(manualSuccess.assigned,2,'attribution manuelle sur table libre');
+              assert.equal(manualSuccess.moved,3,'réaffectation autorisée avant début du match');
+              assert.deepEqual(manualSuccess.messages,[],'aucune alerte pour attribution valide');
+              console.log('ATTRIBUTION MANUELLE VALIDE OK',manualSuccess);
               // Menus CAP : seules les tables disponibles doivent être proposées.
               const optionsGuard=await page.evaluate(()=>{
                 const t={
