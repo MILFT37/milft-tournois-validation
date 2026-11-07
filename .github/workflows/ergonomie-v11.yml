@@ -1,0 +1,57 @@
+name: Vérification ergonomie V1.1
+on:
+  push:
+    branches: [ergonomie-globale-20261107]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+jobs:
+  controle:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Installer Chromium pour les tests
+        run: |
+          npm install --no-save playwright@1.56.1
+          npx playwright install --with-deps chromium
+      - name: Tester la navigation et les paramètres en navigateur
+        run: |
+          cat > /tmp/milft-ui-smoke.cjs <<'JS'
+          const {chromium}=require(process.cwd()+'/node_modules/playwright');
+          const fs=require('fs');
+          const path=require('path');
+          (async()=>{
+            const filename='MILFT_Tournois_V1_1_VALIDATION_HEBERGEMENT_STABLE_2026-11-02.html';
+            const html=fs.readFileSync(filename,'utf8');
+            const scripts=[...html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi)];
+            scripts.forEach((m,i)=>new (require('vm').Script)(m[1],{filename:'inline-'+i+'.js'}));
+            const browser=await chromium.launch({headless:true});
+            for(const viewport of [{width:390,height:844},{width:1366,height:768}]){
+              const page=await browser.newPage({viewport});
+              const errors=[];
+              page.on('pageerror',err=>errors.push(err.message));
+              await page.goto('file://'+path.resolve(filename),{waitUntil:'load'});
+              await page.waitForFunction(()=>document.querySelector('#tabs button') && document.querySelector('#view').children.length>0,{timeout:15000});
+              await page.waitForTimeout(700);
+              const button=page.locator('#milft-settings-toggle');
+              await button.click();
+              if(!await page.locator('#milft-settings').evaluate(e=>e.classList.contains('open')))throw Error('Paramètres non ouverts');
+              if(!await page.locator('#milft-backup-slot #milft-backup').count())throw Error('Sauvegarde absente des paramètres');
+              if(await page.locator('#view').isVisible())throw Error('Tournoi visible sous paramètres');
+              await page.locator('#milft-settings .settings-top button').click();
+              if(!await page.locator('#view').isVisible())throw Error('Retour à l application impossible');
+              if(await page.locator('#milft-settings').isVisible())throw Error('Paramètres toujours visibles');
+              for(const label of ['Joueurs','Nouveau tournoi','Tournoi en cours','Historique','Simulation','Avancement','Accueil']){
+                await page.locator('#tabs button').getByText(label,{exact:true}).click();
+                if(!await page.locator('#view').isVisible())throw Error('Vue non visible: '+label);
+                if(!await page.locator('#tabs button.active').getByText(label,{exact:true}).count())throw Error('Menu non activé: '+label);
+              }
+              if(errors.length)throw Error('Erreurs JS '+viewport.width+': '+errors.join('; '));
+              console.log('OK Chromium '+viewport.width+'px, navigation et sauvegarde');
+              await page.close();
+            }
+            await browser.close();
+          })().catch(e=>{console.error(e);process.exit(1)});
+          JS
+          node /tmp/milft-ui-smoke.cjs
