@@ -2144,7 +2144,14 @@ capCompLive=function(t){
  for(const css of ['milft-cap-header','cap-unified-header','milft-classic-command-header'])
   html=milftCapRemoveCardByClass(html,css);
  const phase=c.structure==='league'?'Championnat':c.phase==='groups'?'Qualifications en poules':'Tableau final';
- const header=milftCapUnifiedHeader(t,phase,done+'/'+ms.length+' rencontres','capCompClose()','Terminer');
+ const canNext=!t.closed&&c.phase!=='league'&&((c.phase==='groups'&&c.bracket)||(c.phase==='bracket'&&ms.length>1));
+ const actions=[
+  canNext?{label:c.phase==='groups'?'Créer le tableau final':'Lancer le tour suivant',action:'capCompNext()',disabled:ms.some(m=>m.status!=='done')}:null,
+  {label:'Attribuer aux tables libres',action:'capAutoAssign()',css:'mutedbtn',disabled:t.closed},
+  {label:t.closed?'Rouvrir la compétition':'Terminer la compétition',action:'capCompClose()',css:t.closed?'mutedbtn':'finishbtn'},
+  !t.closed?{label:'Abandonner',action:'capAbandon()',css:'danger'}:null
+ ];
+ const header=milftSharedCommandHeader({name:t.name,pills:[phase,done+'/'+ms.length+' rencontres terminées',c.phase==='bracket'?'Tour '+c.round:''],actions});
  return header+html;
 };
 // Tournois classiques : mêmes classes et mêmes composants, seules les actions changent.
