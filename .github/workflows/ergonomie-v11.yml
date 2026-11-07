@@ -39,9 +39,11 @@ jobs:
               if(await page.locator('#view').isVisible())throw Error('Tournoi visible sous paramètres');
               await page.locator('#milft-settings .settings-top button').click();
               if(!await page.locator('#view').isVisible())throw Error('Retour à l application impossible');
+              if(await page.locator('#milft-settings').isVisible())throw Error('Paramètres toujours visibles');
               for(const label of ['Joueurs','Nouveau tournoi','Tournoi en cours','Historique','Simulation','Avancement','Accueil']){
-                await page.locator('#tabs button').filter({hasText:label}).first().click();
+                await page.locator('#tabs button').getByText(label,{exact:true}).click();
                 if(!await page.locator('#view').isVisible())throw Error('Vue non visible: '+label);
+                if(!await page.locator('#tabs button.active').getByText(label,{exact:true}).count())throw Error('Menu non activé: '+label);
               }
               if(errors.length)throw Error('Erreurs JS '+viewport.width+': '+errors.join('; '));
               console.log('OK Chromium '+viewport.width+'px, navigation et sauvegarde');
