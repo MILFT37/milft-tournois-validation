@@ -454,7 +454,7 @@ jobs:
                 const messages=[];
                 try {
                   save=()=>{};flash=()=>{};window.alert=m=>messages.push(m);
-                  const match={id:'ci-lock',phase:'groups',status:'waiting',relays:[],a:'a',b:'b'};
+                  const match={id:'ci-lock',compositionsValidated:true,phase:'groups',status:'waiting',relays:[],a:'a',b:'b'};
                   const t={id:'ci-lock',closed:false,cap:{competition:true,phase:'bracket',targets:[5],finish:'winner',matches:[match,{id:'ci-next',phase:'bracket',round:1,status:'waiting'}]}};
                   db={players:[],tournaments:[t],selected:t.id};
                   a.value='5';b.value='3';capCompRecord(match.id);
@@ -472,7 +472,7 @@ jobs:
                 const messages=[];
                 try {
                   save=()=>{};flash=()=>{};window.alert=m=>messages.push(m);
-                  const match={id:'ci-guard',phase:'groups',status:'waiting',relays:[{a:5,b:3}],a:'a',b:'b'};
+                  const match={id:'ci-guard',compositionsValidated:true,phase:'groups',status:'waiting',relays:[{a:5,b:3}],a:'a',b:'b'};
                   const t={id:'ci-guard',closed:false,cap:{competition:true,phase:'groups',targets:[5],finish:'winner',matches:[match]}};
                   db={players:[],tournaments:[t],selected:t.id};
                   a.value='5';b.value='3';capCompRecord(match.id);
@@ -509,7 +509,7 @@ jobs:
                 const messages=[];
                 try {
                   save=()=>{};flash=()=>{};window.alert=m=>messages.push(m);
-                  const match={id:'ci-target',phase:'groups',status:'waiting',relays:[{a:5,b:3}],a:'a',b:'b'};
+                  const match={id:'ci-target',compositionsValidated:true,phase:'groups',status:'waiting',relays:[{a:5,b:3}],a:'a',b:'b'};
                   const t={id:'ci-target',closed:false,cap:{competition:true,phase:'groups',targets:[5,5],finish:'winner',matches:[match]}};
                   db={players:[],tournaments:[t],selected:t.id};
                   a.value='5';b.value='4';capCompRecord(match.id);
@@ -591,7 +591,7 @@ jobs:
                 const messages=[];
                 try {
                   save=()=>{};flash=()=>{};window.alert=m=>messages.push(m);
-                  const match={id:'ci-old-round',phase:'bracket',round:1,status:'waiting',relays:[],a:'a',b:'b'};
+                  const match={id:'ci-old-round',compositionsValidated:true,phase:'bracket',round:1,status:'waiting',relays:[],a:'a',b:'b'};
                   const t={id:'ci-old-round',closed:false,cap:{competition:true,phase:'bracket',round:2,targets:[5],finish:'winner',matches:[match]}};
                   db={players:[],tournaments:[t],selected:t.id};
                   a.value='5';b.value='3';capCompRecord(match.id);
@@ -632,7 +632,7 @@ jobs:
                 const messages=[];
                 try {
                   save=()=>{};flash=()=>{};window.alert=m=>messages.push(m);
-                  const match={id:'ci-release',phase:'groups',status:'playing',tableId:1,relays:[],a:'a',b:'b'};
+                  const match={id:'ci-release',compositionsValidated:true,phase:'groups',status:'playing',tableId:1,relays:[],a:'a',b:'b'};
                   const t={id:'ci-release',closed:false,cap:{competition:true,phase:'groups',targets:[5],finish:'winner',matches:[match]}};
                   db={players:[],tournaments:[t],selected:t.id};
                   a.value='5';b.value='3';capCompRecord(match.id);
@@ -666,7 +666,7 @@ jobs:
                 const messages=[];
                 try {
                   save=()=>{};flash=()=>{};window.alert=m=>messages.push(m);
-                  const match={id:'ci-bracket-draw',phase:'bracket',round:1,status:'waiting',relays:[],a:'a',b:'b'};
+                  const match={id:'ci-bracket-draw',compositionsValidated:true,phase:'bracket',round:1,status:'waiting',relays:[],a:'a',b:'b'};
                   const t={id:'ci-bracket-draw',closed:false,cap:{competition:true,phase:'bracket',round:1,targets:[5],finish:'draw',matches:[match]}};
                   db={players:[],tournaments:[t],selected:t.id};
                   a.value='5';b.value='5';capCompRecord(match.id);
@@ -711,7 +711,7 @@ jobs:
                 const messages=[];
                 try {
                   save=()=>{};flash=()=>{};window.alert=m=>messages.push(m);
-                  const match={id:'ci-draw',phase:'groups',status:'waiting',relays:[],a:'a',b:'b'};
+                  const match={id:'ci-draw',compositionsValidated:true,phase:'groups',status:'waiting',relays:[],a:'a',b:'b'};
                   const t={id:'ci-draw',closed:false,cap:{competition:true,phase:'groups',targets:[5],finish:'winner',matches:[match]}};
                   db={players:[],tournaments:[t],selected:t.id};
                   a.value='5';b.value='5';capCompRecord(match.id);
