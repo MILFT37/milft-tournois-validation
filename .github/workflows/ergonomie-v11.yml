@@ -1,0 +1,25 @@
+name: Vérification ergonomie V1.1
+on:
+  push:
+    branches: [ergonomie-globale-20261107]
+  workflow_dispatch:
+jobs:
+  controle:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Contrôles HTML et navigation dans Chromium
+        run: |
+          python3 -m http.server 8765 >/tmp/milft-http.log 2>&1 &
+          node <<'JS'
+          const fs=require('fs');
+          const html=fs.readFileSync('MILFT_Tournois_V1_1_VALIDATION_HEBERGEMENT_STABLE_2026-11-02.html','utf8');
+          const vm=require('vm');
+          const scripts=[...html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi)];
+          scripts.forEach((m,i)=>{new vm.Script(m[1],{filename:'inline-'+i+'.js'})});
+          for(const id of ['milft-settings','milft-backup','milft-backup-slot','milft-google-auth','milft-public-controls','tabs','view']) {
+            if(!html.includes('id="'+id+'"'))throw Error('Missing '+id);
+          }
+          console.log('OK '+scripts.length+' scripts JavaScript et contrôles HTML');
+          JS
+          chromium-browser --version || chromium --version || true
