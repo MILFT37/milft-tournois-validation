@@ -1762,7 +1762,7 @@ capCompLive=function(t){
  let html=capOldCompLiveWithRosters(t);
  const c=t.cap,limit=capLimits(c);
  const current=c.matches.filter(m=>m.phase===c.phase&&(c.phase!=='bracket'||m.round===c.round));
- const tableCards=`<div class="card"><h2>Attribution des rencontres</h2>${current.filter(m=>!m.bye&&m.status!=='done').map(m=>`<div class="item"><b>${esc(capCompName(c,m.a))} — ${esc(capCompName(c,m.b))}</b><div class="row"><select id="cap-table-${m.id}" ${t.closed?'disabled':''}><option value="">Sans table</option>${t.tables.filter(x=>x.state==='free'||x.id===m.tableId).map(x=>`<option value="${x.id}" ${x.id===m.tableId?'selected':''}>Table ${x.id}</option>`).join('')}</select><button class="mutedbtn" onclick="capAssignTable('${m.id}')" ${t.closed?'disabled':''}>Attribuer</button></div></div>`).join('')||'<p class="muted">Aucune rencontre à attribuer.</p>'}</div>`;
+ const tableCards=`<div class="card"><h2>Attribution des rencontres</h2>${current.filter(m=>!m.bye&&m.status!=='done').map(m=>`<div class="item"><b>${esc(capCompName(c,m.a))} — ${esc(capCompName(c,m.b))}</b><div class="row"><select id="cap-table-${m.id}" ${t.closed?'disabled':''}><option value="">Sans table</option>${t.tables.filter(x=>x.id===m.tableId||capFreeTable(t,x.id,m.id)).map(x=>`<option value="${x.id}" ${x.id===m.tableId?'selected':''}>Table ${x.id}</option>`).join('')}</select><button class="mutedbtn" onclick="capAssignTable('${m.id}')" ${t.closed?'disabled':''}>Attribuer</button></div></div>`).join('')||'<p class="muted">Aucune rencontre à attribuer.</p>'}</div>`;
  return capTableControlsModern(t)+tableCards+html;
 };
 
