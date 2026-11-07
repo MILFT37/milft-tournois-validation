@@ -1023,7 +1023,7 @@ function autoAssign(t){const busy=busyPlayers(t);for(const table of milftFreeTab
 function milftHasPendingStages(t){if(!t||t.closed||t.abandoned)return false;if((t.mode==='poules'||(t.mode==='monster'&&t.monsterMode!=='season'))&&Number(t.roundLimit)>Number(t.currentRound))return true;if(t.mode==='poules'&&t.finalPhase&&!t.finalId)return true;return false;}
 function milftCanClose(t){return !!t&&(t.matches||[]).length>0&&(t.matches||[]).every(m=>m.status==='done')&&!milftHasPendingStages(t);}
 function milftParentTournament(t){return t?.sourceId?db.tournaments.find(x=>x.id===t.sourceId)||t:t}
-function milftLinkedPhases(t){const parent=milftParentTournament(t);return [parent,...[parent.finalId,parent.finalBId].filter(Boolean).map(id=>db.tournaments.find(x=>x.id===id)).filter(Boolean)}
+function milftLinkedPhases(t){const parent=milftParentTournament(t);return [parent,...[parent.finalId,parent.finalBId].filter(Boolean).map(id=>db.tournaments.find(x=>x.id===id)).filter(Boolean)]}
 function milftEventCanClose(t){const phases=milftLinkedPhases(t);return phases.length>0&&phases.every(p=>milftCanClose(p))}
 function milftEventNav(t){
  const parent=milftParentTournament(t);if(parent.mode!=='poules'||!parent.finalId)return '';
