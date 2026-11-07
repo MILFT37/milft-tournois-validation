@@ -337,6 +337,7 @@ jobs:
           assert.equal(undoMatch.relays.length,1,'Poules verrouillees apres tableau');
           assert.equal(undoSaves,0);
           undoTournament.cap.matches.pop();
+          undoTournament.cap.phase='groups';
           undoFn('undo');
           assert.equal(undoMatch.relays.length,0,'Correction avant tableau autorisee');
           assert.equal(undoSaves,1);
