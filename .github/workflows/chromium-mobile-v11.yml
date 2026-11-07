@@ -679,7 +679,7 @@ jobs:
               console.log('ÉGALITÉ TABLEAU REFUSÉE OK',bracketDrawGuard);
               // Les anciens tours ne doivent plus proposer de saisie ni de correction.
               const phaseUiGuard=await page.evaluate(()=>{
-                const c={competition:true,phase:'bracket',round:2,targets:[5],types:['S'],matches:[]};
+                const c={competition:true,phase:'bracket',round:2,targets:[5],types:['S'],clubs:[{id:'a',name:'A'},{id:'b',name:'B'}],matches:[]};
                 const t={closed:false,cap:c};
                 const old={id:'ci-old-ui',phase:'bracket',round:1,a:'a',b:'b',status:'waiting',relays:[]};
                 const current={...old,id:'ci-current-ui',round:2};
