@@ -462,7 +462,7 @@ jobs:
                 } finally {a.remove();b.remove();db=oldDb;save=oldSave;flash=oldFlash;window.alert=oldAlert;}
               });
               assert.equal(lockedRelay.relays,0,'saisie des poules bloquée après tableau');
-              assert.ok(lockedRelay.messages.some(m=>m.includes('tableau final')),'alerte de verrouillage');
+              assert.ok(lockedRelay.messages.some(m=>m.includes('phase actuelle')),'alerte de verrouillage de phase');
               console.log('VERROUILLAGE SAISIE CAP OK',lockedRelay);
               // Aucun relais supplémentaire après le dernier palier ou sur match abandonné.
               const relayGuards=await page.evaluate(()=>{
@@ -583,6 +583,24 @@ jobs:
               assert.deepEqual(byeGuard.accepted,{bye:true,status:'done',score:{a:5,b:3}},'BYE valide enregistré');
               assert.ok(byeGuard.messages.length>=1,'erreur explicite pour BYE invalide');
               console.log('BYE AVEC BÉNÉFICIAIRE OK',byeGuard);
+              // Saisie CAP : le tour précédent est définitivement protégé.
+              const previousRound=await page.evaluate(()=>{
+                const oldDb=db,oldSave=save,oldFlash=flash,oldAlert=window.alert;
+                const a=document.createElement('input'),b=document.createElement('input');
+                a.id='capca-ci-old-round';b.id='capcb-ci-old-round';document.body.append(a,b);
+                const messages=[];
+                try {
+                  save=()=>{};flash=()=>{};window.alert=m=>messages.push(m);
+                  const match={id:'ci-old-round',phase:'bracket',round:1,status:'waiting',relays:[],a:'a',b:'b'};
+                  const t={id:'ci-old-round',closed:false,cap:{competition:true,phase:'bracket',round:2,targets:[5],finish:'winner',matches:[match]}};
+                  db={players:[],tournaments:[t],selected:t.id};
+                  a.value='5';b.value='3';capCompRecord(match.id);
+                  return {count:match.relays.length,messages};
+                } finally {a.remove();b.remove();db=oldDb;save=oldSave;flash=oldFlash;window.alert=oldAlert;}
+              });
+              assert.equal(previousRound.count,0,'aucun relais dans un tour précédent');
+              assert.ok(previousRound.messages.some(m=>m.includes('phase actuelle')),'alerte tour inactif');
+              console.log('TOUR PRÉCÉDENT CAP PROTÉGÉ OK',previousRound);
               // Persistance réelle : stockage navigateur et rechargement.
               await page.evaluate(() => localStorage.setItem('milft-ci-persistence','verification'));
               await page.reload({waitUntil:'load'});
