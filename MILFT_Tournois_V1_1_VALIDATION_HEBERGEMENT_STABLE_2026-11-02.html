@@ -1876,7 +1876,7 @@ capAssignTable=function(id){
  const t=active(),m=t?.cap?.matches.find(x=>x.id===id);if(!m||t.closed||!['waiting','playing'].includes(m.status))return;
  if(m.bye||!m.a||!m.b)return alert('Cette rencontre ne peut pas être attribuée : un club est manquant ou un BYE est présent.');
  const v=document.getElementById('cap-table-'+id)?.value;
- if(!v){if(m.tableId!=null){m.tableId=null;save();flash('Attribution de table retirée.');}return}
+ if(!v){if(m.status==='playing')return alert('Impossible de retirer la table d’une rencontre en cours. Termine ou mets en attente la rencontre avant de libérer la table.');if(m.tableId!=null){m.tableId=null;save();flash('Attribution de table retirée.');}return}
  const n=Number(v);
  if(m.tableId===n)return;
  if(!capFreeTable(t,n,m.id))return alert('Cette table est exclue ou déjà attribuée à une rencontre non terminée.');
