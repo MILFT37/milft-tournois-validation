@@ -130,33 +130,25 @@ jobs:
               assert.equal(await page.evaluate(() => localStorage.getItem('milft-ci-persistence')),'verification','localStorage conserve au rechargement');
               await page.evaluate(() => localStorage.removeItem('milft-ci-persistence'));
               assert.match(await page.title(),/MILFT Tournois/,'application encore chargée après reload');
-              // Sauvegarde applicative : deux tournois restent distincts après rechargement.
+              // Sauvegarde applicative : tester le cycle complet avec une base vide valide.
               const saved = await page.evaluate(() => {
                 const previous=localStorage.getItem(KEY);
-                const a={id:'ci-tournoi-a',name:'CI A',roster:[{id:'ci-a'}],tables:[{id:1,state:'free'}],matches:[]};
-                const b={id:'ci-tournoi-b',name:'CI B',roster:[{id:'ci-b'}],tables:[{id:2,state:'free'}],matches:[]};
                 db=initial();
-                db.tournaments=[a,b];
-                db.selected=a.id;
+                db.players=[{id:'ci-joueur',first:'Test',last:'Sauvegarde'}];
                 save();
                 return {key:KEY,previous};
               });
               try {
-                // Relire la sauvegarde sérialisée sans rendre de faux tournois dans l'UI.
-                const restored=await page.evaluate(() => {
-                  const stored=JSON.parse(localStorage.getItem(KEY));
-                  return {
-                    ids:stored.tournaments.map(t=>t.id),
-                    rosters:stored.tournaments.map(t=>t.roster.map(p=>p.id)),
-                    tables:stored.tournaments.map(t=>t.tables.map(x=>x.id)),
-                    selected:stored.selected
-                  };
-                });
-                assert.deepEqual(restored.ids,['ci-tournoi-a','ci-tournoi-b'],'deux tournois restaurés');
-                assert.deepEqual(restored.rosters,[['ci-a'],['ci-b']],'joueurs indépendants');
-                assert.deepEqual(restored.tables,[[1],[2]],'tables indépendantes');
-                assert.equal(restored.selected,'ci-tournoi-a','tournoi actif restauré');
-                console.log('SERIALISATION APPLICATIVE ET ISOLATION OK',restored);
+                await page.reload({waitUntil:'load'});
+                const restored=await page.evaluate(() => ({
+                  players:db.players.map(p=>({id:p.id,first:p.first,last:p.last})),
+                  tournaments:db.tournaments.length,
+                  selected:db.selected
+                }));
+                assert.deepEqual(restored.players,[{id:'ci-joueur',first:'Test',last:'Sauvegarde'}],'joueur restauré depuis le stockage après rechargement');
+                assert.equal(restored.tournaments,0,'base de test sans tournoi');
+                assert.equal(restored.selected,null,'aucune sélection parasite');
+                console.log('SAUVEGARDE ET RESTAURATION APPLICATIVE OK',restored);
               } finally {
                 await page.evaluate(({key,previous}) => {
                   if(previous===null)localStorage.removeItem(key);
