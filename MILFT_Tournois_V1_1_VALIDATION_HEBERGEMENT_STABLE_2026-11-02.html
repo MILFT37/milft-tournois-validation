@@ -1984,7 +1984,7 @@ capCompLive=function(t){
 function capClubBusy(t, clubId, exceptId){
  return t.cap.matches.some(m=>m.id!==exceptId && (m.tableId!=null||m.status==='playing') && m.status!=='done' && m.status!=='abandoned' && !m.bye && (m.a===clubId||m.b===clubId));
 }
-capAutoAssign=function(){
+function capAutoAssign(){
  const t=active();if(!t?.cap?.competition||t.closed)return;
  let count=0;
  for(const m of capActiveMatches(t)){
