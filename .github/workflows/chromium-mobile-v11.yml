@@ -151,7 +151,7 @@ jobs:
                     cap:{competition:true,phase:'groups',matches:[
                       {id:'ci-m1',phase:'groups',status:'waiting',a:'a',b:'b',tableId:null},
                       {id:'ci-m2',phase:'groups',status:'waiting',a:'c',b:'d',tableId:null},
-                      {id:'ci-m3',phase:'groups',status:'waiting',a:'e',b:'f',tableId:null}
+                      {id:'ci-m3',phase:'groups',status:'waiting',a:'a',b:'f',tableId:null}
                     ]}
                   };
                   db={players:[],tournaments:[t],selected:t.id};
@@ -164,6 +164,7 @@ jobs:
               });
               assert.deepEqual(assignment.first,[1,3,null],'attribue uniquement les tables libres');
               assert.deepEqual(assignment.second,[1,3,null],'ne réattribue pas les tables occupées');
+              assert.equal(assignment.first[2],null,'équipe déjà engagée sur une autre table');
               console.log('ATTRIBUTION CAP FONCTIONNELLE OK',assignment);
               // Clôture CAP : refuser toute rencontre inachevée.
               const closeGuard = await page.evaluate(() => {
