@@ -19,6 +19,22 @@ jobs:
         run: |
           npm install --no-save playwright
           npx playwright install --with-deps chromium
+      - name: Vérifier la syntaxe de tous les scripts intégrés
+        run: |
+          node <<'JS'
+          const fs=require('node:fs');
+          const vm=require('node:vm');
+          const assert=require('node:assert/strict');
+          const html=fs.readFileSync('MILFT_Tournois_V1_1_VALIDATION_HEBERGEMENT_STABLE_2026-11-02.html','utf8');
+          const scripts=[...html.matchAll(/<script\\b([^>]*)>([\\s\\S]*?)<\\/script>/gi)]
+            .filter(([,attrs,body])=>!/(?:^|\\s)src\\s*=/.test(attrs)&&body.trim());
+          assert.ok(scripts.length>0,'au moins un script intégré');
+          scripts.forEach(([,attrs,body],index)=>{
+            try{new vm.Script(body,{filename:'script-inline-'+(index+1)+'.js'});}
+            catch(e){throw new Error('Script '+(index+1)+' invalide : '+e.message);}
+          });
+          console.log(scripts.length+' scripts intégrés : syntaxe valide');
+          JS
       - name: Test réel en navigateur mobile
         run: |
           node <<'JS'
