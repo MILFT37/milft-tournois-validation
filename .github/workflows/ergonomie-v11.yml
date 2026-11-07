@@ -2,6 +2,8 @@ name: Vérification ergonomie V1.1
 on:
   push:
     branches: [ergonomie-globale-20261107]
+  pull_request:
+    branches: [main]
   workflow_dispatch:
 jobs:
   controle:
