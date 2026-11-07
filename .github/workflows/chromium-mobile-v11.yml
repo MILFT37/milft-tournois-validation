@@ -501,6 +501,24 @@ jobs:
               });
               assert.deepEqual(abandonedUndo,{status:'abandoned',relays:1,confirmations:0},'correction interdite sur match abandonné');
               console.log('MATCH ABANDONNÉ PROTÉGÉ OK',abandonedUndo);
+              // Objectifs de relais : un palier ne peut pas reculer.
+              const targetGuards=await page.evaluate(()=>{
+                const oldDb=db,oldSave=save,oldFlash=flash,oldAlert=window.alert;
+                const a=document.createElement('input'),b=document.createElement('input');
+                a.id='capca-ci-target';b.id='capcb-ci-target';document.body.append(a,b);
+                const messages=[];
+                try {
+                  save=()=>{};flash=()=>{};window.alert=m=>messages.push(m);
+                  const match={id:'ci-target',phase:'groups',status:'waiting',relays:[{a:5,b:3}],a:'a',b:'b'};
+                  const t={id:'ci-target',closed:false,cap:{competition:true,phase:'groups',targets:[5,5],finish:'winner',matches:[match]}};
+                  db={players:[],tournaments:[t],selected:t.id};
+                  a.value='5';b.value='4';capCompRecord(match.id);
+                  return {count:match.relays.length,messages};
+                } finally {a.remove();b.remove();db=oldDb;save=oldSave;flash=oldFlash;window.alert=oldAlert;}
+              });
+              assert.equal(targetGuards.count,1,'palier non croissant rejeté');
+              assert.ok(targetGuards.messages.some(m=>m.includes('strictement croissants')),'alerte explicite sur palier');
+              console.log('OBJECTIFS RELAIS CAP OK',targetGuards);
               // Persistance réelle : stockage navigateur et rechargement.
               await page.evaluate(() => localStorage.setItem('milft-ci-persistence','verification'));
               await page.reload({waitUntil:'load'});
