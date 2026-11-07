@@ -228,6 +228,25 @@ jobs:
               assert.deepEqual(optionsGuard.available,[2],'table occupée ou exclue masquée');
               assert.deepEqual(optionsGuard.current,[1,2],'table actuellement attribuée conservée');
               console.log('FILTRAGE TABLES CAP OK',optionsGuard);
+              // Une rencontre en cours ne peut pas libérer sa table par erreur.
+              const releaseGuard=await page.evaluate(()=>{
+                const oldDb=db,oldSave=save,oldFlash=flash,oldAlert=window.alert;
+                const select=document.createElement('select');
+                select.id='cap-table-ci-release';select.innerHTML='<option value="" selected>Sans table</option>';
+                document.body.appendChild(select);
+                const messages=[];
+                try {
+                  save=()=>{};flash=()=>{};window.alert=msg=>messages.push(msg);
+                  const match={id:'ci-release',status:'playing',phase:'groups',a:'a',b:'b',tableId:1};
+                  const t={id:'ci-release',closed:false,tables:[{id:1,state:'free'}],cap:{competition:true,phase:'groups',matches:[match]}};
+                  db={players:[],tournaments:[t],selected:t.id};
+                  capAssignTable('ci-release');
+                  return {tableId:match.tableId,messages};
+                } finally {select.remove();db=oldDb;save=oldSave;flash=oldFlash;window.alert=oldAlert;}
+              });
+              assert.equal(releaseGuard.tableId,1,'table d’un match en cours conservée');
+              assert.ok(releaseGuard.messages.some(m=>m.includes('en cours')),'avertissement explicatif');
+              console.log('PROTECTION LIBÉRATION TABLE OK',releaseGuard);
               // Clôture CAP : refuser toute rencontre inachevée.
               const closeGuard = await page.evaluate(() => {
                 const oldDb=db,oldSave=save,oldFlash=flash,oldAlert=window.alert;
