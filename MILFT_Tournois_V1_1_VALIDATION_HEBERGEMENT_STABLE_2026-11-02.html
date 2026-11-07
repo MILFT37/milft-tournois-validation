@@ -2176,7 +2176,7 @@ function capAutoAssign(){
   const table=t.tables.find(x=>capFreeTable(t,x.id));if(!table)break;
   m.tableId=table.id;count++;
  }
- save();flash(count+' rencontre(s) attribuée(s) aux tables libres.');
+ if(count)save();flash(count+' rencontre(s) attribuée(s) aux tables libres.');
 };
 const capAssignTableWithoutClubCheck=capAssignTable;
 capAssignTable=function(id){
