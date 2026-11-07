@@ -98,6 +98,7 @@ jobs:
           const active=()=>t;
           const capActiveMatches=(x)=>x.cap.matches.filter(m=>m.phase===x.cap.phase);
           const capFreeTable=(x,id)=>x.tables.some(v=>v.id===id&&v.state==='free')&&!x.cap.matches.some(m=>m.tableId===id&&m.status!=='done');
+          const capClubBusy=(x,club,except)=>x.cap.matches.some(m=>m.id!==except&&m.status!=='done'&&m.status!=='abandoned'&&m.tableId!=null&&(m.a===club||m.b===club));
           const save=()=>saved++;
           const flash=(s)=>message=s;
           eval(code+';capAutoAssign();');
