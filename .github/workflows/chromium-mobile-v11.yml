@@ -658,6 +658,25 @@ jobs:
               });
               assert.deepEqual(undoAfterRelease,{status:'waiting',tableId:null,count:0},'correction après fin : rencontre rouverte sans table réservée');
               console.log('CORRECTION APRÈS LIBÉRATION TABLE OK',undoAfterRelease);
+              // En tableau final, une égalité au dernier relais est toujours refusée.
+              const bracketDrawGuard=await page.evaluate(()=>{
+                const oldDb=db,oldSave=save,oldFlash=flash,oldAlert=window.alert;
+                const a=document.createElement('input'),b=document.createElement('input');
+                a.id='capca-ci-bracket-draw';b.id='capcb-ci-bracket-draw';document.body.append(a,b);
+                const messages=[];
+                try {
+                  save=()=>{};flash=()=>{};window.alert=m=>messages.push(m);
+                  const match={id:'ci-bracket-draw',phase:'bracket',round:1,status:'waiting',relays:[],a:'a',b:'b'};
+                  const t={id:'ci-bracket-draw',closed:false,cap:{competition:true,phase:'bracket',round:1,targets:[5],finish:'draw',matches:[match]}};
+                  db={players:[],tournaments:[t],selected:t.id};
+                  a.value='5';b.value='5';capCompRecord(match.id);
+                  return {status:match.status,count:match.relays.length,messages};
+                } finally {a.remove();b.remove();db=oldDb;save=oldSave;flash=oldFlash;window.alert=oldAlert;}
+              });
+              assert.equal(bracketDrawGuard.count,0,'égalité finale refusée en tableau');
+              assert.equal(bracketDrawGuard.status,'waiting','rencontre reste ouverte');
+              assert.ok(bracketDrawGuard.messages.some(m=>m.includes('Égalité interdite')),'message de départage');
+              console.log('ÉGALITÉ TABLEAU REFUSÉE OK',bracketDrawGuard);
               // Dernier relais : une égalité est interdite si le format exige un vainqueur.
               const finalDrawGuard=await page.evaluate(()=>{
                 const oldDb=db,oldSave=save,oldFlash=flash,oldAlert=window.alert;
