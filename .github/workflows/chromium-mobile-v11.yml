@@ -247,6 +247,25 @@ jobs:
               assert.equal(releaseGuard.tableId,1,'table d’un match en cours conservée');
               assert.ok(releaseGuard.messages.some(m=>m.includes('en cours')),'avertissement explicatif');
               console.log('PROTECTION LIBÉRATION TABLE OK',releaseGuard);
+              // Une rencontre en cours ne doit pas changer de table par erreur.
+              const moveGuard=await page.evaluate(()=>{
+                const oldDb=db,oldSave=save,oldFlash=flash,oldAlert=window.alert;
+                const select=document.createElement('select');
+                select.id='cap-table-ci-move';select.innerHTML='<option value="2" selected>Table 2</option>';
+                document.body.appendChild(select);
+                const messages=[];
+                try {
+                  save=()=>{};flash=()=>{};window.alert=msg=>messages.push(msg);
+                  const match={id:'ci-move',status:'playing',phase:'groups',a:'a',b:'b',tableId:1};
+                  const t={id:'ci-move',closed:false,tables:[{id:1,state:'free'},{id:2,state:'free'}],cap:{competition:true,phase:'groups',matches:[match]}};
+                  db={players:[],tournaments:[t],selected:t.id};
+                  capAssignTable('ci-move');
+                  return {tableId:match.tableId,messages};
+                } finally {select.remove();db=oldDb;save=oldSave;flash=oldFlash;window.alert=oldAlert;}
+              });
+              assert.equal(moveGuard.tableId,1,'table initiale conservée');
+              assert.ok(moveGuard.messages.some(m=>m.includes('en cours')),'alerte changement de table');
+              console.log('PROTECTION DÉPLACEMENT TABLE OK',moveGuard);
               // Clôture CAP : refuser toute rencontre inachevée.
               const closeGuard = await page.evaluate(() => {
                 const oldDb=db,oldSave=save,oldFlash=flash,oldAlert=window.alert;
