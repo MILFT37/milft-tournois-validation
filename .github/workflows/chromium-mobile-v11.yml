@@ -409,6 +409,22 @@ jobs:
               assert.equal(releaseAfterScore.available,true,'table à nouveau disponible');
               assert.deepEqual(releaseAfterScore.messages,[],'aucune alerte');
               console.log('LIBÉRATION TABLE APRÈS SCORE OK',releaseAfterScore);
+              // Correction de relais : une rencontre avec table reste en cours.
+              const undoCheck=await page.evaluate(()=>{
+                const oldDb=db,oldSave=save,oldFlash=flash,oldConfirm=window.confirm;
+                try {
+                  save=()=>{};flash=()=>{};window.confirm=()=>true;
+                  const match={id:'ci-undo',phase:'groups',status:'done',relays:[{a:5,b:3},{a:10,b:7}],a:'a',b:'b',tableId:1};
+                  const t={id:'ci-undo',closed:false,cap:{competition:true,phase:'groups',matches:[match]}};
+                  db={players:[],tournaments:[t],selected:t.id};
+                  capCompUndo('ci-undo');
+                  return {status:match.status,relays:match.relays.map(x=>({...x})),tableId:match.tableId};
+                } finally {db=oldDb;save=oldSave;flash=oldFlash;window.confirm=oldConfirm;}
+              });
+              assert.equal(undoCheck.status,'playing','match avec table reprend en cours');
+              assert.deepEqual(undoCheck.relays,[{a:5,b:3}],'seul le dernier relais retiré');
+              assert.equal(undoCheck.tableId,1,'table conservée');
+              console.log('CORRECTION RELAIS CAP OK',undoCheck);
               // Persistance réelle : stockage navigateur et rechargement.
               await page.evaluate(() => localStorage.setItem('milft-ci-persistence','verification'));
               await page.reload({waitUntil:'load'});
