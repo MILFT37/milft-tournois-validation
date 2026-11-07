@@ -548,6 +548,22 @@ jobs:
                 byeInput:false,doneInput:false,doneCorrection:true,lockedCorrection:false
               },'états de saisie et correction CAP');
               console.log('AFFICHAGE DES COMMANDES CAP OK',capRenderStates);
+              // Progression CAP : bouton désactivé tant que la phase est incomplète.
+              const nextButton=await page.evaluate(()=>{
+                const c={competition:true,structure:'cup',phase:'groups',bracket:true,round:1,targets:[5],types:['S'],clubs:[{id:'a',name:'A'},{id:'b',name:'B'}],pools:[['a','b']],matches:[]};
+                const t={closed:false,cap:c,tables:[{id:1,state:'free'}]};
+                const m={id:'ci-next-button',a:'a',b:'b',phase:'groups',status:'waiting',relays:[],tableId:null};
+                c.matches=[m];
+                const waiting=capCompLive(t).includes('onclick="capCompNext()" disabled');
+                m.status='done';m.relays=[{a:5,b:3}];
+                const completed=capCompLive(t).includes('onclick="capCompNext()" ');
+                const completedDisabled=capCompLive(t).includes('onclick="capCompNext()" disabled');
+                return {waiting,completed,completedDisabled};
+              });
+              assert.equal(nextButton.waiting,true,'progression désactivée si rencontre en attente');
+              assert.equal(nextButton.completed,true,'bouton progression visible une fois terminée');
+              assert.equal(nextButton.completedDisabled,false,'progression activée si résultats complets');
+              console.log('PROGRESSION CAP CONDITIONNELLE OK',nextButton);
               // Persistance réelle : stockage navigateur et rechargement.
               await page.evaluate(() => localStorage.setItem('milft-ci-persistence','verification'));
               await page.reload({waitUntil:'load'});
