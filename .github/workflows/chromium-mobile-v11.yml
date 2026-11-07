@@ -165,6 +165,26 @@ jobs:
               assert.deepEqual(assignment.first,[1,3,null],'attribue uniquement les tables libres');
               assert.deepEqual(assignment.second,[1,3,null],'ne réattribue pas les tables occupées');
               console.log('ATTRIBUTION CAP FONCTIONNELLE OK',assignment);
+              // Clôture CAP : refuser toute rencontre inachevée.
+              const closeGuard = await page.evaluate(() => {
+                const oldDb=db,oldSave=save,oldFlash=flash,oldAlert=window.alert;
+                const messages=[];
+                try {
+                  save=()=>{};flash=()=>{};window.alert=msg=>messages.push(msg);
+                  const t={id:'ci-close',name:'CI clôture',closed:false,
+                    cap:{competition:true,phase:'groups',bracket:false,matches:[
+                      {id:'ci-pending',phase:'groups',status:'waiting'}
+                    ]}};
+                  db={players:[],tournaments:[t],selected:t.id};
+                  capCompClose();
+                  return {closed:t.closed,messages};
+                } finally {
+                  db=oldDb;save=oldSave;flash=oldFlash;window.alert=oldAlert;
+                }
+              });
+              assert.equal(closeGuard.closed,false,'clôture refusée si rencontre en attente');
+              assert.ok(closeGuard.messages.some(m=>m.includes('non terminées')),'message explicatif');
+              console.log('PROTECTION CLÔTURE CAP OK',closeGuard);
               // Persistance réelle : stockage navigateur et rechargement.
               await page.evaluate(() => localStorage.setItem('milft-ci-persistence','verification'));
               await page.reload({waitUntil:'load'});
