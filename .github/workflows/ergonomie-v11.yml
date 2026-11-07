@@ -30,6 +30,7 @@ jobs:
               const errors=[];
               page.on('pageerror',err=>errors.push(err.message));
               await page.goto('file://'+path.resolve(filename),{waitUntil:'load'});
+              await page.waitForFunction(()=>document.querySelector('#tabs button') && document.querySelector('#view').children.length>0,{timeout:15000});
               await page.waitForTimeout(700);
               const button=page.locator('#milft-settings-toggle');
               await button.click();
@@ -39,7 +40,7 @@ jobs:
               await page.locator('#milft-settings .settings-top button').click();
               if(!await page.locator('#view').isVisible())throw Error('Retour à l application impossible');
               for(const label of ['Joueurs','Nouveau tournoi','Tournoi en cours','Historique','Simulation','Avancement','Accueil']){
-                await page.getByRole('button',{name:label,exact:true}).first().click();
+                await page.locator('#tabs button').filter({hasText:label}).first().click();
                 if(!await page.locator('#view').isVisible())throw Error('Vue non visible: '+label);
               }
               if(errors.length)throw Error('Erreurs JS '+viewport.width+': '+errors.join('; '));
