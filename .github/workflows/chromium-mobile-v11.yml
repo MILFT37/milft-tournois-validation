@@ -397,7 +397,7 @@ jobs:
                 const messages=[];
                 try {
                   save=()=>{};flash=()=>{};window.alert=m=>messages.push(m);
-                  const match={id:'ci-release-score',phase:'groups',status:'playing',relays:[{a:5,b:3}],a:'a',b:'b',tableId:1};
+                  const match={id:'ci-release-score',compositionsValidated:true,phase:'groups',status:'playing',relays:[{a:5,b:3}],a:'a',b:'b',tableId:1};
                   const t={id:'ci-release-score',closed:false,tables:[{id:1,state:'free'}],cap:{competition:true,phase:'groups',targets:[5,10],finish:'winner',matches:[match]}};
                   db={players:[],tournaments:[t],selected:t.id};
                   a.value='10';b.value='7';capCompRecord(match.id);
