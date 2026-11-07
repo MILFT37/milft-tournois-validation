@@ -175,6 +175,30 @@ jobs:
               console.log('RECHARGEMENT ET STOCKAGE OK');
               assert.deepEqual(errors,[],'aucune erreur JavaScript au chargement et au rechargement');
               console.log('CHROMIUM MOBILE OK',result);
+            } catch (error) {
+              const pages=browser.contexts().flatMap(context=>context.pages());
+              if(pages.length) {
+                await pages[0].screenshot({path:'chromium-echec-mobile.png',fullPage:true}).catch(()=>{});
+                const diagnostics=await pages[0].evaluate(()=>({
+                  title:document.title,
+                  url:location.href,
+                  bodyText:document.body?.innerText.slice(0,1200),
+                  scrollWidth:document.documentElement.scrollWidth,
+                  viewportWidth:innerWidth
+                })).catch(e=>({error:String(e)}));
+                fs.writeFileSync('chromium-diagnostic.json',JSON.stringify({diagnostics,error:String(error)},null,2));
+              }
+              throw error;
             } finally { await browser.close(); }
           })().catch(error=>{console.error(error);process.exitCode=1});
           JS
+      - name: Conserver captures et diagnostic en cas d'échec
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: chromium-mobile-diagnostic
+          path: |
+            chromium-echec-mobile.png
+            chromium-diagnostic.json
+          if-no-files-found: warn
+          retention-days: 7
