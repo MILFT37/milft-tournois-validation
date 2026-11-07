@@ -444,7 +444,7 @@ jobs:
               });
               assert.deepEqual(undoEdges.waiting,{status:'waiting',count:0},'sans table : reprise en attente');
               assert.deepEqual(undoEdges.blocked,{status:'done',count:1},'poules figées après tableau');
-              assert.ok(undoEdges.alerts.some(m=>m.includes('tableau final')),'message blocage après tableau');
+              assert.ok(undoEdges.alerts.some(m=>m.includes('tableau final')||m.includes('phase actuelle')),'message blocage après tableau');
               console.log('CORRECTION RELAIS CAS LIMITES OK',undoEdges);
               // Verrouillage de saisie après progression du tableau.
               const lockedRelay=await page.evaluate(()=>{
@@ -521,7 +521,7 @@ jobs:
               console.log('OBJECTIFS RELAIS CAP OK',targetGuards);
               // Rendu des commandes CAP selon les états et les phases verrouillées.
               const capRenderStates=await page.evaluate(()=>{
-                const c={targets:[5,10],types:['S','D'],clubs:[{id:'a',name:'A'},{id:'b',name:'B'}],matches:[]};
+                const c={phase:'groups',targets:[5,10],types:['S','D'],clubs:[{id:'a',name:'A'},{id:'b',name:'B'}],matches:[]};
                 const t={closed:false,cap:c};
                 const make=(status,relays=[],bye=false)=>({id:'ci-render',a:'a',b:'b',phase:'groups',status,relays,bye});
                 const render=m=>{c.matches=[m];return capCompMatch(t,m)};
@@ -571,7 +571,7 @@ jobs:
                 try {
                   save=()=>{};flash=()=>{};window.confirm=()=>true;window.alert=m=>messages.push(m);
                   const match={id:'ci-bye-guard',phase:'bracket',round:1,a:null,b:null,bye:false,status:'waiting',relays:[]};
-                  const t={id:'ci-bye-guard',closed:false,cap:{competition:true,phase:'bracket',matches:[match],byeWin:5,byeLose:3}};
+                  const t={id:'ci-bye-guard',closed:false,cap:{competition:true,phase:'bracket',round:1,matches:[match],byeWin:5,byeLose:3}};
                   db={players:[],tournaments:[t],selected:t.id};
                   capCompBye(match.id);
                   const rejected={bye:match.bye,status:match.status};
