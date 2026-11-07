@@ -519,6 +519,35 @@ jobs:
               assert.equal(targetGuards.count,1,'palier non croissant rejeté');
               assert.ok(targetGuards.messages.some(m=>m.includes('strictement croissants')),'alerte explicite sur palier');
               console.log('OBJECTIFS RELAIS CAP OK',targetGuards);
+              // Rendu des commandes CAP selon les états et les phases verrouillées.
+              const capRenderStates=await page.evaluate(()=>{
+                const c={targets:[5,10],types:['S','D'],clubs:[{id:'a',name:'A'},{id:'b',name:'B'}],matches:[]};
+                const t={closed:false,cap:c};
+                const make=(status,relays=[],bye=false)=>({id:'ci-render',a:'a',b:'b',phase:'groups',status,relays,bye});
+                const render=m=>{c.matches=[m];return capCompMatch(t,m)};
+                const waiting=render(make('waiting'));
+                const playing=render(make('playing',[{a:5,b:3}]));
+                const abandoned=render(make('abandoned',[{a:5,b:3}]));
+                const bye=render(make('done',[],true));
+                const done=render(make('done',[{a:5,b:3},{a:10,b:7}]));
+                c.matches.push({id:'next-phase',phase:'bracket',round:1,status:'waiting'});
+                const locked=capCompMatch(t,c.matches[0]);
+                return {
+                  waitingInput:waiting.includes('Enregistrer le relais'),
+                  playingInput:playing.includes('Enregistrer le relais'),
+                  abandonedInput:abandoned.includes('Enregistrer le relais'),
+                  abandonedLabel:abandoned.includes('Abandonné'),
+                  byeInput:bye.includes('Enregistrer le relais'),
+                  doneInput:done.includes('Enregistrer le relais'),
+                  doneCorrection:done.includes('Corriger dernier relais'),
+                  lockedCorrection:locked.includes('Corriger dernier relais')
+                };
+              });
+              assert.deepEqual(capRenderStates,{
+                waitingInput:true,playingInput:true,abandonedInput:false,abandonedLabel:true,
+                byeInput:false,doneInput:false,doneCorrection:true,lockedCorrection:false
+              },'états de saisie et correction CAP');
+              console.log('AFFICHAGE DES COMMANDES CAP OK',capRenderStates);
               // Persistance réelle : stockage navigateur et rechargement.
               await page.evaluate(() => localStorage.setItem('milft-ci-persistence','verification'));
               await page.reload({waitUntil:'load'});
