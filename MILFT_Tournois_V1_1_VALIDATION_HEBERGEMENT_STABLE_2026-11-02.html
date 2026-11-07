@@ -1043,7 +1043,7 @@ function milftHasPendingStages(t){if(!t||t.closed||t.abandoned)return false;if((
 function milftCanClose(t){return !!t&&(t.matches||[]).length>0&&(t.matches||[]).every(m=>m.status==='done')&&!milftHasPendingStages(t);}
 function milftParentTournament(t){return t?.sourceId?db.tournaments.find(x=>x.id===t.sourceId)||t:t}
 function milftLinkedPhases(t){const parent=milftParentTournament(t);return [parent,...[parent.finalId,parent.finalBId].filter(Boolean).map(id=>db.tournaments.find(x=>x.id===id)).filter(Boolean)]}
-function milftEventCanClose(t){const phases=milftLinkedPhases(t);return phases.length>0&&phases.every(p=>milftCanClose(p))}
+function milftEventCanClose(t){const parent=milftParentTournament(t);if(!parent)return false;const expected=[parent.finalId,parent.finalBId].filter(Boolean);if(expected.some(id=>!db.tournaments.some(p=>p.id===id)))return false;const phases=milftLinkedPhases(parent);return phases.length===1+expected.length&&phases.every(p=>milftCanClose(p))}
 function milftEventNav(t){
  const parent=milftParentTournament(t);if(parent.mode!=='poules'||!parent.finalId)return '';
  const entries=[['Poules',parent.id],['Tableau A',parent.finalId],['Tableau B',parent.finalBId]].filter(x=>x[1]&&db.tournaments.some(t=>t.id===x[1]));
