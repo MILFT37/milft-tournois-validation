@@ -1880,7 +1880,7 @@ capAssignTable=function(id){
  const n=Number(v);
  if(m.tableId===n)return;
  if(!capFreeTable(t,n,m.id))return alert('Cette table est exclue ou déjà attribuée à une rencontre non terminée.');
- const occupied=t.cap.matches.some(other=>other.id!==m.id&&other.tableId!=null&&other.status!=='done'&&other.status!=='abandoned'&&!other.bye&&[other.a,other.b].some(team=>team!=null&&(String(team)===String(m.a)||String(team)===String(m.b))));
+ const occupied=t.cap.matches.some(other=>other.id!==m.id&&(other.tableId!=null||other.status==='playing')&&other.status!=='done'&&other.status!=='abandoned'&&!other.bye&&[other.a,other.b].some(team=>team!=null&&(String(team)===String(m.a)||String(team)===String(m.b))));
  if(occupied)return alert('Impossible : une équipe de cette rencontre joue déjà sur une autre table.');
  m.tableId=n;save();flash('Table '+n+' attribuée.');
 };
@@ -1890,7 +1890,7 @@ function capAutoAssign(){
  // Ne pas lancer simultanément deux rencontres impliquant la même équipe.
  const occupied=new Set();
  for(const match of t.cap.matches){
-  if(match.tableId!=null&&match.status!=='done'&&match.status!=='abandoned'&&!match.bye){
+  if((match.tableId!=null||match.status==='playing')&&match.status!=='done'&&match.status!=='abandoned'&&!match.bye){
    if(match.a!=null)occupied.add(String(match.a));
    if(match.b!=null)occupied.add(String(match.b));
   }
