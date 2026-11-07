@@ -644,6 +644,20 @@ jobs:
               assert.deepEqual(releasedTable.score,{a:5,b:3},'score final conservé');
               assert.deepEqual(releasedTable.messages,[],'aucune erreur de saisie');
               console.log('LIBÉRATION TABLE APRÈS SCORE OK',releasedTable);
+              // Après libération de la table, corriger un score doit rouvrir la rencontre sans réattribuer la table.
+              const undoAfterRelease=await page.evaluate(()=>{
+                const oldDb=db,oldSave=save,oldFlash=flash,oldConfirm=window.confirm;
+                try {
+                  save=()=>{};flash=()=>{};window.confirm=()=>true;
+                  const match={id:'ci-undo-release',phase:'groups',status:'done',tableId:null,relays:[{a:5,b:3}],a:'a',b:'b'};
+                  const t={id:'ci-undo-release',closed:false,cap:{competition:true,phase:'groups',matches:[match]}};
+                  db={players:[],tournaments:[t],selected:t.id};
+                  capCompUndo(match.id);
+                  return {status:match.status,tableId:match.tableId,count:match.relays.length};
+                } finally {db=oldDb;save=oldSave;flash=oldFlash;window.confirm=oldConfirm;}
+              });
+              assert.deepEqual(undoAfterRelease,{status:'waiting',tableId:null,count:0},'correction après fin : rencontre rouverte sans table réservée');
+              console.log('CORRECTION APRÈS LIBÉRATION TABLE OK',undoAfterRelease);
               // Dernier relais : une égalité est interdite si le format exige un vainqueur.
               const finalDrawGuard=await page.evaluate(()=>{
                 const oldDb=db,oldSave=save,oldFlash=flash,oldAlert=window.alert;
