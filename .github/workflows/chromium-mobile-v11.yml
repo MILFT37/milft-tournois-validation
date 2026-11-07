@@ -364,7 +364,7 @@ jobs:
                 } finally {a.remove();b.remove();db=oldDb;save=oldSave;flash=oldFlash;window.alert=oldAlert;}
               });
               assert.equal(scoreChecks.rejected,0,'palier non atteint refusé');
-              assert.deepEqual(scoreChecks.accepted,[{a:5,b:3}],'relais valide enregistré');
+              assert.deepEqual(scoreChecks.accepted,[{a:5,b:3}],`relais valide enregistré — diagnostic: ${JSON.stringify(scoreChecks)}`);
               assert.equal(scoreChecks.afterRegression,1,'score cumulé décroissant refusé');
               assert.equal(scoreChecks.messages.length,2,'deux alertes de score invalide');
               console.log('SAISIE RELAIS CAP OK',scoreChecks);
