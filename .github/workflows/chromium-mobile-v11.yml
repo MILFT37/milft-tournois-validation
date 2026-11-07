@@ -624,6 +624,25 @@ jobs:
               assert.equal(fullCup.closed,true,'compétition clôturée après finale');
               assert.deepEqual(fullCup.alerts,[],'aucune alerte sur le parcours valide');
               console.log('PARCOURS COUPE COMPLET OK',fullCup);
+              // Dernier relais : une égalité est interdite si le format exige un vainqueur.
+              const finalDrawGuard=await page.evaluate(()=>{
+                const oldDb=db,oldSave=save,oldFlash=flash,oldAlert=window.alert;
+                const a=document.createElement('input'),b=document.createElement('input');
+                a.id='capca-ci-draw';b.id='capcb-ci-draw';document.body.append(a,b);
+                const messages=[];
+                try {
+                  save=()=>{};flash=()=>{};window.alert=m=>messages.push(m);
+                  const match={id:'ci-draw',phase:'groups',status:'waiting',relays:[],a:'a',b:'b'};
+                  const t={id:'ci-draw',closed:false,cap:{competition:true,phase:'groups',targets:[5],finish:'winner',matches:[match]}};
+                  db={players:[],tournaments:[t],selected:t.id};
+                  a.value='5';b.value='5';capCompRecord(match.id);
+                  return {status:match.status,count:match.relays.length,messages};
+                } finally {a.remove();b.remove();db=oldDb;save=oldSave;flash=oldFlash;window.alert=oldAlert;}
+              });
+              assert.equal(finalDrawGuard.count,0,'égalité finale non enregistrée');
+              assert.equal(finalDrawGuard.status,'waiting','rencontre non terminée');
+              assert.ok(finalDrawGuard.messages.some(m=>m.includes('Égalité interdite')),'message de départage');
+              console.log('ÉGALITÉ FINALE REFUSÉE OK',finalDrawGuard);
               // Persistance réelle : stockage navigateur et rechargement.
               await page.evaluate(() => localStorage.setItem('milft-ci-persistence','verification'));
               await page.reload({waitUntil:'load'});
