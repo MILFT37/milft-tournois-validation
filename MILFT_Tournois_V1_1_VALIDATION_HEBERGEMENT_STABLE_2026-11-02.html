@@ -1073,19 +1073,30 @@ function declareForfait(id){
 function matchCard(t,m){m.sets=m.sets||[];return challengeMatchCard(t,m)}
 function changeTableState(id){
  const t=active();if(!t||t.closed)return alert('Rouvre le tournoi pour modifier les tables.');
- const table=t.tables.find(x=>String(x.id)===String(id));
  const state=$('state-'+id)?.value;
- if(!table||!['free','maintenance','excluded'].includes(state))return alert('Choisis un état valide.');
- const running=t.matches.filter(m=>m.status==='playing'&&m.table!=null&&String(m.table)===String(id));
- if(running.length>1)return alert('Anomalie : plusieurs rencontres occupent cette table. Aucune modification effectuée.');
- if(running.length&&state==='free')return alert('Cette table accueille un match en cours. Termine, reporte ou déplace ce match avant de la libérer.');
- if(running.length){
+ if(!['free','maintenance','excluded'].includes(state))return alert('Choisis un état valide.');
+ const phases=(t.sourceId||t.finalId)?milftLinkedPhases(t):[t];
+ const affected=phases.flatMap(phase=>(phase.matches||[]).filter(m=>m.status==='playing'&&String(m.table)===String(id)).map(m=>({phase,m})));
+ if(affected.length>1)return alert('Anomalie : plusieurs rencontres occupent cette table. Aucune modification effectuée.');
+ if(affected.length&&state==='free')return alert('Cette table accueille un match en cours. Termine, reporte ou déplace ce match avant de la libérer.');
+ if(affected.length){
   if(!confirm('Un match utilise cette table. Le remettre en attente sans perdre ses manches et son temps de jeu ?'))return;
-  const m=running[0];pauseMatchClock(m);m.status='waiting';m.table=null;if(t.mode==='challenge')m.hold=true;
+  const {phase,m}=affected[0];pauseMatchClock(m);m.status='waiting';m.table=null;if(phase.mode==='challenge')m.hold=true;
  }
- table.state=state;save();flash('État de la table '+id+' mis à jour.');
+ let changed=0;
+ for(const phase of phases){const table=(phase.tables||[]).find(x=>String(x.id)===String(id));if(table){table.state=state;changed++;}}
+ if(!changed)return alert('Table introuvable.');
+ save();flash('État de la table '+id+' mis à jour'+(phases.length>1?' dans toutes les phases.':'.'));
 }
-function moveMatch(id){const t=active(),m=t?.matches.find(x=>x.id===id),dest=Number($('move-'+id)?.value),next=t?.tables.find(x=>x.id===dest);if(!t||t.closed||!m||m.status!=='playing'||!next||next.state!=='free')return alert('Choisis une table disponible dans ce tournoi.');const previous=t.tables.find(x=>String(x.id)===String(m.table));if(previous&&previous.state==='playing')previous.state='free';m.table=dest;next.state='playing';save();flash('Match déplacé vers la table '+dest+'.')}
+function moveMatch(id){
+ const t=active(),m=t?.matches.find(x=>x.id===id),dest=Number($('move-'+id)?.value);
+ if(!t||t.closed||!m||m.status!=='playing'||!Number.isFinite(dest))return alert('Choisis une rencontre en cours et une table disponible.');
+ const next=milftFreeTables(t).find(x=>String(x.id)===String(dest));
+ if(!next)return alert('Cette table est indisponible ou déjà occupée dans une autre phase.');
+ const previous=t.tables.find(x=>String(x.id)===String(m.table));
+ if(previous&&previous.state==='playing')previous.state='free';
+ m.table=next.id;next.state='playing';save();flash('Match déplacé vers la table '+next.id+'.');
+}
 function milftLaunchSelectedAnnual(){const id=document.getElementById('milft-annual-manual-match')?.value;if(!id)return alert('Sélectionne une rencontre disponible.');assignSpecific(id);}
 function assignSpecific(id){const t=active();if(!t||t.closed||t.abandoned)return alert('Tournoi terminé : rouvre-le pour effectuer une modification.');const m=t.matches.find(x=>x.id===id);if(!m||m.status!=='waiting'||m.bye)return;const busy=(t.sourceId||t.finalId)?milftSharedBusyPlayers(t):busyPlayers(t),requested=document.getElementById('milft-annual-manual-table')?.value,free=requested?milftFreeTables(t).find(x=>String(x.id)===requested):milftFreeTables(t)[0];if(!m.a||!m.b)return alert('Les deux adversaires doivent être connus.');if(t.roundLimit&&m.round!==t.currentRound)return alert('Cette ronde n’est pas la ronde en cours.');if(m.hold||(t.mode==='challenge'&&(!t.presence?.[m.a]||!t.presence?.[m.b])))return alert('Rencontre indisponible : vérifie les présences ou le report.');if(!free||matchPlayerIds(t,m).some(id=>busy.has(id)))return alert('Pas de table libre ou joueur déjà occupé dans ce tournoi.');m.status='playing';m.milftPriority=false;m.milftPriorityAt=null;m.annualResumePriority=false;m.table=free.id;m.startedAt=Date.now();free.state='playing';save();flash('Match affecté à la table '+free.id+'.')}
 function autoNow(){
