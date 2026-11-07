@@ -677,6 +677,16 @@ jobs:
               assert.equal(bracketDrawGuard.status,'waiting','rencontre reste ouverte');
               assert.ok(bracketDrawGuard.messages.some(m=>m.includes('Égalité interdite')),'message de départage');
               console.log('ÉGALITÉ TABLEAU REFUSÉE OK',bracketDrawGuard);
+              // Les anciens tours ne doivent plus proposer de saisie ni de correction.
+              const phaseUiGuard=await page.evaluate(()=>{
+                const c={competition:true,phase:'bracket',round:2,targets:[5],types:['S'],matches:[]};
+                const t={closed:false,cap:c};
+                const old={id:'ci-old-ui',phase:'bracket',round:1,a:'a',b:'b',status:'waiting',relays:[]};
+                const current={...old,id:'ci-current-ui',round:2};
+                return {oldInput:capCompMatch(t,old).includes('capca-ci-old-ui'),currentInput:capCompMatch(t,current).includes('capca-ci-current-ui')};
+              });
+              assert.deepEqual(phaseUiGuard,{oldInput:false,currentInput:true},'seul le tour actif propose la saisie');
+              console.log('VERROUILLAGE UI DES ANCIENS TOURS OK',phaseUiGuard);
               // Dernier relais : une égalité est interdite si le format exige un vainqueur.
               const finalDrawGuard=await page.evaluate(()=>{
                 const oldDb=db,oldSave=save,oldFlash=flash,oldAlert=window.alert;
