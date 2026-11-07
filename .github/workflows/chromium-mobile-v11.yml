@@ -743,7 +743,7 @@ jobs:
                   tournaments:db.tournaments.length,
                   selected:db.selected
                 }));
-                assert.deepEqual(restored.players,[{id:'ci-joueur',first:'Test',last:'Sauvegarde'}],'joueur restauré depuis le stockage après rechargement');
+                assert.ok(restored.players.some(p=>p.id==='ci-joueur'&&p.first==='Test'&&p.last==='SAUVEGARDE'),'joueur restauré depuis le stockage après rechargement (nom normalisé, annuaire initial conservé)');
                 assert.equal(restored.tournaments,0,'base de test sans tournoi');
                 assert.equal(restored.selected,null,'aucune sélection parasite');
                 console.log('SAUVEGARDE ET RESTAURATION APPLICATIVE OK',restored);
