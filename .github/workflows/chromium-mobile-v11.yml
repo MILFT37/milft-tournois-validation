@@ -564,6 +564,25 @@ jobs:
               assert.equal(nextButton.completed,true,'bouton progression visible une fois terminée');
               assert.equal(nextButton.completedDisabled,false,'progression activée si résultats complets');
               console.log('PROGRESSION CAP CONDITIONNELLE OK',nextButton);
+              // BYE : seul un club identifié face à une place vide peut en bénéficier.
+              const byeGuard=await page.evaluate(()=>{
+                const oldDb=db,oldSave=save,oldFlash=flash,oldConfirm=window.confirm,oldAlert=window.alert;
+                const messages=[];
+                try {
+                  save=()=>{};flash=()=>{};window.confirm=()=>true;window.alert=m=>messages.push(m);
+                  const match={id:'ci-bye-guard',phase:'bracket',round:1,a:null,b:null,bye:false,status:'waiting',relays:[]};
+                  const t={id:'ci-bye-guard',closed:false,cap:{competition:true,phase:'bracket',matches:[match],byeWin:5,byeLose:3}};
+                  db={players:[],tournaments:[t],selected:t.id};
+                  capCompBye(match.id);
+                  const rejected={bye:match.bye,status:match.status};
+                  match.a='a';capCompBye(match.id);
+                  return {rejected,accepted:{bye:match.bye,status:match.status,score:match.score},messages};
+                } finally {db=oldDb;save=oldSave;flash=oldFlash;window.confirm=oldConfirm;window.alert=oldAlert;}
+              });
+              assert.deepEqual(byeGuard.rejected,{bye:false,status:'waiting'},'BYE interdit sans bénéficiaire');
+              assert.deepEqual(byeGuard.accepted,{bye:true,status:'done',score:{a:5,b:3}},'BYE valide enregistré');
+              assert.ok(byeGuard.messages.length>=1,'erreur explicite pour BYE invalide');
+              console.log('BYE AVEC BÉNÉFICIAIRE OK',byeGuard);
               // Persistance réelle : stockage navigateur et rechargement.
               await page.evaluate(() => localStorage.setItem('milft-ci-persistence','verification'));
               await page.reload({waitUntil:'load'});
