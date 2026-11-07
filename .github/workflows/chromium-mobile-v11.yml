@@ -550,7 +550,7 @@ jobs:
               console.log('AFFICHAGE DES COMMANDES CAP OK',capRenderStates);
               // Progression CAP : bouton désactivé tant que la phase est incomplète.
               const nextButton=await page.evaluate(()=>{
-                const c={competition:true,structure:'cup',phase:'groups',bracket:true,round:1,targets:[5],types:['S'],clubs:[{id:'a',name:'A'},{id:'b',name:'B'}],pools:[['a','b']],matches:[]};
+                const c={competition:true,structure:'cup',phase:'groups',bracket:true,qualifiers:2,round:1,targets:[5],types:['S'],clubs:[{id:'a',name:'A'},{id:'b',name:'B'}],pools:[['a','b']],matches:[]};
                 const t={closed:false,cap:c,tables:[{id:1,state:'free'}]};
                 const m={id:'ci-next-button',a:'a',b:'b',phase:'groups',status:'waiting',relays:[],tableId:null};
                 c.matches=[m];
