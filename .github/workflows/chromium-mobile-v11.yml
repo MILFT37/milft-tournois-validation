@@ -368,6 +368,26 @@ jobs:
               assert.equal(scoreChecks.afterRegression,1,'score cumulé décroissant refusé');
               assert.equal(scoreChecks.messages.length,2,'deux alertes de score invalide');
               console.log('SAISIE RELAIS CAP OK',scoreChecks);
+              // Saisie CAP : un dernier relais valide clôture la rencontre.
+              const finalRelay=await page.evaluate(()=>{
+                const oldDb=db,oldSave=save,oldFlash=flash,oldAlert=window.alert;
+                const a=document.createElement('input'),b=document.createElement('input');
+                a.id='capca-ci-final';b.id='capcb-ci-final';
+                document.body.append(a,b);
+                const messages=[];
+                try {
+                  save=()=>{};flash=()=>{};window.alert=m=>messages.push(m);
+                  const match={id:'ci-final',phase:'groups',status:'playing',relays:[{a:5,b:3}],a:'a',b:'b',tableId:1};
+                  const t={id:'ci-final',closed:false,cap:{competition:true,phase:'groups',targets:[5,10],finish:'winner',matches:[match]}};
+                  db={players:[],tournaments:[t],selected:t.id};
+                  a.value='10';b.value='7';capCompRecord('ci-final');
+                  return {status:match.status,relays:match.relays.map(x=>({...x})),messages};
+                } finally {a.remove();b.remove();db=oldDb;save=oldSave;flash=oldFlash;window.alert=oldAlert;}
+              });
+              assert.equal(finalRelay.status,'done','rencontre terminée après dernier relais');
+              assert.deepEqual(finalRelay.relays,[{a:5,b:3},{a:10,b:7}],'score cumulé final correct');
+              assert.deepEqual(finalRelay.messages,[],'aucune alerte pour un relais final valide');
+              console.log('DERNIER RELAIS CAP OK',finalRelay);
               // Persistance réelle : stockage navigateur et rechargement.
               await page.evaluate(() => localStorage.setItem('milft-ci-persistence','verification'));
               await page.reload({waitUntil:'load'});
