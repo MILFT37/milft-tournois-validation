@@ -196,9 +196,9 @@ button:focus-visible,summary:focus-visible,input:focus-visible,select:focus-visi
   for(const id of ['milft-google-auth','milft-public-controls']){
    const element=document.getElementById(id);if(element)technical.appendChild(element);
   }
-  if(technical.children.length>1)slot.appendChild(technical);
   const indicator=document.getElementById('milft-drive-indicator');
   if(indicator){technical.insertBefore(indicator,technical.children[1]||null);indicator.style.display='';indicator.removeAttribute('aria-hidden');}
+  if(technical.children.length>1)slot.appendChild(technical);
   slot.dataset.regrouped='yes';
  }
  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',regroup,{once:true});else regroup();
