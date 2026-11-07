@@ -446,6 +446,24 @@ jobs:
               assert.deepEqual(undoEdges.blocked,{status:'done',count:1},'poules figées après tableau');
               assert.ok(undoEdges.alerts.some(m=>m.includes('tableau final')),'message blocage après tableau');
               console.log('CORRECTION RELAIS CAS LIMITES OK',undoEdges);
+              // Verrouillage de saisie après progression du tableau.
+              const lockedRelay=await page.evaluate(()=>{
+                const oldDb=db,oldSave=save,oldFlash=flash,oldAlert=window.alert;
+                const a=document.createElement('input'),b=document.createElement('input');
+                a.id='capca-ci-lock';b.id='capcb-ci-lock';document.body.append(a,b);
+                const messages=[];
+                try {
+                  save=()=>{};flash=()=>{};window.alert=m=>messages.push(m);
+                  const match={id:'ci-lock',phase:'groups',status:'waiting',relays:[],a:'a',b:'b'};
+                  const t={id:'ci-lock',closed:false,cap:{competition:true,phase:'bracket',targets:[5],finish:'winner',matches:[match,{id:'ci-next',phase:'bracket',round:1,status:'waiting'}]}};
+                  db={players:[],tournaments:[t],selected:t.id};
+                  a.value='5';b.value='3';capCompRecord(match.id);
+                  return {relays:match.relays.length,messages};
+                } finally {a.remove();b.remove();db=oldDb;save=oldSave;flash=oldFlash;window.alert=oldAlert;}
+              });
+              assert.equal(lockedRelay.relays,0,'saisie des poules bloquée après tableau');
+              assert.ok(lockedRelay.messages.some(m=>m.includes('tableau final')),'alerte de verrouillage');
+              console.log('VERROUILLAGE SAISIE CAP OK',lockedRelay);
               // Persistance réelle : stockage navigateur et rechargement.
               await page.evaluate(() => localStorage.setItem('milft-ci-persistence','verification'));
               await page.reload({waitUntil:'load'});
