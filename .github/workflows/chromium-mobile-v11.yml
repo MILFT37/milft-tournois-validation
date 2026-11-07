@@ -464,6 +464,28 @@ jobs:
               assert.equal(lockedRelay.relays,0,'saisie des poules bloquée après tableau');
               assert.ok(lockedRelay.messages.some(m=>m.includes('tableau final')),'alerte de verrouillage');
               console.log('VERROUILLAGE SAISIE CAP OK',lockedRelay);
+              // Aucun relais supplémentaire après le dernier palier ou sur match abandonné.
+              const relayGuards=await page.evaluate(()=>{
+                const oldDb=db,oldSave=save,oldFlash=flash,oldAlert=window.alert;
+                const a=document.createElement('input'),b=document.createElement('input');
+                a.id='capca-ci-guard';b.id='capcb-ci-guard';document.body.append(a,b);
+                const messages=[];
+                try {
+                  save=()=>{};flash=()=>{};window.alert=m=>messages.push(m);
+                  const match={id:'ci-guard',phase:'groups',status:'waiting',relays:[{a:5,b:3}],a:'a',b:'b'};
+                  const t={id:'ci-guard',closed:false,cap:{competition:true,phase:'groups',targets:[5],finish:'winner',matches:[match]}};
+                  db={players:[],tournaments:[t],selected:t.id};
+                  a.value='5';b.value='3';capCompRecord(match.id);
+                  const extra=match.relays.length;
+                  match.status='abandoned';capCompRecord(match.id);
+                  const abandoned=match.relays.length;
+                  return {extra,abandoned,messages};
+                } finally {a.remove();b.remove();db=oldDb;save=oldSave;flash=oldFlash;window.alert=oldAlert;}
+              });
+              assert.equal(relayGuards.extra,1,'aucun relais au-delà du palier final');
+              assert.equal(relayGuards.abandoned,1,'aucun relais sur rencontre abandonnée');
+              assert.ok(relayGuards.messages.some(m=>m.includes('Aucun relais supplémentaire')),'alerte explicite');
+              console.log('GARDE-FOUS RELAIS CAP OK',relayGuards);
               // Persistance réelle : stockage navigateur et rechargement.
               await page.evaluate(() => localStorage.setItem('milft-ci-persistence','verification'));
               await page.reload({waitUntil:'load'});
