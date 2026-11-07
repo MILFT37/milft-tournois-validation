@@ -192,6 +192,23 @@ jobs:
               assert.equal(manualGuard.tableId,null,'attribution manuelle refusée si équipe occupée');
               assert.ok(manualGuard.messages.some(m=>m.includes('joue déjà')),'alerte conflit équipe');
               console.log('PROTECTION ATTRIBUTION MANUELLE OK',manualGuard);
+              // Menus CAP : seules les tables disponibles doivent être proposées.
+              const optionsGuard=await page.evaluate(()=>{
+                const t={
+                  closed:false,
+                  tables:[{id:1,state:'free'},{id:2,state:'free'},{id:3,state:'excluded'}],
+                  cap:{competition:true,phase:'groups',structure:'league',matches:[
+                    {id:'ci-used',phase:'groups',status:'playing',a:'a',b:'b',tableId:1},
+                    {id:'ci-free',phase:'groups',status:'waiting',a:'c',b:'d',tableId:null}
+                  ]}
+                };
+                const available=t.tables.filter(x=>x.id===t.cap.matches[1].tableId||capFreeTable(t,x.id,t.cap.matches[1].id)).map(x=>x.id);
+                const current=t.tables.filter(x=>x.id===t.cap.matches[0].tableId||capFreeTable(t,x.id,t.cap.matches[0].id)).map(x=>x.id);
+                return {available,current};
+              });
+              assert.deepEqual(optionsGuard.available,[2],'table occupée ou exclue masquée');
+              assert.deepEqual(optionsGuard.current,[1,2],'table actuellement attribuée conservée');
+              console.log('FILTRAGE TABLES CAP OK',optionsGuard);
               // Clôture CAP : refuser toute rencontre inachevée.
               const closeGuard = await page.evaluate(() => {
                 const oldDb=db,oldSave=save,oldFlash=flash,oldAlert=window.alert;
