@@ -1879,6 +1879,7 @@ capAssignTable=function(id){
  if(!v){if(m.status==='playing')return alert('Impossible de retirer la table d’une rencontre en cours. Termine ou mets en attente la rencontre avant de libérer la table.');if(m.tableId!=null){m.tableId=null;save();flash('Attribution de table retirée.');}return}
  const n=Number(v);
  if(m.tableId===n)return;
+ if(m.status==='playing')return alert('Impossible de changer la table d’une rencontre en cours. Termine ou mets en attente la rencontre avant de la déplacer.');
  if(!capFreeTable(t,n,m.id))return alert('Cette table est exclue ou déjà attribuée à une rencontre non terminée.');
  const occupied=t.cap.matches.some(other=>other.id!==m.id&&(other.tableId!=null||other.status==='playing')&&other.status!=='done'&&other.status!=='abandoned'&&!other.bye&&[other.a,other.b].some(team=>team!=null&&(String(team)===String(m.a)||String(team)===String(m.b))));
  if(occupied)return alert('Impossible : une équipe de cette rencontre joue déjà sur une autre table.');
