@@ -740,7 +740,8 @@ function addChallengeSet(id){
    m.table=null;
    if(t.mode==='knockout')advanceKnockout(t);
  }
- save();flash(m.status==='done'?'Rencontre validée.':'Manche enregistrée.');
+ const autoShared=m.status==='done'&&!!t.sourceId;
+ save();if(autoShared)autoNow();else flash(m.status==='done'?'Rencontre validée.':'Manche enregistrée.');
 }
 function undoChallengeSet(id){const t=active(),m=t.matches.find(m=>m.id===id);if(m?.sets?.length){m.sets.pop();save();render()}}
 function pauseMatchClock(m){if(m.startedAt)m.elapsedMs=Math.max(0,Number(m.elapsedMs)||0)+Math.max(0,Date.now()-m.startedAt);m.startedAt=null}
@@ -1068,7 +1069,7 @@ function declareForfait(id){
  const winner=choice==='A'?'a':'b';if(!confirm('Confirmer le forfait ?\n'+participantName(t,m[winner])+' gagne 5–3.'))return;
  if(m.table!=null){const table=t.tables.find(x=>String(x.id)===String(m.table));if(table&&table.state==='playing')table.state='free';}
  m.table=null;m.status='done';m.forfait=true;m.forfaitWinner=winner;m.bye=false;m.score=winner==='a'?{a:5,b:3}:{a:3,b:5};m.sets=[];delete m.correcting;if(typeof monsterCorrectionDrafts==='object')delete monsterCorrectionDrafts[m.id];if(t.mode==='knockout')advanceKnockout(t);
- save();flash('Forfait enregistré : victoire 5–3.');
+ save();if(t.sourceId)autoNow();else flash('Forfait enregistré : victoire 5–3.');
 }
 function matchCard(t,m){m.sets=m.sets||[];return challengeMatchCard(t,m)}
 function changeTableState(id){
