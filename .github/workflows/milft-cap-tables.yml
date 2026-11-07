@@ -53,7 +53,7 @@ jobs:
           has("if(state!=='free'&&capTableBusy(t,id))");
           has("if(m.bye||!m.a||!m.b)");
           has("!\u005b\u0027waiting\u0027,\u0027playing\u0027\u005d.includes(m.status)");
-          has("if(m.status!=='waiting'||m.bye||m.tableId||!m.a||!m.b)continue;");
+          has("if(m.status!=='waiting'||m.bye||m.tableId!=null||!m.a||!m.b)continue;");
           has("if(old!=='done'&&m.status==='done'&&m.tableId!=null){m.tableId=null;save();}");
           has("if(m?.bye&&m.tableId!=null){m.tableId=null;save();}");
           has("if(removed.some(x=>capTableBusy(t,x.id)))");
