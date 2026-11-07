@@ -293,6 +293,35 @@ jobs:
               assert.equal(moveGuard.tableId,1,'table initiale conservée');
               assert.ok(moveGuard.messages.some(m=>m.includes('en cours')),'alerte changement de table');
               console.log('PROTECTION DÉPLACEMENT TABLE OK',moveGuard);
+              // Gestion des tables : impossible d'exclure ou retirer une table occupée.
+              const tableGuards=await page.evaluate(()=>{
+                const oldDb=db,oldSave=save,oldFlash=flash,oldAlert=window.alert,oldConfirm=window.confirm;
+                const messages=[];
+                const state=document.createElement('select');
+                state.id='cap-table-state-2';state.innerHTML='<option value="excluded" selected>Exclue</option>';
+                const count=document.createElement('input');
+                count.id='cap-table-count';count.value='1';
+                document.body.append(state,count);
+                try {
+                  save=()=>{};flash=()=>{};window.alert=m=>messages.push(m);window.confirm=()=>true;
+                  const t={id:'ci-table-guard',closed:false,tables:[{id:1,state:'free'},{id:2,state:'free'}],
+                    cap:{competition:true,phase:'groups',matches:[
+                      {id:'ci-running',phase:'groups',status:'playing',a:'a',b:'b',tableId:2}
+                    ]}};
+                  db={players:[],tournaments:[t],selected:t.id};
+                  capSetTable(2);
+                  const stateAfter=t.tables[1].state;
+                  capSetTableCount();
+                  return {stateAfter,countAfter:t.tables.length,messages};
+                } finally {
+                  state.remove();count.remove();db=oldDb;save=oldSave;flash=oldFlash;
+                  window.alert=oldAlert;window.confirm=oldConfirm;
+                }
+              });
+              assert.equal(tableGuards.stateAfter,'free','table occupée non exclue');
+              assert.equal(tableGuards.countAfter,2,'table occupée non supprimée');
+              assert.equal(tableGuards.messages.length,2,'deux refus explicites');
+              console.log('GESTION DES TABLES OCCUPÉES OK',tableGuards);
               // Clôture CAP : refuser toute rencontre inachevée.
               const closeGuard = await page.evaluate(() => {
                 const oldDb=db,oldSave=save,oldFlash=flash,oldAlert=window.alert;
