@@ -86,7 +86,7 @@ jobs:
           assert.ok(rendered.indexOf('Terminer')<rendered.indexOf('Abandonner'));
           assert.ok(rendered.includes('milft-classic-command-row'));
           const start=html.indexOf('function capAutoAssign(){');
-          const end=html.indexOf('\nconst capOriginalRecordV2',start);
+          const end=html.indexOf('\nconst capAssignTableWithoutClubCheck',start);
           assert.ok(start>=0&&end>start);
           const code=html.slice(start,end);
           let saved=0, message='';
