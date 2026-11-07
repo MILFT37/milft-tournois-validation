@@ -248,7 +248,7 @@ jobs:
           const scoreEnd=html.indexOf(String.fromCharCode(10)+'function capCompUndo(id)',scoreStart);
           assert.ok(scoreStart>=0&&scoreEnd>scoreStart,'Saisie des scores introuvable');
           const scoreCode=html.slice(scoreStart,scoreEnd);
-          const scoreMatch={id:'score',phase:'groups',status:'waiting',relays:[]};
+          const scoreMatch={id:'score',compositionsValidated:true,phase:'groups',status:'waiting',relays:[]};
           const scoreTournament={closed:false,cap:{targets:[10,20],finish:'winner',phase:'groups',matches:[scoreMatch]}};
           let scoreA='',scoreB='10',scoreSaves=0,scoreAlerts=[];
           const recordScore=new Function('active','document','alert','save','flash',
