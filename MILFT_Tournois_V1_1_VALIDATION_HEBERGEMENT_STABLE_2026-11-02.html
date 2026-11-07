@@ -754,7 +754,7 @@ function addChallengeSet(id){
 }
 function undoChallengeSet(id){const t=active(),m=t.matches.find(m=>m.id===id);if(m?.sets?.length){m.sets.pop();save();render()}}
 function pauseMatchClock(m){if(m.startedAt)m.elapsedMs=Math.max(0,Number(m.elapsedMs)||0)+Math.max(0,Date.now()-m.startedAt);m.startedAt=null}
-function pauseChallenge(id){const t=active(),m=t?.matches.find(x=>x.id===id);if(!m||t.closed||m.status!=='playing')return;if(!confirm('Mettre cette rencontre en attente en conservant les manches déjà jouées ?'))return;const table=t.tables.find(x=>String(x.id)===String(m.table));if(table&&table.state==='playing')table.state='free';pauseMatchClock(m);m.status='waiting';m.table=null;m.hold=t.mode==='challenge';save();flash('Rencontre reportée, manches et temps joué conservés.')}
+function pauseChallenge(id){const t=active(),m=t?.matches.find(x=>x.id===id);if(!m||t.closed||m.status!=='playing')return;if(!confirm('Mettre cette rencontre en attente en conservant les manches déjà jouées ?'))return;const table=t.tables.find(x=>String(x.id)===String(m.table));if(table&&table.state==='playing')table.state='free';pauseMatchClock(m);m.status='waiting';m.table=null;m.hold=t.mode==='challenge';save();if(t.sourceId)autoNow();else flash('Rencontre reportée, manches et temps joué conservés.')}
 function correctChallenge(id){
  const t=active(),m=t?.matches.find(x=>x.id===id);
  if(!m||t.closed||m.forfait||m.bye||m.status!=='done'||!Array.isArray(m.sets))return;
@@ -1096,7 +1096,7 @@ function changeTableState(id){
  let changed=0;
  for(const phase of phases){const table=(phase.tables||[]).find(x=>String(x.id)===String(id));if(table){table.state=state;changed++;}}
  if(!changed)return alert('Table introuvable.');
- save();flash('État de la table '+id+' mis à jour'+(phases.length>1?' dans toutes les phases.':'.'));
+ save();if(state==='free'&&(t.sourceId||t.finalId))autoNow();else flash('État de la table '+id+' mis à jour'+(phases.length>1?' dans toutes les phases.':'.'));
 }
 function moveMatch(id){
  const t=active(),m=t?.matches.find(x=>x.id===id),dest=Number($('move-'+id)?.value);
