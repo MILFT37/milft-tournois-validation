@@ -2012,13 +2012,13 @@ capCompLive=function(t){
 
 // V1.1 QA — empêcher de convoquer un même club sur deux tables simultanément.
 function capClubBusy(t, clubId, exceptId){
- return t.cap.matches.some(m=>m.id!==exceptId && m.tableId!=null && m.status!=='done' && m.status!=='abandoned' && !m.bye && (m.a===clubId||m.b===clubId));
+ return t.cap.matches.some(m=>m.id!==exceptId && (m.tableId!=null||m.status==='playing') && m.status!=='done' && m.status!=='abandoned' && !m.bye && (m.a===clubId||m.b===clubId));
 }
 capAutoAssign=function(){
  const t=active();if(!t?.cap?.competition||t.closed)return;
  let count=0;
  for(const m of capActiveMatches(t)){
-  if(m.status==='done'||m.bye||m.tableId||!m.a||!m.b)continue;
+  if(m.status!=='waiting'||m.bye||m.tableId!=null||!m.a||!m.b)continue;
   if(capClubBusy(t,m.a,m.id)||capClubBusy(t,m.b,m.id))continue;
   const table=t.tables.find(x=>capFreeTable(t,x.id));if(!table)break;
   m.tableId=table.id;count++;
