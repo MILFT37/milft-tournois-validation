@@ -601,6 +601,29 @@ jobs:
               assert.equal(previousRound.count,0,'aucun relais dans un tour précédent');
               assert.ok(previousRound.messages.some(m=>m.includes('phase actuelle')),'alerte tour inactif');
               console.log('TOUR PRÉCÉDENT CAP PROTÉGÉ OK',previousRound);
+              // Parcours intégré : poules terminées -> tableau final -> vainqueur -> clôture.
+              const fullCup=await page.evaluate(()=>{
+                const oldDb=db,oldSave=save,oldFlash=flash,oldAlert=window.alert;
+                const alerts=[];
+                try {
+                  save=()=>{};flash=()=>{};window.alert=m=>alerts.push(m);
+                  const clubs=[{id:'a',name:'A'},{id:'b',name:'B'}];
+                  const group={id:'ci-cup-group',a:'a',b:'b',phase:'groups',group:0,status:'done',relays:[{a:5,b:3}]};
+                  const cap={competition:true,structure:'cup',phase:'groups',groups:true,bracket:true,pools:[['a','b']],qualifiers:2,clubs,matches:[group],targets:[5],types:['S'],byeWin:5,byeLose:3};
+                  const t={id:'ci-cup',closed:false,cap,tables:[{id:1,state:'free'}]};
+                  db={players:[],tournaments:[t],selected:t.id};
+                  capCompNext();
+                  const bracket=cap.matches.filter(m=>m.phase==='bracket');
+                  const created={phase:cap.phase,count:bracket.length,round:cap.round};
+                  const final=bracket[0];final.status='done';final.relays=[{a:5,b:3}];
+                  capCompClose();
+                  return {created,closed:t.closed,alerts};
+                } finally {db=oldDb;save=oldSave;flash=oldFlash;window.alert=oldAlert;}
+              });
+              assert.deepEqual(fullCup.created,{phase:'bracket',count:1,round:1},'tableau final créé depuis les poules');
+              assert.equal(fullCup.closed,true,'compétition clôturée après finale');
+              assert.deepEqual(fullCup.alerts,[],'aucune alerte sur le parcours valide');
+              console.log('PARCOURS COUPE COMPLET OK',fullCup);
               // Persistance réelle : stockage navigateur et rechargement.
               await page.evaluate(() => localStorage.setItem('milft-ci-persistence','verification'));
               await page.reload({waitUntil:'load'});
