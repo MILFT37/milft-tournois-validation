@@ -166,6 +166,32 @@ jobs:
               assert.deepEqual(assignment.second,[1,3,null],'ne réattribue pas les tables occupées');
               assert.equal(assignment.first[2],null,'équipe déjà engagée sur une autre table');
               console.log('ATTRIBUTION CAP FONCTIONNELLE OK',assignment);
+              // Attribution manuelle : empêcher une équipe de jouer sur deux tables.
+              const manualGuard = await page.evaluate(() => {
+                const oldDb=db,oldSave=save,oldFlash=flash,oldAlert=window.alert;
+                const messages=[];
+                const select=document.createElement('select');
+                select.id='cap-table-ci-manual';
+                select.innerHTML='<option value="2" selected>Table 2</option>';
+                document.body.appendChild(select);
+                try {
+                  save=()=>{};flash=()=>{};window.alert=msg=>messages.push(msg);
+                  const t={id:'ci-manual',closed:false,
+                    tables:[{id:1,state:'free'},{id:2,state:'free'}],
+                    cap:{competition:true,phase:'groups',matches:[
+                      {id:'ci-running',phase:'groups',status:'playing',a:'a',b:'b',tableId:1},
+                      {id:'ci-manual',phase:'groups',status:'waiting',a:'a',b:'c',tableId:null}
+                    ]}};
+                  db={players:[],tournaments:[t],selected:t.id};
+                  capAssignTable('ci-manual');
+                  return {tableId:t.cap.matches[1].tableId,messages};
+                } finally {
+                  select.remove();db=oldDb;save=oldSave;flash=oldFlash;window.alert=oldAlert;
+                }
+              });
+              assert.equal(manualGuard.tableId,null,'attribution manuelle refusée si équipe occupée');
+              assert.ok(manualGuard.messages.some(m=>m.includes('joue déjà')),'alerte conflit équipe');
+              console.log('PROTECTION ATTRIBUTION MANUELLE OK',manualGuard);
               // Clôture CAP : refuser toute rencontre inachevée.
               const closeGuard = await page.evaluate(() => {
                 const oldDb=db,oldSave=save,oldFlash=flash,oldAlert=window.alert;
