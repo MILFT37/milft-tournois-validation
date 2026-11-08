@@ -56,6 +56,18 @@ body.milft-has-phase-quicknav #milft-quicknav [data-section]{grid-row:2}
 #milft-quicknav [data-phase].active{background:#16477c;color:#fff}
 body.milft-has-phase-quicknav{padding-bottom:calc(172px + env(safe-area-inset-bottom,0px))}
 
+/* Tableau final : même identité visuelle dynamique que les commandes du tournoi. */
+.ko-mobile-nav{gap:8px;align-items:center;margin:12px 0 14px}
+.ko-mobile-nav select{flex:1;min-width:0;border:2px solid #a8c7e5;border-radius:12px;background:#eaf3fc;color:#143f70;font-weight:800;padding:12px}
+.ko-mobile-nav button{background:#e7f0fb;color:#16477c;border:1px solid #c7daed;border-radius:12px;min-width:48px;font-weight:800}
+.ko-mobile-paged .ko-round h3{background:#16477c;color:white;border-radius:11px;font-size:17px;padding:11px;margin-bottom:12px;letter-spacing:.2px}
+.ko-mobile-paged .ko-match{background:linear-gradient(155deg,#fff 60%,#f1f7fe);border:2px solid #c5d8ec;border-left:5px solid #2471b9;border-radius:14px;box-shadow:0 3px 9px #163d6710;padding:11px 12px;min-height:100px}
+.ko-mobile-paged .ko-match.ko-done{border-left-color:#1b875a;background:linear-gradient(155deg,#fff 60%,#effaf4)}
+.ko-mobile-paged .ko-side{font-weight:650;color:#173d63;padding:8px 4px}
+.ko-mobile-paged .ko-side.ko-winner{color:#1264b4;font-weight:850}
+.ko-mobile-paged .ko-bottom{align-items:center;margin-top:5px}
+.ko-mobile-paged .ko-set{background:#dfeefc;color:#16477c;border-radius:7px;padding:5px 8px;font-weight:850}
+@media(max-width:600px){.ko-mobile-paged .ko-round{width:100%}.ko-mobile-paged .ko-match{margin-bottom:2px}.ko-mobile-nav select{font-size:16px}}
 /* Vue d'ensemble sur trois niveaux : identique sur ordinateur et telephone. */
 .ko-mobile-paged.milft-three-round-overview{overflow-x:auto}
 .ko-mobile-paged.milft-three-round-overview .ko-bracket{display:grid;grid-template-columns:repeat(3,minmax(210px,1fr));gap:10px;min-width:650px}
