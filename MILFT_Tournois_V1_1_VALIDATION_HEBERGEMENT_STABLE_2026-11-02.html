@@ -1119,21 +1119,24 @@ function milftEventRootId(t){
  return t.id;
 }
 function activeTournamentsPage(){
- const open=db.tournaments.filter(t=>!t.closed&&!t.abandoned).slice().sort((a,b)=>String(b.date||'').localeCompare(String(a.date||'')));
+ // Une seule fiche par evenement ; conserver les poules closes dans le bilan si A/B continue.
  const groups=new Map();
- for(const t of open){
+ for(const t of db.tournaments){
   const key=milftEventRootId(t);
   if(!groups.has(key))groups.set(key,[]);
   groups.get(key).push(t);
  }
- const entries=[...groups.entries()].map(([key,phases])=>{
+ const entries=[...groups.entries()].filter(([,phases])=>phases.some(t=>!t.closed&&!t.abandoned)).map(([key,phases])=>{
   const root=db.tournaments.find(x=>x.id===key)||phases[0];
-  const unfinished=phases.some(x=>!milftCanClose(x));
-  const count=phases.reduce((n,x)=>n+(x.matches||[]).length,0);
-  const done=phases.reduce((n,x)=>n+(x.matches||[]).filter(m=>m.status==='done').length,0);
-  const phasesNav=phases.length>1?'<div class="row" style="gap:6px;flex-wrap:wrap">'+phases.map(x=>'<button class="mutedbtn" onclick="openTournament(\''+x.id+'\')">'+(x.mode==='poules'?'Poules':x.bracketLetter?'Tableau '+x.bracketLetter:'Tableau')+'</button>').join('')+'</div>':'';
-  return {unfinished,html:'<div class="item milft-tournament-list-item"><b>'+title(root)+'</b><p class="muted">'+done+'/'+count+' rencontres terminées'+(phases.length>1?' · Poules et tableaux liés':'')+'</p>'+phasesNav+'<button onclick="openTournament(\''+(phases.find(x=>!milftCanClose(x))||phases[0]).id+'\')">'+(unfinished?'Reprendre':'Clôturer')+'</button></div>'};
- });
+  const available=phases.filter(t=>!t.closed&&!t.abandoned);
+  const unfinished=available.some(t=>!milftCanClose(t));
+  const counted=phases.filter(t=>!t.abandoned);
+  const count=counted.reduce((n,x)=>n+(x.matches||[]).length,0);
+  const done=counted.reduce((n,x)=>n+(x.matches||[]).filter(m=>m.status==='done').length,0);
+  const nav=phases.length>1?'<div class="row milft-phase-list-nav" style="gap:6px;flex-wrap:wrap">'+phases.filter(x=>!x.abandoned).map(x=>'<button class="mutedbtn" onclick="openTournament(\''+x.id+'\')">'+(x.mode==='poules'?'Poules':x.bracketLetter?'Tableau '+x.bracketLetter:'Tableau')+(x.closed?' ✓':'')+'</button>').join('')+'</div>':'';
+  const target=available.find(x=>!milftCanClose(x))||available[0];
+  return {unfinished,date:root.date||'',html:'<div class="item milft-tournament-list-item"><b>'+title(root)+'</b><p class="muted">'+done+'/'+count+' rencontres terminées'+(phases.length>1?' · Phases liées':'')+'</p>'+nav+'<button onclick="openTournament(\''+target.id+'\')">'+(unfinished?'Reprendre':'Voir / clôturer')+'</button></div>'};
+ }).sort((a,b)=>String(b.date).localeCompare(String(a.date)));
  const items=entries.filter(x=>x.unfinished),toClose=entries.filter(x=>!x.unfinished);
  return '<div class="card"><h2>Tournois en cours</h2><p class="muted">'+items.length+' compétition(s) à poursuivre</p>'+items.map(x=>x.html).join('')+(items.length?'':'<p>Aucune rencontre en attente.</p>')+(toClose.length?'<div class="card milft-to-close"><h3>'+toClose.length+' tournoi(s) à clôturer</h3>'+toClose.map(x=>x.html).join('')+'</div>':'')+'<button class="mutedbtn" onclick="setTab(\'new\')">Créer un tournoi</button></div>';
 } function milftRoundReadyForNext(t){if(!t||!Number.isFinite(Number(t.currentRound))||Number(t.currentRound)>=Number(t.roundLimit))return false;const current=(t.matches||[]).filter(m=>Number(m.round)===Number(t.currentRound));return current.length>0&&current.every(m=>m.status==='done');}
