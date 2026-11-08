@@ -1539,6 +1539,23 @@ function milftQuicknavTargets(root){
  });
  return targets;
 }
+/* La lecture verticale suit les quatre boutons fixes, sur tous les formats compatibles. */
+function milftOrderQuicknavSections(root){
+ const targets=milftQuicknavTargets(root),order=['matchs','tables','classement','avancement'];
+ const cards=order.map(k=>targets[k]).filter(Boolean);
+ if(cards.length<2)return;
+ const parent=cards[0].parentElement;
+ if(!parent||!cards.every(c=>c.parentElement===parent))return;
+ const siblings=[...parent.children];
+ const positions=cards.map(c=>siblings.indexOf(c)).sort((a,b)=>a-b);
+ if(positions.some(i=>i<0))return;
+ const slots=positions.map(i=>siblings[i]);
+ const ordered=order.map(k=>targets[k]).filter(Boolean);
+ if(slots.every((el,i)=>el===ordered[i]))return;
+ /* Ne déplace que les quatre sections de navigation, sans recréer leurs formulaires. */
+ const anchor=document.createComment('milft-order-anchor');parent.insertBefore(anchor,slots[0]);
+ ordered.forEach(card=>parent.insertBefore(card,anchor));anchor.remove();
+}
 function milftRefreshQuicknav(){
  const visible=['live-detail','challenge','knockout'].includes(tab) && !!currentTournament();
  document.body.classList.toggle('milft-has-quicknav',visible);
@@ -1552,6 +1569,7 @@ function milftRefreshQuicknav(){
  const overview=document.querySelector('#milft-quicknav [data-phase="overview"]');
  if(overview){overview.hidden=!hasBracket;overview.classList.toggle('active',!!document.querySelector('.ko-mobile-paged.milft-three-round-overview'));}
  const root=document.getElementById('view');
+ if(visible&&root)milftOrderQuicknavSections(root);
  const targets=visible?milftQuicknavTargets(root):milftQuicknavTargets(null);
  Object.entries(targets).forEach(([key,el])=>{
   const button=document.querySelector('#milft-quicknav [data-section="'+key+'"]');
