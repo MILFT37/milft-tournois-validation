@@ -39,7 +39,7 @@ assert.strictEqual(ka.matches[0].status,'waiting','La table commune ne doit pas 
 assert.deepStrictEqual(Array.from(context.milftFreeTables(ka)),[],'La table occupee par B doit etre indisponible dans A');
 console.log('OK attribution partagee entre tableaux A/B');
 const busyFn=html.match(/function busyPlayers\(t\)\{[^\n]*\}/);
-const freeFn=html.match(/function milftFreeTables\(t\)\{[^\n]*\}/);
+const freeFn=[extract('milftFreeTables')];
 assert(busyFn&&freeFn,'Fonctions de protection inter-tableaux introuvables');
 const sharedDb={tournaments:[
  {id:'poules',mode:'poules',matches:[],roster:[],tables:[{id:1,state:'free'},{id:2,state:'free'}]},
