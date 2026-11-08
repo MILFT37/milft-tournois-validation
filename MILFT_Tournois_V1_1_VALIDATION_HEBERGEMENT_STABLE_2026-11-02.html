@@ -48,6 +48,7 @@ body.milft-championship-focus #view {scroll-margin-top:12px;}
 
 body.milft-has-phase-quicknav #milft-quicknav{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px}
 body.milft-has-phase-quicknav #milft-quicknav [data-phase]{grid-row:1}
+body.milft-has-phase-quicknav #milft-quicknav [data-phase="overview"]:only-of-type{grid-column:1/-1}
 body.milft-has-phase-quicknav #milft-quicknav [data-section]{grid-row:2}
 #milft-quicknav [hidden]{display:none!important}
 #milft-quicknav [data-phase].active{background:#16477c;color:#fff}
@@ -1353,13 +1354,14 @@ function milftRefreshQuicknav(){
  document.body.classList.toggle('milft-has-quicknav',visible);
  const t=currentTournament(),rootId=t?.sourceId||t?.id,phases=db.tournaments.filter(x=>x.id===rootId||x.sourceId===rootId);
  const linked=visible&&phases.length>1;
- document.body.classList.toggle('milft-has-phase-quicknav',linked);
+ const hasBracket=visible&&phases.some(x=>x.mode==='knockout');
+ document.body.classList.toggle('milft-has-phase-quicknav',linked||hasBracket);
  for(const [key,found] of [['poules',phases.some(x=>x.mode==='poules')],['A',phases.some(x=>x.bracketLetter==='A')],['B',phases.some(x=>x.bracketLetter==='B')]]){
   const button=document.querySelector('#milft-quicknav [data-phase="'+key+'"]');
   if(button){button.hidden=!linked||!found;button.classList.toggle('active',!!t&&(key==='poules'?t.mode==='poules':t.bracketLetter===key));}
  }
  const overview=document.querySelector('#milft-quicknav [data-phase="overview"]');
- if(overview){overview.hidden=!visible||!phases.some(x=>x.mode==='knockout');overview.classList.toggle('active',!!document.querySelector('.ko-mobile-paged.milft-three-round-overview'));}
+ if(overview){overview.hidden=!hasBracket;overview.classList.toggle('active',!!document.querySelector('.ko-mobile-paged.milft-three-round-overview'));}
  const root=document.getElementById('view');
  const targets={matchs:null,tables:null,classement:null,avancement:null};
  if(visible&&root){
