@@ -1517,7 +1517,7 @@ function milftRefreshQuicknav(){
  const targets=visible?milftQuicknavTargets(root):milftQuicknavTargets(null);
  Object.entries(targets).forEach(([key,el])=>{
   const button=document.querySelector('#milft-quicknav [data-section="'+key+'"]');
-  if(button)button.disabled=!el;
+  if(button){button.hidden=!visible||!el;button.disabled=!el;button.setAttribute('aria-hidden',String(!visible||!el));}
   if(el)el.classList.add('milft-nav-target');
  });
 }
