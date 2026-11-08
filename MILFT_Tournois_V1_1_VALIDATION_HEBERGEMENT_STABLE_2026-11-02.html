@@ -1071,7 +1071,7 @@ function changeTableState(id){
   if(!confirm('Un match utilise cette table. Le remettre en attente sans perdre ses manches et son temps de jeu ?'))return;
   const {phase,match:m}=running[0];pauseMatchClock(m);m.status='waiting';m.table=null;if(phase.mode==='challenge')m.hold=true;const linkedTable=phase.tables.find(x=>String(x.id)===String(id));if(linkedTable)linkedTable.state='free';
  }
- table.state=state;if(state==='free')autoAssign(t);save();flash('État de la table '+id+' mis à jour.');
+ for(const phase of linked){const shared=phase.tables?.find(x=>String(x.id)===String(id));if(shared)shared.state=state;}if(state==='free')autoAssign(t);save();flash('État de la table '+id+' mis à jour dans toutes les phases liées.');
 }
 function moveMatch(id){const t=active(),m=t?.matches.find(x=>x.id===id),dest=Number($('move-'+id)?.value),next=t?.tables.find(x=>x.id===dest);if(!t||t.closed||!m||m.status!=='playing'||!next||!milftFreeTables(t).some(x=>String(x.id)===String(dest)))return alert('Choisis une table réellement disponible dans le parc partagé.');const previous=t.tables.find(x=>String(x.id)===String(m.table));if(previous&&previous.state==='playing')previous.state='free';m.table=dest;next.state='playing';autoAssign(t);save();flash('Match déplacé vers la table '+dest+'.')}
 function milftLaunchSelectedAnnual(){const id=document.getElementById('milft-annual-manual-match')?.value;if(!id)return alert('Sélectionne une rencontre disponible.');assignSpecific(id);}
