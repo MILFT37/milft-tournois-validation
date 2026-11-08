@@ -1100,7 +1100,7 @@ function milftToggleMatchPriority(id){
  const prioritized=m.milftPriority;if(prioritized)autoAssign(t);
  save();flash(prioritized?(m.status==='playing'?'Rencontre prioritaire attribuée à une table libre.':'Rencontre ajoutée à la file prioritaire.'):'Priorité annulée.');
 }
-function milftPriorityButton(t,m){return m.status==='waiting'?`<button type="button" class="mutedbtn" onclick="milftToggleMatchPriority('${m.id}')" ${t.closed?'disabled':''}>${m.milftPriority?'Annuler priorité':'Prioriser'}</button>`:''}
+function milftPriorityButton(t,m){return m.status==='waiting'?`<button type="button" class="mutedbtn" onclick="milftToggleMatchPriority('${m.id}')" ${t.closed||t.abandoned?'disabled':''}>${m.milftPriority?'Annuler priorité':'Prioriser'}</button>`:''}
 function milftReleaseSharedTable(t,id){
  if(id==null)return;
  const root=milftEventRootId(t);
@@ -1214,7 +1214,7 @@ function declareForfait(id){
 }
 function matchCard(t,m){m.sets=m.sets||[];return challengeMatchCard(t,m)}
 function changeTableState(id){
- const t=active();if(!t||t.closed)return alert('Rouvre le tournoi pour modifier les tables.');
+ const t=active();if(!t||t.closed||t.abandoned)return alert('Rouvre le tournoi pour modifier les tables.');
  const table=t.tables.find(x=>String(x.id)===String(id));
  const state=$('state-'+id)?.value;
  if(!table||!['free','maintenance','excluded'].includes(state))return alert('Choisis un état valide.');
@@ -1231,7 +1231,7 @@ function moveMatch(id){const t=active(),m=t?.matches.find(x=>x.id===id),dest=Num
 function milftLaunchSelectedAnnual(){const id=document.getElementById('milft-annual-manual-match')?.value;if(!id)return alert('Sélectionne une rencontre disponible.');assignSpecific(id);}
 function assignSpecific(id){const t=active();if(!t||t.closed||t.abandoned)return alert('Tournoi terminé : rouvre-le pour effectuer une modification.');const m=t.matches.find(x=>x.id===id);if(!m||m.status!=='waiting'||m.bye)return;const busy=busyPlayers(t),requested=document.getElementById('milft-annual-manual-table')?.value,free=requested?milftFreeTables(t).find(x=>String(x.id)===requested):milftFreeTables(t)[0];if(!m.a||!m.b)return alert('Les deux adversaires doivent être connus.');if(t.roundLimit&&m.round!==t.currentRound)return alert('Cette ronde n’est pas la ronde en cours.');if(m.hold||(t.mode==='challenge'&&(!t.presence?.[m.a]||!t.presence?.[m.b])))return alert('Rencontre indisponible : vérifie les présences ou le report.');if(!free||matchPlayerIds(t,m).some(id=>busy.has(id)))return alert('Pas de table libre ou joueur déjà occupé dans ce tournoi.');m.status='playing';m.milftPriority=false;m.milftPriorityAt=null;m.annualResumePriority=false;m.table=free.id;m.startedAt=Date.now();const root=milftEventRootId(t);for(const phase of db.tournaments.filter(x=>milftEventRootId(x)===root)){const shared=phase.tables?.find(y=>String(y.id)===String(free.id));if(shared)shared.state='playing';}save();flash('Match affecté à la table '+free.id+'.')}
 function autoNow(){
- const t=active();if(!t||t.closed)return;
+ const t=active();if(!t||t.closed||t.abandoned)return;
  if(milftRoundReadyForNext(t)&&!(t.sourceId||t.finalId)){alert('Tour '+t.currentRound+' terminé : toutes les rencontres sont jouées. Lance le tour '+(t.currentRound+1)+' avant d’attribuer les tables.');return;}if(t.matches.length&&t.matches.every(m=>m.status==='done')&&!(t.sourceId||t.finalId)){alert(t.finalPhase&&!t.finalId?'Qualifications terminées : choisis de créer les tableaux A/B ou de prolonger les poules.':'Toutes les rencontres sont jouées : aucune attribution nécessaire.');return;}
  
  const root=milftEventRootId(t);
