@@ -364,13 +364,8 @@ button:focus-visible,summary:focus-visible,input:focus-visible,select:focus-visi
 #view .milft-ko-commands>.finishbtn,#view .milft-ko-commands>.danger,#view .milft-live-commands>.finishbtn,#view .milft-live-commands>.danger{min-height:46px}
 @media(max-width:600px){#view .milft-match-header{gap:8px!important}#view .milft-match-header h2{font-size:19px!important}#view .milft-match-header .pill{font-size:11px!important}#view .milft-ko-commands,#view .milft-live-commands{gap:6px!important}#view .milft-ko-commands>button,#view .milft-live-commands>button{font-size:12px!important;padding:9px 6px!important}}
 
-/* Tables compactes : conserver l'etat, replier les commandes de modification. */
+/* Tables compactes : controles d'etat toujours visibles. */
 #view .milft-compact-tables>.item{padding:9px 11px!important;min-width:0}
-#view .milft-table-state-edit{margin-top:6px}
-#view .milft-table-state-edit>summary{cursor:pointer;color:var(--primary,#245581);font-size:13px;font-weight:650;padding:5px 0}
-#view .milft-table-state-controls{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:6px}
-#view .milft-table-state-controls>select{flex:1 1 160px;min-width:0;margin:0!important;min-height:40px!important}
-#view .milft-table-state-controls>button{flex:0 0 auto;margin:0!important;min-height:40px!important;padding:8px 12px!important}
 @media(max-width:600px){#view .milft-compact-tables{gap:6px!important}#view .milft-compact-tables>.item{padding:8px 10px!important}}
 
 /* Modele de tables valide : statut en premiere ligne, select et Appliquer visibles cote a cote. */
@@ -1467,10 +1462,10 @@ function milftQuicknavTargets(root){
  root.querySelectorAll('.card h2').forEach(h=>{
   const label=(h.textContent||'').trim().toLocaleLowerCase('fr');
   let key=null;
-  if(label.includes('rencontres en cours')||label.includes('matchs en cours')||label==='rencontres'||label.startsWith('rencontres —'))key='matchs';
+  if(label.includes('rencontres en cours')||label.includes('matchs en cours')||label==='rencontres'||label.startsWith('rencontres —')||label.startsWith('rencontres à jouer')||label.startsWith('rencontres a jouer'))key='matchs';
   else if(label==='tables'||label.includes('disponibilité des tables')||label.includes('disponibilités des tables'))key='tables';
   else if(label.startsWith('classement')||label.startsWith('poule ')||label==='vainqueur')key='classement';
-  else if(label.startsWith('avancement du tournoi')||label.startsWith('avancement — course aux points'))key='avancement';
+  else if(label.startsWith('avancement du tournoi')||label.startsWith('avancement — course aux points')||label==='avancement')key='avancement';
   if(key&&!targets[key])targets[key]=h.closest('.card');
  });
  return targets;
