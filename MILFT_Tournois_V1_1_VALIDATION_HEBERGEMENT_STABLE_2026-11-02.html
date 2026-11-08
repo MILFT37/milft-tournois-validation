@@ -1458,7 +1458,7 @@ function milftQuickPhase(target){
 }
 function milftShowBracketOverview(){
  const t=currentTournament();if(!t)return;
- const root=milftEventRootId(t),phases=db.tournaments.filter(x=>milftEventRootId(x)===root);
+ const root=milftEventRootId(t),phases=db.tournaments.filter(x=>milftEventRootId(x)===root&&!x.abandoned);
  const chosen=t.mode==='knockout'?t:phases.find(x=>x.mode==='knockout'&&x.bracketLetter==='A')||phases.find(x=>x.mode==='knockout');
  if(!chosen)return;
  if(chosen.id!==t.id)openTournament(chosen.id);
@@ -1489,8 +1489,7 @@ function milftQuicknavTargets(root){
 function milftRefreshQuicknav(){
  const visible=['live-detail','challenge','knockout'].includes(tab) && !!currentTournament();
  document.body.classList.toggle('milft-has-quicknav',visible);
- const t=currentTournament(),rootId=milftEventRootId(t),phases=db.tournaments.filter(x=>milftEventRootId(x)===rootId);
- const linked=visible&&phases.length>1;
+ const t=currentTournament(),rootId=milftEventRootId(t),phases=visible?db.tournaments.filter(x=>milftEventRootId(x)===rootId&&!x.abandoned):[];
  const hasBracket=visible&&phases.some(x=>x.mode==='knockout');
  document.body.classList.toggle('milft-has-phase-quicknav',visible&&(phases.length>1||hasBracket));
  for(const [key,found] of [['poules',phases.some(x=>x.mode==='poules')],['A',phases.some(x=>x.bracketLetter==='A')],['B',phases.some(x=>x.bracketLetter==='B')]]){
