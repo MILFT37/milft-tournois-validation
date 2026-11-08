@@ -139,3 +139,20 @@ context.autoAssign(oldB);
 assert.strictEqual(oldB.matches[0].table,2,'Table libre 2 non attribuee au tableau B');
 assert.strictEqual(oldB.matches[0].status,'playing','Rencontre historique B non lancee');
 console.log('OK sauvegardes historiques : regroupement A/B, blocage table, joueurs et attribution');
+
+/* Regression : liberer une table historique sans effacer l'occupation de l'autre tableau. */
+const releaseSource=extract('milftReleaseSharedTable');
+assert(releaseSource.includes('milftEventRootId(t)'),'Liberation sans regroupement evenement');
+assert(releaseSource.includes('milftEventRootId(x)===root'),'Liberation ignore les tableaux historiques');
+const release=new Function('db','milftEventRootId',releaseSource+';return milftReleaseSharedTable')(context.db,context.milftEventRootId);
+release(oldB,1);
+assert.strictEqual(oldA.tables[0].state,'playing','Table occupee A liberee a tort depuis B');
+oldA.matches[0].status='done';
+release(oldB,1);
+assert.strictEqual(oldA.tables[0].state,'free','Table A non liberee apres resultat');
+const stateStart=html.indexOf('function changeTableState(id){');
+const stateEnd=html.indexOf('\nfunction ',stateStart+1);
+assert(stateStart>=0&&stateEnd>stateStart,'Changement etat tables absent');
+const stateSource=html.slice(stateStart,stateEnd);
+assert(stateSource.includes('milftEventRootId(t)')&&stateSource.includes('milftEventRootId(x)===root'),'Changement etat ignore les phases historiques');
+console.log('OK tables partagees : liberation protegee et changement etat coherent avec A/B historiques');
