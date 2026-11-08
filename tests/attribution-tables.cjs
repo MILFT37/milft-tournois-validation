@@ -188,3 +188,18 @@ const activeBusy=context.busyPlayers(activePlaying);
 assert(!activeBusy.has('J1')&&!activeBusy.has('J3'),'Phases fermees bloquent encore les joueurs');
 assert(activeBusy.has('J5')&&activeBusy.has('J6'),'Joueurs actifs non proteges');
 console.log('OK joueurs occupes : seules les phases actives bloquent les rencontres');
+
+/* Regression : une phase close ou abandonnee ne peut pas relancer l'attribution. */
+const autoSource=extract('autoAssign');
+assert(autoSource.includes('if(!t||t.closed||t.abandoned)return;'),'Attribution automatique autorisee sur phase close');
+const prioritySource=extract('milftToggleMatchPriority');
+assert(prioritySource.includes('t.closed||t.abandoned'),'Priorisation autorisee sur phase abandonnee');
+const closedMatch={id:'closed-match',status:'waiting',a:'A',b:'B'};
+const closedPhase={id:'closed',closed:true,mode:'poules',roster:[],matches:[closedMatch],tables:[{id:1,state:'free'}]};
+context.db.tournaments=[closedPhase];
+context.autoAssign(closedPhase);
+assert.strictEqual(closedMatch.status,'waiting','Attribution lancee sur une phase close');
+closedPhase.closed=false;closedPhase.abandoned=true;
+context.autoAssign(closedPhase);
+assert.strictEqual(closedMatch.status,'waiting','Attribution lancee sur une phase abandonnee');
+console.log('OK phases closes : aucune attribution automatique ni priorisation');
