@@ -177,3 +177,14 @@ assert(archiveSource.includes('!x.abandoned'),'Archives : phase abandonnee propo
 assert(archiveSource.includes("openTournament("),'Archives : acces aux autres phases absent');
 assert(html.slice(archiveEnd,archiveEnd+1400).includes('${milftArchiveLinkedPhases(t)}'),'Archives : navigation non affichee');
 console.log('OK archives : navigation vers phases liees sans afficher les phases abandonnees');
+
+/* Regression : phases abandonnees et cloturees ne bloquent pas les joueurs des phases actives. */
+const oldPlaying={id:'old-playing',mode:'knockout',sourceId:'root',closed:true,roster:[],matches:[{id:'old',status:'playing',a:'J1',b:'J2'}],tables:[]};
+const abandonedPlaying={id:'abandoned-playing',mode:'knockout',sourceId:'root',abandoned:true,roster:[],matches:[{id:'old2',status:'playing',a:'J3',b:'J4'}],tables:[]};
+const activePlaying={id:'active-playing',mode:'knockout',sourceId:'root',roster:[],matches:[{id:'now',status:'playing',a:'J5',b:'J6'}],tables:[]};
+const rootPlaying={id:'root',mode:'poules',roster:[],matches:[],tables:[]};
+context.db.tournaments=[rootPlaying,oldPlaying,abandonedPlaying,activePlaying];
+const activeBusy=context.busyPlayers(activePlaying);
+assert(!activeBusy.has('J1')&&!activeBusy.has('J3'),'Phases fermees bloquent encore les joueurs');
+assert(activeBusy.has('J5')&&activeBusy.has('J6'),'Joueurs actifs non proteges');
+console.log('OK joueurs occupes : seules les phases actives bloquent les rencontres');
