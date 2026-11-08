@@ -1063,7 +1063,7 @@ function createFinalFromQualifications(){
  db.selected=a.id;tab='live';save();flash(b?'Tableaux A et B créés séparément.':'Tableau A créé.');window.scrollTo(0,0);
 }
 function matchPlayerIds(t,m){return t.mode==='monster'?[...(m.teamA||[]),...(m.teamB||[])].filter(Boolean):[...participantMembers(t,m.a),...participantMembers(t,m.b)]}
-function busyPlayers(t){const busy=new Set();const root=milftEventRootId(t);const linked=(typeof db!=='undefined'&&db.tournaments||[]).filter(x=>milftEventRootId(x)===root);for(const x of linked.length?linked:[t])for(const m of x.matches||[])if(m.status==='playing')for(const id of matchPlayerIds(x,m))busy.add(id);for(const p of t.roster||[])if(p.members?.some(id=>busy.has(id)))busy.add(p.id);return busy}
+function busyPlayers(t){const busy=new Set();const root=milftEventRootId(t);const linked=(typeof db!=='undefined'&&db.tournaments||[]).filter(x=>!x.closed&&!x.abandoned&&milftEventRootId(x)===root);for(const x of linked.length?linked:[t])for(const m of x.matches||[])if(m.status==='playing')for(const id of matchPlayerIds(x,m))busy.add(id);for(const p of t.roster||[])if(p.members?.some(id=>busy.has(id)))busy.add(p.id);return busy}
 function milftAnnualNextMatch(t,busy){
  const played=id=>t.matches.filter(x=>x.status==='done'&&!x.bye&&(x.a===id||x.b===id)).length;
  const last=id=>{let n=-1;for(let i=0;i<t.matches.length;i++){const x=t.matches[i];if(x.status==='done'&&(x.a===id||x.b===id))n=i;}return n;};
