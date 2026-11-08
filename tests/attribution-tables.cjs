@@ -20,7 +20,7 @@ console.log('OK syntaxe de '+scripts.length+' scripts embarques; '+Object.keys(c
 const extract=name=>{const start=html.indexOf('function '+name+'(');assert(start>=0,name+' introuvable');const end=html.indexOf('\nfunction ',start+1);return html.slice(start,end<0?undefined:end);};
 const context={db:{tournaments:[]},matchPlayerIds:(t,m)=>[m.a,m.b],participantMembers:(t,id)=>[id],Date};
 vm.createContext(context);
-vm.runInContext(['busyPlayers','milftAnnualNextMatch','milftFairNextMatch','milftFreeTables','autoAssign'].map(extract).join('\n'),context);
+vm.runInContext(['milftEventRootId','busyPlayers','milftAnnualNextMatch','milftFairNextMatch','milftFreeTables','autoAssign'].map(extract).join('\n'),context);
 const match=(id,a,b,priority=false,hold=false)=>({id,a,b,status:'waiting',round:1,milftPriority:priority,hold});
 const t={id:'solo',mode:'poules',currentRound:1,roundLimit:2,roster:[],matches:[match('normal','A','B'),match('prioritaire','C','D',true),match('reporte','E','F',true,true)],tables:[{id:1,state:'free'}]};
 context.db.tournaments=[t];context.autoAssign(t);
@@ -46,7 +46,7 @@ const sharedDb={tournaments:[
  {id:'A',sourceId:'poules',mode:'knockout',matches:[{status:'playing',a:'J1',b:'J2',table:1}],roster:[],tables:[{id:1,state:'playing'},{id:2,state:'free'}]},
  {id:'B',sourceId:'poules',mode:'knockout',matches:[],roster:[],tables:[{id:1,state:'free'},{id:2,state:'free'}]}
 ]};
-const linked=new Function('db','matchPlayerIds',busyFn[0]+'\n'+freeFn[0]+'\nreturn {busyPlayers,milftFreeTables}')(sharedDb,(t,m)=>[m.a,m.b]);
+const linked=new Function('db','matchPlayerIds',extract('milftEventRootId')+'\n'+busyFn[0]+'\n'+extract('milftFreeTables')+'\nreturn {busyPlayers,milftFreeTables}')(sharedDb,(t,m)=>[m.a,m.b]);
 assert.deepStrictEqual(linked.milftFreeTables(sharedDb.tournaments[2]).map(x=>x.id),[2],'La table 1 est deja occupee par A');
 assert(linked.busyPlayers(sharedDb.tournaments[2]).has('J1'),'Joueur de A non protege dans B');
 console.log('OK protections inter-tableaux : tables et joueurs occupes');
@@ -125,3 +125,17 @@ const overviewEnd=html.indexOf('\nfunction milftQuicknavTargets(',overviewStart)
 assert(overviewStart>=0&&overviewEnd>overviewStart,'Vue generale tableau introuvable');
 assert(html.slice(overviewStart,overviewEnd).includes('!x.abandoned'),'Vue tableau : phase abandonnee selectionnable');
 console.log('OK navigation : phases abandonnees exclues des raccourcis et de la vue tableau');
+
+/* Regression sauvegardes historiques : phase A/B sans sourceId mais reliee par finalId. */
+const historic={id:'historic',mode:'poules',name:'Tournoi historique',date:'2026-11-08',finalPhase:true,finalId:'oldA',finalBId:'oldB',roster:[],matches:[],tables:[{id:1,state:'free'},{id:2,state:'free'}]};
+const oldA={id:'oldA',mode:'knockout',bracketLetter:'A',name:'Tournoi historique — Tableau A',date:historic.date,roster:[],matches:[{id:'A1',status:'playing',a:'P1',b:'P2',table:1}],tables:[{id:1,state:'playing'},{id:2,state:'free'}]};
+const oldB={id:'oldB',mode:'knockout',bracketLetter:'B',name:'Tournoi historique — Tableau B',date:historic.date,roster:[],matches:[match('B1','P3','P4')],tables:[{id:1,state:'free'},{id:2,state:'free'}]};
+context.db.tournaments=[historic,oldA,oldB];
+assert.strictEqual(context.milftEventRootId(oldA),'historic','Tableau A historique non rattache');
+assert.strictEqual(context.milftEventRootId(oldB),'historic','Tableau B historique non rattache');
+assert.deepStrictEqual(Array.from(context.milftFreeTables(oldB),x=>x.id),[2],'Table partagee deja occupee non bloquee');
+assert(context.busyPlayers(oldB).has('P1'),'Joueur occupe dans tableau A non protege pour B');
+context.autoAssign(oldB);
+assert.strictEqual(oldB.matches[0].table,2,'Table libre 2 non attribuee au tableau B');
+assert.strictEqual(oldB.matches[0].status,'playing','Rencontre historique B non lancee');
+console.log('OK sauvegardes historiques : regroupement A/B, blocage table, joueurs et attribution');
