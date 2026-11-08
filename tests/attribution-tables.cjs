@@ -71,6 +71,8 @@ assert.strictEqual(quicknav(mixed).matchs,mixed.nodes[0].card,'Le premier pannea
 assert.deepStrictEqual(Object.values(quicknav(null)),[null,null,null,null],'Navigation sans tournoi');
 assert(/milft-table-inline-controls/.test(html)&&/Modele de tables valide : statut en premiere ligne/.test(html),'Modele des cartes de tables absent');
 assert(!/#view \.milft-table-state-edit\{/.test(html),'Ancien panneau repliable des tables réintroduit');
+assert(!html.includes('${milftPriorityButton(t,m)}${milftPriorityButton(t,m)}'),'Bouton Prioriser affiche en double dans le championnat annuel');
+console.log('OK championnat annuel : absence de doublon du bouton Prioriser');
 console.log('OK navigation rapide : 8 libelles, priorite, absence de tournoi et modele de tables');
 
 /* Regression Course aux points : la cloture doit lire cap.matches et respecter les tableaux. */
