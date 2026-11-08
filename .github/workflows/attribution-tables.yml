@@ -1,0 +1,19 @@
+name: Verification attribution tables V1.1
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'MILFT_Tournois_V1_1_VALIDATION_HEBERGEMENT_STABLE_2026-11-02.html'
+      - 'tests/attribution-tables.cjs'
+      - '.github/workflows/attribution-tables.yml'
+  workflow_dispatch:
+jobs:
+  verifier:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Syntaxe JS et controles attribution
+        run: node tests/attribution-tables.cjs
