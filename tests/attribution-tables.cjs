@@ -216,3 +216,12 @@ assert.strictEqual(maintenanceA.matches[0].status,'waiting','Attribution sur tab
 maintenanceB.tables[0].state='excluded';
 assert.deepStrictEqual(Array.from(context.milftFreeTables(maintenanceRoot),x=>x.id),[],'Table exclue ou occupee proposee');
 console.log('OK maintenance et exclusion : partagees entre poules et tableaux A/B');
+
+/* Regression interface : aucun controle actif sur une phase abandonnee. */
+const stateHandler=extract('changeTableState');
+const priorityButton=extract('milftPriorityButton');
+const generalAssign=extract('autoNow');
+assert(stateHandler.includes('t.closed||t.abandoned'),'Etat des tables modifiable sur phase abandonnee');
+assert(priorityButton.includes('t.closed||t.abandoned'),'Bouton de priorite actif sur phase abandonnee');
+assert(generalAssign.includes('t.closed||t.abandoned'),'Attribution generale active sur phase abandonnee');
+console.log('OK interface : tables et priorites inactives sur phases abandonnees');
