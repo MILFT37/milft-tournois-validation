@@ -12,6 +12,14 @@
 .challenge-input-header small{display:block;font-size:12px;font-weight:500;margin-top:5px}
 .challenge-input-body{padding:15px}
 .challenge-input-body button{width:100%;padding:13px}
+/* MILFT fiche match compacte : ne pas masquer les commandes existantes */
+@media(max-width:600px){
+.challenge-progress{gap:4px;margin:6px 0}.challenge-step{padding:4px 1px;font-size:11px;border-radius:6px}.challenge-step .step-score{margin-top:1px;font-size:11px}
+.challenge-previous{padding:3px 7px;margin:3px 0;border-radius:6px;font-size:12px;min-height:0}.challenge-previous button{padding:4px 9px!important;font-size:12px!important;min-height:0!important;width:auto!important}
+.challenge-input{margin:7px 0 6px;border-width:2px;border-radius:9px}.challenge-input-header{padding:7px 5px;font-size:15px}.challenge-input-header small{font-size:10px;margin-top:2px}.challenge-input-body{padding:7px}.challenge-input-body button{padding:8px!important}
+.challenge-input .milft-score-player select{min-height:40px!important;padding:5px!important}.challenge-input .milft-score-player label{font-size:12px!important}.challenge-input .score-preview{margin:4px 0!important;padding:3px!important}
+}
+
 .brand{display:flex;align-items:center;gap:12px}.club-logo{width:120px;height:120px;object-fit:contain;flex-shrink:0;border-radius:50%;background:white;padding:5px}.select-all{background:#edf5ff;border:1px solid #bcd7f5}.select-all input{width:20px;height:20px;vertical-align:middle;margin-right:7px}@media(max-width:600px){.club-logo{width:100px;height:100px;padding:4px}}.ko-scroll{overflow-x:auto;padding:8px 0 18px}.ko-bracket{display:flex;gap:28px;min-width:max-content}.ko-round{width:260px;display:flex;flex-direction:column;justify-content:space-around;gap:14px}.ko-round h3{text-align:center;background:#eaf2fc;padding:12px;border-radius:9px;margin:0}.ko-match{background:#fff;border:2px solid #d5e2f1;border-radius:12px;padding:10px;min-height:100px;position:relative}.ko-match:after{content:"";position:absolute;left:100%;top:50%;width:28px;border-top:2px solid #b7c9dc}.ko-round:last-child .ko-match:after{display:none}.ko-done{border-color:#94bce4}.ko-side{padding:7px 3px;font-size:14px;overflow-wrap:anywhere}.ko-side+.ko-side{border-top:1px solid #e6edf5}.ko-winner{font-weight:800;color:#145caa}.ko-bottom{display:flex;justify-content:space-between;flex-wrap:wrap;gap:5px;padding-top:8px;border-top:1px solid #e6edf5}.ko-set{font-weight:700;background:#eaf2fc;padding:3px 5px;border-radius:5px}.ko-rank{padding:13px;border-bottom:1px solid #e4eaf2}.ko-rank strong{display:inline-block;width:30px;color:#1264b4}
 .creation-types{display:flex;gap:9px;flex-wrap:wrap;margin:16px 0}.creation-types button{flex:1;min-width:155px}
 .ko-grand-final{border:3px solid #d9a936!important;background:linear-gradient(145deg,#fff9e7,#fff)!important;min-height:185px!important;padding:18px!important;box-shadow:0 7px 18px #aa7a2120}
@@ -754,10 +762,9 @@ function challengeMatchCard(t,m){
  <div class="milft-score-divider">–</div>
  <div class="milft-score-player"><label for="score-b-${m.id}">${esc(participantName(t,m.b))}</label><select id="score-b-${m.id}" aria-label="Buts de ${esc(participantName(t,m.b))}" onchange="milftScoreChanged('${m.id}','b')">${Array.from({length:Math.max(best===1?t.target:5,decider?8:5)+1},(_,n)=>`<option value="${n}" ${n===0?'selected':''}>${n}</option>`).join('')}</select></div>
  </div>
- <div class="score-preview" id="preview-${m.id}">Score : <b>0 – 0</b></div><p class="muted milft-score-help">Choisis le gagnant pour préremplir le score, puis ajuste les buts si besoin. La manche n’est enregistrée qu’avec « Valider ».</p><div class="milft-score-shortcuts" role="group" aria-label="Préremplir le score en choisissant le vainqueur"><button type="button" class="mutedbtn" data-winner="a" aria-pressed="false" onclick="milftQuickScore(&quot;${m.id}&quot;,&quot;a&quot;)">Gagnant : ${esc(participantName(t,m.a))}</button><button type="button" class="mutedbtn" data-winner="b" aria-pressed="false" onclick="milftQuickScore(&quot;${m.id}&quot;,&quot;b&quot;)">Gagnant : ${esc(participantName(t,m.b))}</button></div>
- <button id="validate-set-${m.id}" onclick="addChallengeSet('${m.id}')" disabled>✓ Valider la manche ${current}</button></div></div>
+ <div class="score-preview" id="preview-${m.id}">Score : <b>0 – 0</b></div><button id="validate-set-${m.id}" onclick="addChallengeSet('${m.id}')" disabled>✓ Valider la manche ${current}</button></div></div>
  <div class="row">${m.sets.length?`<button class="mutedbtn" onclick="undoChallengeSet('${m.id}')" ${t.closed?'disabled':''}>Annuler dernière manche</button>`:''}<button class="mutedbtn" onclick="pauseChallenge('${m.id}')" ${t.closed?'disabled':''}>Mettre en attente</button>${forfaitButton(t,m)}</div>
- <div class="row" style="margin-top:10px"><select id="move-${m.id}"><option value="">Changer de table…</option>${free.map(x=>`<option value="${x.id}">Table ${x.id}</option>`).join('')}</select><button class="mutedbtn" onclick="moveMatch('${m.id}')" ${t.closed?'disabled':''}>Déplacer</button></div></div>`;
+ <div class="row" style="margin-top:5px"><select id="move-${m.id}"><option value="">Changer de table…</option>${free.map(x=>`<option value="${x.id}">Table ${x.id}</option>`).join('')}</select><button class="mutedbtn" onclick="moveMatch('${m.id}')" ${t.closed?'disabled':''}>Déplacer</button></div></div>`;
 }
 function milftScoreChanged(id,side){
  const box=document.querySelector('[data-match="'+id+'"].milft-dual-score');if(!box)return;
