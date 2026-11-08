@@ -18,6 +18,7 @@
 }
 .milft-set-corrections{display:flex;flex-wrap:wrap;gap:5px;margin:4px 0}.milft-set-correct{width:auto!important;min-height:28px!important;padding:4px 8px!important;font-size:12px!important;flex:0 1 auto}
 @media(max-width:600px){.milft-match-compact .milft-set-corrections{margin:2px 0 4px;gap:4px}.milft-match-compact .milft-set-correct{min-height:25px!important;padding:3px 7px!important;font-size:11px!important}}
+.milft-match-compact .milft-match-move select{width:100%;flex:1}
 /* MILFT fiche match compacte : ne pas masquer les commandes existantes */
 @media(max-width:600px){
 .challenge-progress{gap:4px;margin:6px 0}.challenge-step{padding:4px 1px;font-size:11px;border-radius:6px}.challenge-step .step-score{margin-top:1px;font-size:11px}
@@ -770,7 +771,7 @@ function challengeMatchCard(t,m){
  </div>
  <div class="score-preview" id="preview-${m.id}">Score : <b>0 – 0</b></div><button id="validate-set-${m.id}" onclick="addChallengeSet('${m.id}')" disabled>✓ Valider la manche ${current}</button></div></div>
  <div class="row milft-match-actions">${m.sets.length?`<button class="mutedbtn" onclick="undoChallengeSet('${m.id}')" ${t.closed?'disabled':''}>Annuler dernière manche</button>`:''}<button class="mutedbtn" onclick="pauseChallenge('${m.id}')" ${t.closed?'disabled':''}>Mettre en attente</button>${forfaitButton(t,m)}</div>
- <div class="row milft-match-move" style="margin-top:5px"><select id="move-${m.id}"><option value="">Changer de table…</option>${free.map(x=>`<option value="${x.id}">Table ${x.id}</option>`).join('')}</select><button class="mutedbtn" onclick="moveMatch('${m.id}')" ${t.closed?'disabled':''}>Déplacer</button></div></div>`;
+ <div class="row milft-match-move" style="margin-top:5px"><select id="move-${m.id}" aria-label="Changer de table pour cette rencontre" onchange="milftConfirmMoveMatch('${m.id}')" ${t.closed?'disabled':''}><option value="">Changer de table…</option>${free.map(x=>`<option value="${x.id}">Table ${x.id}</option>`).join('')}</select></div></div>`;
 }
 function milftScoreChanged(id,side){
  const box=document.querySelector('[data-match="'+id+'"].milft-dual-score');if(!box)return;
@@ -1269,6 +1270,14 @@ function changeTableState(id){
   const {phase,match:m}=running[0];pauseMatchClock(m);m.status='waiting';m.table=null;if(phase.mode==='challenge')m.hold=true;const linkedTable=phase.tables.find(x=>String(x.id)===String(id));if(linkedTable)linkedTable.state='free';
  }
  for(const phase of linked){const shared=phase.tables?.find(x=>String(x.id)===String(id));if(shared)shared.state=state;}if(state==='free')autoAssign(t);save();flash('État de la table '+id+' mis à jour dans toutes les phases liées.');
+}
+function milftConfirmMoveMatch(id){
+ const select=$('move-'+id);if(!select||!select.value)return;
+ const t=active(),m=t?.matches.find(x=>x.id===id),dest=Number(select.value);
+ if(!t||!m){select.value='';return;}
+ const accepted=confirm('Déplacer ce match de la table '+m.table+' vers la table '+dest+' ?');
+ if(!accepted){select.value='';return;}
+ moveMatch(id);
 }
 function moveMatch(id){const t=active(),m=t?.matches.find(x=>x.id===id),dest=Number($('move-'+id)?.value),next=t?.tables.find(x=>x.id===dest);if(!t||t.closed||t.abandoned||!m||m.status!=='playing'||!next||!milftFreeTables(t).some(x=>String(x.id)===String(dest)))return alert('Choisis une table réellement disponible dans le parc partagé.');const previous=m.table;m.table=dest;const root=milftEventRootId(t);for(const phase of db.tournaments.filter(x=>milftEventRootId(x)===root)){const shared=phase.tables?.find(y=>String(y.id)===String(dest));if(shared)shared.state='playing';}milftReleaseSharedTable(t,previous);autoAssign(t);save();flash('Match déplacé vers la table '+dest+'.')}
 function milftLaunchSelectedAnnual(){const id=document.getElementById('milft-annual-manual-match')?.value;if(!id)return alert('Sélectionne une rencontre disponible.');assignSpecific(id);}
