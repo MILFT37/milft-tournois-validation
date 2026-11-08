@@ -1009,7 +1009,21 @@ function milftToggleMatchPriority(id){
 }
 function milftPriorityButton(t,m){return m.status==='waiting'?`<button type="button" class="mutedbtn" onclick="milftToggleMatchPriority('${m.id}')" ${t.closed?'disabled':''}>${m.milftPriority?'Annuler priorité':'Prioriser'}</button>`:''}
 function milftFreeTables(t){const root=t.sourceId||t.id;const linked=(typeof db!=='undefined'&&db.tournaments||[]).filter(x=>x.id!==t.id&&(x.id===root||x.sourceId===root));const occupied=new Set(linked.flatMap(x=>(x.matches||[]).filter(m=>m.status==='playing'&&m.table!=null).map(m=>String(m.table))));return (t.tables||[]).filter(x=>x.state==='free'&&!occupied.has(String(x.id))).sort((a,b)=>{const x=Number(a.id),y=Number(b.id);return Number.isFinite(x)&&Number.isFinite(y)?x-y:String(a.id).localeCompare(String(b.id),undefined,{numeric:true});});}
-function autoAssign(t){const busy=busyPlayers(t);for(const table of milftFreeTables(t)){const m=milftFairNextMatch(t,busy);if(m){m.status='playing';m.milftPriority=false;m.milftPriorityAt=null;m.annualResumePriority=false;m.table=table.id;m.startedAt=Date.now();table.state='playing';for(const id of matchPlayerIds(t,m))busy.add(id)}}}
+function autoAssign(t){
+ const root=t.sourceId||t.id;
+ const phases=(typeof db!=='undefined'&&db.tournaments||[]).filter(x=>!x.closed&&!x.abandoned&&(x.id===root||x.sourceId===root));
+ const linked=phases.length>1?phases:[t],busy=busyPlayers(t);
+ const tables=milftFreeTables(t);
+ for(const table of tables){
+  const candidates=linked.map(x=>({phase:x,match:milftFairNextMatch(x,busy)})).filter(x=>x.match);
+  candidates.sort((a,b)=>(Number(!!b.match.milftPriority)-Number(!!a.match.milftPriority))||((Number(a.match.milftPriorityAt)||0)-(Number(b.match.milftPriorityAt)||0))||((a.phase.id===t.id?-1:0)-(b.phase.id===t.id?-1:0)));
+  const selected=candidates[0];if(!selected)continue;
+  const x=selected.phase,m=selected.match,ownTable=x.tables.find(y=>String(y.id)===String(table.id));
+  if(!ownTable||ownTable.state!=='free')continue;
+  m.status='playing';m.milftPriority=false;m.milftPriorityAt=null;m.annualResumePriority=false;m.table=ownTable.id;m.startedAt=Date.now();ownTable.state='playing';
+  for(const id of matchPlayerIds(x,m))busy.add(id);
+ }
+}
 function milftHasPendingStages(t){if(!t||t.closed||t.abandoned)return false;if((t.mode==='poules'||(t.mode==='monster'&&t.monsterMode!=='season'))&&Number(t.roundLimit)>Number(t.currentRound))return true;if(t.mode==='poules'&&t.finalPhase&&!t.finalId)return true;return false;}
 function milftCanClose(t){return !!t&&(t.matches||[]).length>0&&(t.matches||[]).every(m=>m.status==='done')&&!milftHasPendingStages(t);}
 function activeTournamentsPage(){const open=db.tournaments.filter(t=>!t.closed&&!t.abandoned).slice().sort((a,b)=>String(b.date||'').localeCompare(String(a.date||''))),items=open.filter(t=>!milftCanClose(t)),toClose=open.filter(t=>milftCanClose(t));const entry=t=>`<div class="item milft-tournament-list-item"><b>${title(t)}</b><p class="muted">${t.mode==='cap'?'Course aux points':t.mode==='challenge'?'Championnat annuel':t.mode==='monster'?'Monster DYP':t.mode==='knockout'?'Élimination directe':'Tournoi'} · ${t.matches.filter(m=>m.status==='done').length}/${t.matches.length} rencontres terminées</p><button onclick="openTournament('${t.id}')">${milftCanClose(t)?'Clôturer':'Reprendre'}</button></div>`;return `<div class="card"><h2>Tournois en cours</h2><p class="muted">${items.length} compétition(s) à poursuivre</p>${items.map(entry).join('')||'<p>Aucune rencontre en attente.</p>'}${toClose.length?`<div class="card milft-to-close"><h3>${toClose.length} tournoi${toClose.length>1?'s':''} à clôturer</h3>${toClose.map(entry).join('')}</div>`:''}<button class="mutedbtn" onclick="setTab('new')">Créer un tournoi</button></div>`;} function milftRoundReadyForNext(t){if(!t||!Number.isFinite(Number(t.currentRound))||Number(t.currentRound)>=Number(t.roundLimit))return false;const current=(t.matches||[]).filter(m=>Number(m.round)===Number(t.currentRound));return current.length>0&&current.every(m=>m.status==='done');}
