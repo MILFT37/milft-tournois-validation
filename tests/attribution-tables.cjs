@@ -203,3 +203,16 @@ closedPhase.closed=false;closedPhase.abandoned=true;
 context.autoAssign(closedPhase);
 assert.strictEqual(closedMatch.status,'waiting','Attribution lancee sur une phase abandonnee');
 console.log('OK phases closes : aucune attribution automatique ni priorisation');
+
+/* Regression fonctionnelle : exclusion ou maintenance sur une phase bloque la table pour toutes. */
+const maintenanceRoot={id:'maintenance-root',mode:'poules',roster:[],matches:[],tables:[{id:1,state:'free'},{id:2,state:'free'}]};
+const maintenanceA={id:'maintenance-A',sourceId:'maintenance-root',mode:'knockout',roster:[],matches:[match('mA','P1','P2')],tables:[{id:1,state:'free'},{id:2,state:'free'}]};
+const maintenanceB={id:'maintenance-B',sourceId:'maintenance-root',mode:'knockout',roster:[],matches:[match('mB','P3','P4',true)],tables:[{id:1,state:'maintenance'},{id:2,state:'free'}]};
+context.db.tournaments=[maintenanceRoot,maintenanceA,maintenanceB];
+assert.deepStrictEqual(Array.from(context.milftFreeTables(maintenanceA),x=>x.id),[2],'Maintenance B non appliquee a A');
+context.autoAssign(maintenanceA);
+assert.strictEqual(maintenanceB.matches[0].table,2,'Rencontre prioritaire non affectee sur table autorisee');
+assert.strictEqual(maintenanceA.matches[0].status,'waiting','Attribution sur table en maintenance');
+maintenanceB.tables[0].state='excluded';
+assert.deepStrictEqual(Array.from(context.milftFreeTables(maintenanceRoot),x=>x.id),[],'Table exclue ou occupee proposee');
+console.log('OK maintenance et exclusion : partagees entre poules et tableaux A/B');
