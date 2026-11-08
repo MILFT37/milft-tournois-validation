@@ -47,6 +47,8 @@ body.milft-championship-focus #view {scroll-margin-top:12px;}
 .milft-annual-presence .milft-presence-compact .item{margin:0!important;padding:9px 12px!important;min-height:42px!important;}
 
 body.milft-has-phase-quicknav #milft-quicknav{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px}
+body.milft-has-phase-quicknav #milft-quicknav [data-phase]{grid-row:1}
+body.milft-has-phase-quicknav #milft-quicknav [data-section]{grid-row:2}
 #milft-quicknav [hidden]{display:none!important}
 #milft-quicknav [data-phase].active{background:#16477c;color:#fff}
 body.milft-has-phase-quicknav{padding-bottom:calc(172px + env(safe-area-inset-bottom,0px))}
