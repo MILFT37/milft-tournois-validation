@@ -28,3 +28,16 @@ t.tables[0].state='free';t.matches[1].status='done';
 context.autoAssign(t);
 assert.strictEqual(t.matches[0].status,'playing','La table liberee doit etre reutilisee');
 console.log('OK tests fonctionnels : priorite, report, reattribution, capacite table');
+
+const busyFn=html.match(/function busyPlayers\(t\)\{[^\n]*\}/);
+const freeFn=html.match(/function milftFreeTables\(t\)\{[^\n]*\}/);
+assert(busyFn&&freeFn,'Fonctions de protection inter-tableaux introuvables');
+const sharedDb={tournaments:[
+ {id:'poules',mode:'poules',matches:[],roster:[],tables:[{id:1,state:'free'},{id:2,state:'free'}]},
+ {id:'A',sourceId:'poules',mode:'knockout',matches:[{status:'playing',a:'J1',b:'J2',table:1}],roster:[],tables:[{id:1,state:'playing'},{id:2,state:'free'}]},
+ {id:'B',sourceId:'poules',mode:'knockout',matches:[],roster:[],tables:[{id:1,state:'free'},{id:2,state:'free'}]}
+]};
+const linked=new Function('db','matchPlayerIds',busyFn[0]+'\n'+freeFn[0]+'\nreturn {busyPlayers,milftFreeTables}')(sharedDb,(t,m)=>[m.a,m.b]);
+assert.deepStrictEqual(linked.milftFreeTables(sharedDb.tournaments[2]).map(x=>x.id),[2],'La table 1 est deja occupee par A');
+assert(linked.busyPlayers(sharedDb.tournaments[2]).has('J1'),'Joueur de A non protege dans B');
+console.log('OK protections inter-tableaux : tables et joueurs occupes');
