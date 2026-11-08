@@ -52,6 +52,14 @@ body.milft-has-phase-quicknav #milft-quicknav [data-section]{grid-row:2}
 #milft-quicknav [hidden]{display:none!important}
 #milft-quicknav [data-phase].active{background:#16477c;color:#fff}
 body.milft-has-phase-quicknav{padding-bottom:calc(172px + env(safe-area-inset-bottom,0px))}
+
+@media(max-width:600px){
+.ko-mobile-paged.milft-three-round-overview{overflow-x:auto}
+.ko-mobile-paged.milft-three-round-overview .ko-bracket{display:grid;grid-template-columns:repeat(3,minmax(210px,1fr));gap:10px;min-width:650px}
+.ko-mobile-paged.milft-three-round-overview .ko-round{display:none;width:auto;min-width:0}
+.ko-mobile-paged.milft-three-round-overview .ko-round.milft-overview-visible{display:flex}
+.ko-mobile-nav.milft-overview-active{display:flex}
+}
 </style><style>.monster-corrections{border:2px solid #d69b36!important;background:#fffaf0!important}.correction-item{background:white;margin-top:12px}.correction-set{display:flex;flex-wrap:wrap;align-items:end;gap:10px;padding:9px 0;border-bottom:1px solid #e9e9e9}.correction-set label{display:flex;flex-direction:column;gap:4px;flex:1;min-width:110px}.correction-set select{max-width:100%;min-width:0}.correction-item>.row{margin-top:12px}</style><style>.live-table-heading{color:#a93243;font-weight:900;text-transform:uppercase;font-size:21px;letter-spacing:.6px;line-height:1.3;margin-bottom:7px}</style><style>
 /* V0.46 : navigation compacte du tableau final sur téléphone */
 .ko-mobile-nav{display:none;align-items:center;gap:8px;margin:10px 0 14px}
@@ -1322,10 +1330,24 @@ function milftQuickPhase(target){
  const t=currentTournament();if(!t)return;
  const root=t.sourceId||t.id,phases=db.tournaments.filter(x=>x.id===root||x.sourceId===root);
  const chosen=phases.find(x=>target==='poules'?x.mode==='poules':x.bracketLetter===target);
+ if(chosen&&chosen.id!==t.id)openTournament(chosen.id);
+}
+function milftShowBracketOverview(){
+ const t=currentTournament();if(!t)return;
+ const root=t.sourceId||t.id,phases=db.tournaments.filter(x=>x.id===root||x.sourceId===root);
+ const chosen=t.mode==='knockout'?t:phases.find(x=>x.bracketLetter==='A')||phases.find(x=>x.mode==='knockout');
  if(!chosen)return;
  if(chosen.id!==t.id)openTournament(chosen.id);
- if(target==='overview'){const el=document.querySelector('.ko-bracket');if(el)el.scrollIntoView({behavior:'smooth',block:'start'});}
+ const container=document.querySelector('.ko-mobile-paged');
+ if(!container)return;
+ container.classList.toggle('milft-three-round-overview');
+ const active=container.classList.contains('milft-three-round-overview');
+ const nav=document.querySelector('.ko-mobile-nav');
+ if(nav)nav.classList.toggle('milft-overview-active',active);
+ if(active){const rounds=[...container.querySelectorAll('.ko-round')];const start=Math.max(0,Math.min(rounds.length-3,Number(koVisibleRound)||0));rounds.forEach((el,i)=>el.classList.toggle('milft-overview-visible',i>=start&&i<start+3));}
+ container.scrollIntoView({behavior:'smooth',block:'start'});
 }
+
 function milftRefreshQuicknav(){
  const visible=['live-detail','challenge','knockout'].includes(tab) && !!currentTournament();
  document.body.classList.toggle('milft-has-quicknav',visible);
@@ -1378,7 +1400,7 @@ function showKoRound(index){
  const rounds=[...document.querySelectorAll('.ko-mobile-paged .ko-round')];
  if(!rounds.length)return;
  koVisibleRound=Math.max(0,Math.min(rounds.length-1,index));
- rounds.forEach((el,i)=>el.classList.toggle('ko-round-visible',i===koVisibleRound));
+ rounds.forEach((el,i)=>{el.classList.toggle('ko-round-visible',i===koVisibleRound);el.classList.toggle('milft-overview-visible',i>=Math.min(koVisibleRound,Math.max(0,rounds.length-3))&&i<Math.min(koVisibleRound,Math.max(0,rounds.length-3))+3);});
  const picker=document.getElementById('ko-round-picker');if(picker)picker.value=String(koVisibleRound);
 }
 function changeKoRound(delta){showKoRound(koVisibleRound+delta)}
@@ -2480,7 +2502,7 @@ monsterLive=function(t){
  <div class="card"><h2>Résultats enregistrés</h2>${t.matches.filter(m=>m.status==='done').map(m=>`<div class="item">Tour ${m.round} : ${esc(participantName(t,m.a))} <b>${matchResult(t,m)}</b> ${esc(participantName(t,m.b))} <button class="mutedbtn" onclick="correctMonsterResult('${m.id}')" ${t.closed||m.correcting||m.forfait?'disabled':''}>Corriger</button></div>`).join('')||'<p class="muted">Aucun résultat.</p>'}</div>`;
  return header+`<div class="card"><p class="muted">Calendrier fixe : chaque partenaire une fois. Les tours suivants restent enregistrés. Sauvegarde locale après chaque résultat ; exporte régulièrement une sauvegarde JSON pour sécuriser la reprise.</p></div>`+section;
 };
-</script><nav id="milft-quicknav" aria-label="Accès rapide au tournoi"><button type="button" data-section="matchs" onclick="milftJump('matchs')"><span aria-hidden="true">⚔️</span>Matchs</button><button type="button" data-section="tables" onclick="milftJump('tables')"><span aria-hidden="true">▦</span>Tables</button><button type="button" data-section="classement" onclick="milftJump('classement')"><span aria-hidden="true">🏆</span>Classement</button><button type="button" data-section="avancement" onclick="milftJump('avancement')"><span aria-hidden="true">📊</span>Avancement</button><button type="button" data-phase="poules" hidden onclick="milftQuickPhase('poules')">Poules</button><button type="button" data-phase="A" hidden onclick="milftQuickPhase('A')">Tableau A</button><button type="button" data-phase="B" hidden onclick="milftQuickPhase('B')">Tableau B</button><button type="button" data-phase="overview" hidden onclick="milftQuickPhase('A');document.querySelector('.ko-bracket')?.scrollIntoView({behavior:'smooth',block:'start'})">Vue tableau</button></nav><script>
+</script><nav id="milft-quicknav" aria-label="Accès rapide au tournoi"><button type="button" data-section="matchs" onclick="milftJump('matchs')"><span aria-hidden="true">⚔️</span>Matchs</button><button type="button" data-section="tables" onclick="milftJump('tables')"><span aria-hidden="true">▦</span>Tables</button><button type="button" data-section="classement" onclick="milftJump('classement')"><span aria-hidden="true">🏆</span>Classement</button><button type="button" data-section="avancement" onclick="milftJump('avancement')"><span aria-hidden="true">📊</span>Avancement</button><button type="button" data-phase="poules" hidden onclick="milftQuickPhase('poules')">Poules</button><button type="button" data-phase="A" hidden onclick="milftQuickPhase('A')">Tableau A</button><button type="button" data-phase="B" hidden onclick="milftQuickPhase('B')">Tableau B</button><button type="button" data-phase="overview" hidden onclick="milftShowBracketOverview()">Vue tableau</button></nav><script>
 /* MILFT V1.1 — sauvegarde de secours IndexedDB. Ne remplace jamais les données courantes automatiquement.
    Les archives Drive nécessitent une autorisation OAuth et ne sont PAS activées ici. */
 (function(){
