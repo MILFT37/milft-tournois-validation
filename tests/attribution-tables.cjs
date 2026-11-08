@@ -73,6 +73,14 @@ assert(/milft-table-inline-controls/.test(html)&&/Modele de tables valide : stat
 assert(!/#view \.milft-table-state-edit\{/.test(html),'Ancien panneau repliable des tables réintroduit');
 assert(!html.includes('${milftPriorityButton(t,m)}${milftPriorityButton(t,m)}'),'Bouton Prioriser affiche en double dans le championnat annuel');
 console.log('OK championnat annuel : absence de doublon du bouton Prioriser');
+
+// Navigation des tableaux : la vue trois niveaux doit reutiliser le selecteur de rondes.
+const overviewSource=extract('milftShowBracketOverview');
+const showRoundSource=extract('showKoRound');
+assert(/if\(active\)\{showKoRound\(koVisibleRound\);\}/.test(overviewSource),'Vue trois niveaux non synchronisee avec la ronde');
+assert(/milft-overview-visible/.test(showRoundSource)&&/ko-round-picker/.test(showRoundSource),'Navigation mobile des rondes incomplete');
+assert(/Math\.max\(0,rounds\.length-3\)/.test(showRoundSource),'Fenetre trois niveaux non bornee');
+console.log('OK tableau final : synchronisation trois niveaux et selecteur de rondes');
 console.log('OK navigation rapide : 8 libelles, priorite, absence de tournoi et modele de tables');
 
 /* Regression Course aux points : la cloture doit lire cap.matches et respecter les tableaux. */
