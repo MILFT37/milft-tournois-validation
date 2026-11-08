@@ -1476,6 +1476,7 @@ function milftShowBracketOverview(){
  const nav=document.querySelector('.ko-mobile-nav');
  if(nav)nav.classList.toggle('milft-overview-active',active);
  if(active){showKoRound(koVisibleRound);}else{container.querySelectorAll('.ko-round').forEach(el=>el.classList.remove('milft-overview-visible'));showKoRound(koVisibleRound);}
+ milftRefreshQuicknav();
  container.scrollIntoView({behavior:'smooth',block:'start'});
 }
 
