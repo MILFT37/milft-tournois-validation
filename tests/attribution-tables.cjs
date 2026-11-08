@@ -279,7 +279,7 @@ quickScoreBox.dataset.allowed='6-4,7-5,8-6,8-7';
 scoreContext.milftQuickScore('test','a');
 assert.strictEqual(quickScoreElements['score-a-test'].value,'6');
 assert.strictEqual(quickScoreElements['score-b-test'].value,'4');
-assert(/milft-score-shortcuts/.test(extract('challengeMatchCard')),'Boutons de raccourci absents de la carte de match');
+assert(!/milft-score-shortcuts/.test(extract('challengeMatchCard')),'Boutons gagnant redondants presents dans la carte de match');
 const winnerButtons=[{dataset:{winner:'a'},setAttribute(k,v){this[k]=v;}},{dataset:{winner:'b'},setAttribute(k,v){this[k]=v;}}];
 quickScoreBox.parentElement={querySelector:()=>({querySelectorAll:()=>winnerButtons})};
 scoreContext.milftQuickScore('test','b');
