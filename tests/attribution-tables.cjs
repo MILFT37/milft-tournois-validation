@@ -166,3 +166,14 @@ for(const [name,next] of [['moveMatch','milftLaunchSelectedAnnual'],['assignSpec
  assert(body.includes('milftEventRootId(x)===root'),'Phases liees non prises en compte dans '+name);
 }
 console.log('OK attribution manuelle, deplacement et attribution generale : parc evenement commun');
+
+/* Regression : navigation depuis une phase archivee vers les tableaux du meme evenement. */
+const archiveStart=html.indexOf('function milftArchiveLinkedPhases(t){');
+const archiveEnd=html.indexOf('\nfunction archivePage()',archiveStart);
+assert(archiveStart>=0&&archiveEnd>archiveStart,'Navigation des phases archivees absente');
+const archiveSource=html.slice(archiveStart,archiveEnd);
+assert(archiveSource.includes('milftEventRootId(x)===root'),'Archives : regroupement evenement manquant');
+assert(archiveSource.includes('!x.abandoned'),'Archives : phase abandonnee proposee');
+assert(archiveSource.includes("openTournament("),'Archives : acces aux autres phases absent');
+assert(html.slice(archiveEnd,archiveEnd+1400).includes('${milftArchiveLinkedPhases(t)}'),'Archives : navigation non affichee');
+console.log('OK archives : navigation vers phases liees sans afficher les phases abandonnees');
