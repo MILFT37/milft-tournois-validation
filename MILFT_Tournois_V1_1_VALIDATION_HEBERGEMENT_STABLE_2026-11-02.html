@@ -1452,7 +1452,7 @@ function monsterLive(t){if(t.monsterMode==='season')return monsterSeasonLive(t);
 // V0.46 : barre fixe et navigation vers les sections, sans changer les matchs ni les résultats.
 function milftQuickPhase(target){
  const t=currentTournament();if(!t)return;
- const root=t.sourceId||t.id,phases=db.tournaments.filter(x=>x.id===root||x.sourceId===root);
+ const root=milftEventRootId(t),phases=db.tournaments.filter(x=>milftEventRootId(x)===root&&!x.abandoned);
  const chosen=phases.find(x=>target==='poules'?x.mode==='poules':x.bracketLetter===target);
  if(chosen&&chosen.id!==t.id)openTournament(chosen.id);
 }
