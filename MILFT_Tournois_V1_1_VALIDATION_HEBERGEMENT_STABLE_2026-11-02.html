@@ -1475,7 +1475,7 @@ function milftShowBracketOverview(){
  const active=container.classList.contains('milft-three-round-overview');
  const nav=document.querySelector('.ko-mobile-nav');
  if(nav)nav.classList.toggle('milft-overview-active',active);
- if(active){const rounds=[...container.querySelectorAll('.ko-round')];const start=Math.max(0,Math.min(rounds.length-3,Number(koVisibleRound)||0));rounds.forEach((el,i)=>el.classList.toggle('milft-overview-visible',i>=start&&i<start+3));}else{container.querySelectorAll('.ko-round').forEach(el=>el.classList.remove('milft-overview-visible'));showKoRound(koVisibleRound);}
+ if(active){showKoRound(koVisibleRound);}else{container.querySelectorAll('.ko-round').forEach(el=>el.classList.remove('milft-overview-visible'));showKoRound(koVisibleRound);}
  container.scrollIntoView({behavior:'smooth',block:'start'});
 }
 
