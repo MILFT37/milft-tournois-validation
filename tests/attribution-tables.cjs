@@ -82,13 +82,13 @@ const canClose=new Function('capCompScore','milftHasPendingStages',canCloseSourc
 const capMatch=(status,a=30,b=20)=>({status,phase:'groups',relays:[{a,b}]});
 const capBase={mode:'cap',matches:[],cap:{matches:[capMatch('done')],phase:'groups',bracket:false}};
 assert.strictEqual(canClose(capBase),true,'Course aux points finie sans tableau');
-assert.strictEqual(canClose({...capBase,cap:{...capBase.cap,matches:[capMatch('waiting')]}},false),'Rencontre en attente');
-assert.strictEqual(canClose({...capBase,cap:{...capBase.cap,matches:[{status:'done',phase:'groups',relays:[]}]}},false),'Score manquant');
-assert.strictEqual(canClose({...capBase,cap:{...capBase.cap,bracket:true}},false),'Tableau final attendu');
+assert.strictEqual(canClose({...capBase,cap:{...capBase.cap,matches:[capMatch('waiting')]}}),false,'Rencontre en attente');
+assert.strictEqual(canClose({...capBase,cap:{...capBase.cap,matches:[{status:'done',phase:'groups',relays:[]}]}}),false,'Score manquant');
+assert.strictEqual(canClose({...capBase,cap:{...capBase.cap,bracket:true}}),false,'Tableau final attendu');
 const capFinal={...capBase,cap:{matches:[capMatch('done'),{status:'done',phase:'bracket',round:1,relays:[{a:42,b:30}]}],phase:'bracket',round:1,bracket:true}};
 assert.strictEqual(canClose(capFinal),true,'Finale jouee');
-assert.strictEqual(canClose({...capFinal,cap:{...capFinal.cap,matches:[capMatch('done'),{status:'done',phase:'bracket',round:1,relays:[{a:42,b:42}]}]}},false),'Finale a egalite');
-assert.strictEqual(canClose({...capFinal,cap:{...capFinal.cap,matches:[capMatch('done'),{status:'done',phase:'bracket',round:1,relays:[{a:42,b:30}]},{status:'done',phase:'bracket',round:1,relays:[{a:42,b:30}]}]}},false),'Tour final non acheve');
+assert.strictEqual(canClose({...capFinal,cap:{...capFinal.cap,matches:[capMatch('done'),{status:'done',phase:'bracket',round:1,relays:[{a:42,b:42}]}]}}),false,'Finale a egalite');
+assert.strictEqual(canClose({...capFinal,cap:{...capFinal.cap,matches:[capMatch('done'),{status:'done',phase:'bracket',round:1,relays:[{a:42,b:30}]},{status:'done',phase:'bracket',round:1,relays:[{a:42,b:30}]}]}}),false,'Tour final non acheve');
 assert.strictEqual(canClose({mode:'poules',matches:[{status:'done'}]}),true,'Formats classiques conserves');
 console.log('OK Course aux points : 7 cas de cloture et format classique');
 
