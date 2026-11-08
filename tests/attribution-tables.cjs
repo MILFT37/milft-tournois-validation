@@ -12,23 +12,27 @@ const checks={
 };
 for(const [name,ok] of Object.entries(checks)){console.log((ok?'OK ':'ECHEC ')+name);assert(ok,name);}
 console.log('OK syntaxe de '+scripts.length+' scripts embarques; '+Object.keys(checks).length+' controles statiques.');
-const fair=html.match(/function milftFairNextMatch\(t,busy\)\{[\s\S]*?(?=\nfunction milftToggleMatchPriority\()/);
-const assign=html.match(/function autoAssign\(t\)\{[^\n]*\}/);
-assert(fair&&assign,'Fonctions de planification introuvables');
-const context={matchPlayerIds:(t,m)=>[m.a,m.b],busyPlayers:t=>new Set(t.matches.filter(m=>m.status==='playing').flatMap(m=>[m.a,m.b])),milftFreeTables:t=>t.tables.filter(x=>x.state==='free'),Date};
+const extract=name=>{const start=html.indexOf('function '+name+'(');assert(start>=0,name+' introuvable');const end=html.indexOf('\nfunction ',start+1);return html.slice(start,end<0?undefined:end);};
+const context={db:{tournaments:[]},matchPlayerIds:(t,m)=>[m.a,m.b],participantMembers:(t,id)=>[id],Date};
 vm.createContext(context);
-vm.runInContext(fair[0]+'\n'+assign[0],context);
+vm.runInContext(['busyPlayers','milftAnnualNextMatch','milftFairNextMatch','milftFreeTables','autoAssign'].map(extract).join('\n'),context);
 const match=(id,a,b,priority=false,hold=false)=>({id,a,b,status:'waiting',round:1,milftPriority:priority,hold});
-const t={mode:'poules',currentRound:1,roundLimit:2,matches:[match('normal','A','B'),match('prioritaire','C','D',true),match('reporte','E','F',true,true)],tables:[{id:1,state:'free'}]};
-context.autoAssign(t);
+const t={id:'solo',mode:'poules',currentRound:1,roundLimit:2,roster:[],matches:[match('normal','A','B'),match('prioritaire','C','D',true),match('reporte','E','F',true,true)],tables:[{id:1,state:'free'}]};
+context.db.tournaments=[t];context.autoAssign(t);
 assert.strictEqual(t.matches[1].status,'playing','La rencontre prioritaire doit demarrer');
 assert.strictEqual(t.matches[2].status,'waiting','Une rencontre reportee ne doit pas demarrer');
 assert.strictEqual(t.matches[0].status,'waiting','Une seule table ne doit lancer qu un match');
-t.tables[0].state='free';t.matches[1].status='done';
-context.autoAssign(t);
+t.tables[0].state='free';t.matches[1].status='done';context.autoAssign(t);
 assert.strictEqual(t.matches[0].status,'playing','La table liberee doit etre reutilisee');
 console.log('OK tests fonctionnels : priorite, report, reattribution, capacite table');
-
+const p={id:'p',mode:'poules',roster:[],matches:[],tables:[{id:1,state:'free'}]};
+const ka={id:'A',sourceId:'p',mode:'knockout',roster:[],matches:[match('A1','A','B')],tables:[{id:1,state:'free'}]};
+const kb={id:'B',sourceId:'p',mode:'knockout',roster:[],matches:[match('B1','C','D',true)],tables:[{id:1,state:'free'}]};
+context.db.tournaments=[p,ka,kb];context.autoAssign(ka);
+assert.strictEqual(kb.matches[0].status,'playing','La priorite du tableau B doit passer devant A');
+assert.strictEqual(ka.matches[0].status,'waiting','La table commune ne doit pas etre doublement affectee');
+assert.deepStrictEqual(Array.from(context.milftFreeTables(ka)),[],'La table occupee par B doit etre indisponible dans A');
+console.log('OK attribution partagee entre tableaux A/B');
 const busyFn=html.match(/function busyPlayers\(t\)\{[^\n]*\}/);
 const freeFn=html.match(/function milftFreeTables\(t\)\{[^\n]*\}/);
 assert(busyFn&&freeFn,'Fonctions de protection inter-tableaux introuvables');
