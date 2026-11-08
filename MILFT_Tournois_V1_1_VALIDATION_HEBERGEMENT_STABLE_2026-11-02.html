@@ -1461,7 +1461,14 @@ function milftQuickPhase(target){
  const t=currentTournament();if(!t)return;
  const root=milftEventRootId(t),phases=db.tournaments.filter(x=>milftEventRootId(x)===root&&!x.abandoned);
  const chosen=phases.find(x=>target==='poules'?x.mode==='poules':x.bracketLetter===target);
- if(chosen&&chosen.id!==t.id)openTournament(chosen.id);
+ if(chosen&&chosen.id!==t.id){
+  const overviewActive=!!document.querySelector('.ko-mobile-paged.milft-three-round-overview');
+  openTournament(chosen.id);
+  if(overviewActive&&chosen.mode==='knockout'){
+   const container=document.querySelector('.ko-mobile-paged');
+   if(container){container.classList.add('milft-three-round-overview');document.querySelector('.ko-mobile-nav')?.classList.add('milft-overview-active');showKoRound(koVisibleRound);milftRefreshQuicknav();}
+  }
+ }
 }
 function milftShowBracketOverview(){
  const t=currentTournament();if(!t)return;
