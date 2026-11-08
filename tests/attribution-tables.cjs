@@ -50,3 +50,25 @@ const linked=new Function('db','matchPlayerIds',busyFn[0]+'\n'+freeFn[0]+'\nretu
 assert.deepStrictEqual(linked.milftFreeTables(sharedDb.tournaments[2]).map(x=>x.id),[2],'La table 1 est deja occupee par A');
 assert(linked.busyPlayers(sharedDb.tournaments[2]).has('J1'),'Joueur de A non protege dans B');
 console.log('OK protections inter-tableaux : tables et joueurs occupes');
+
+/* Regression navigation : verifier les intitulés réels des écrans sans navigateur. */
+const navStart=html.indexOf('function milftQuicknavTargets(root){');
+const navEnd=html.indexOf('\nfunction milftRefreshQuicknav(',navStart);
+assert(navStart>=0&&navEnd>navStart,'Fonction de navigation rapide absente');
+const quicknav=new Function(html.slice(navStart,navEnd)+';return milftQuicknavTargets')();
+const heading=label=>{const card={label};return {textContent:label,closest:selector=>selector==='.card'?card:null,card};};
+const navRoot=labels=>{const nodes=labels.map(heading);return {nodes,querySelectorAll:selector=>selector==='.card h2'?nodes:[]};};
+for(const [label,section] of [
+ ['Rencontres en cours','matchs'],['Rencontres à lancer','matchs'],['Matchs à lancer','matchs'],
+ ['Attribution des rencontres','matchs'],['Gestion des tables','tables'],['Tables','tables'],
+ ['Classement individuel cumulatif','classement'],['Avancement du tournoi','avancement']
+]){
+ const root=navRoot([label]),targets=quicknav(root);
+ assert.strictEqual(targets[section],root.nodes[0].card,'Raccourci invalide : '+label);
+}
+const mixed=navRoot(['Rencontres en cours','Rencontres à lancer','Gestion des tables','Classement','Avancement du tournoi']);
+assert.strictEqual(quicknav(mixed).matchs,mixed.nodes[0].card,'Le premier panneau des matchs doit rester prioritaire');
+assert.deepStrictEqual(Object.values(quicknav(null)),[null,null,null,null],'Navigation sans tournoi');
+assert(/milft-table-inline-controls/.test(html)&&/Modele de tables valide : statut en premiere ligne/.test(html),'Modele des cartes de tables absent');
+assert(!/#view \.milft-table-state-edit\{/.test(html),'Ancien panneau repliable des tables réintroduit');
+console.log('OK navigation rapide : 8 libelles, priorite, absence de tournoi et modele de tables');
