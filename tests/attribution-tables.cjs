@@ -260,3 +260,24 @@ assert.strictEqual(parallelA.matches[1].status,'waiting','Joueur J1 attribue deu
 assert.strictEqual(parallelB.matches[1].status,'waiting','Joueur J2 attribue deux fois');
 assert.strictEqual(parallelB.matches[2].status,'playing','Rencontre independante non lancee');
 console.log('OK parc multi-tables : trois attributions, priorites A/B, aucun doublon joueur ou table');
+
+/* Regression interactive : raccourcis de saisie et belle a deux buts d'ecart. */
+const quickScoreElements={};
+const quickScoreBox={dataset:{allowed:'5-0,5-1,5-2,5-3,6-4,7-5,8-6,8-7'}};
+for(const key of ['score-a-test','score-b-test','validate-set-test','preview-test'])quickScoreElements[key]={value:'0',disabled:true,dataset:{},innerHTML:''};
+const scoreContext={document:{querySelector:selector=>selector.includes('data-match="test"')?quickScoreBox:null,getElementById:id=>quickScoreElements[id]||null}};
+vm.createContext(scoreContext);
+vm.runInContext(extract('milftQuickScore'),scoreContext);
+scoreContext.milftQuickScore('test','a');
+assert.strictEqual(quickScoreElements['score-a-test'].value,'5');
+assert.strictEqual(quickScoreElements['score-b-test'].value,'3');
+assert.strictEqual(quickScoreElements['validate-set-test'].disabled,false);
+scoreContext.milftQuickScore('test','b');
+assert.strictEqual(quickScoreElements['score-a-test'].value,'3');
+assert.strictEqual(quickScoreElements['score-b-test'].value,'5');
+quickScoreBox.dataset.allowed='6-4,7-5,8-6,8-7';
+scoreContext.milftQuickScore('test','a');
+assert.strictEqual(quickScoreElements['score-a-test'].value,'6');
+assert.strictEqual(quickScoreElements['score-b-test'].value,'4');
+assert(/milft-score-shortcuts/.test(extract('challengeMatchCard')),'Boutons de raccourci absents de la carte de match');
+console.log('OK raccourcis de score : deux vainqueurs, validation, belle et boutons presents');
