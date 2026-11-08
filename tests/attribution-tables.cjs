@@ -81,6 +81,8 @@ assert(/if\(active\)\{showKoRound\(koVisibleRound\);\}/.test(overviewSource),'Vu
 assert(/milft-overview-visible/.test(showRoundSource)&&/ko-round-picker/.test(showRoundSource),'Navigation mobile des rondes incomplete');
 assert(/Math\.max\(0,rounds\.length-3\)/.test(showRoundSource),'Fenetre trois niveaux non bornee');
 assert(/milftRefreshQuicknav\(\);\s*container\.scrollIntoView/.test(overviewSource),'Etat du bouton Vue ensemble non rafraichi apres bascule');
+const phaseNavSource=extract('milftQuickPhase');
+assert(/overviewActive&&chosen\.mode==='knockout'/.test(phaseNavSource)&&/milftRefreshQuicknav\(\)/.test(phaseNavSource),'Vue trois niveaux non conservee entre tableaux A et B');
 console.log('OK tableau final : synchronisation trois niveaux et selecteur de rondes');
 console.log('OK navigation rapide : 8 libelles, priorite, absence de tournoi et modele de tables');
 
