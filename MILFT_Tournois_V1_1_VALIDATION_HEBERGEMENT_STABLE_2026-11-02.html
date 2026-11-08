@@ -1015,7 +1015,7 @@ function autoAssign(t){
  const linked=phases.length>1?phases:[t],busy=busyPlayers(t);
  const tables=milftFreeTables(t);
  for(const table of tables){
-  const candidates=linked.map(x=>({phase:x,match:milftFairNextMatch(x,busy)})).filter(x=>x.match);
+  const candidates=linked.filter(x=>x.tables?.some(y=>String(y.id)===String(table.id)&&y.state==='free')).map(x=>({phase:x,match:milftFairNextMatch(x,busy)})).filter(x=>x.match);
   candidates.sort((a,b)=>(Number(!!b.match.milftPriority)-Number(!!a.match.milftPriority))||((Number(a.match.milftPriorityAt)||0)-(Number(b.match.milftPriorityAt)||0))||((a.phase.id===t.id?-1:0)-(b.phase.id===t.id?-1:0)));
   const selected=candidates[0];if(!selected)continue;
   const x=selected.phase,m=selected.match,ownTable=x.tables.find(y=>String(y.id)===String(table.id));
