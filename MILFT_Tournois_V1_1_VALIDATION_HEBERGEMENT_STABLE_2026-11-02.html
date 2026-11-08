@@ -1353,7 +1353,7 @@ function milftGlobalBracket(){
  const card=document.createElement('section');card.className='card';card.id='milft-global-bracket';
  const blocks=phases.map(p=>{
   const regular=(p.matches||[]).filter(m=>!m.bronze),count=Number(p.rounds)||0;
-  const rounds=Array.from({length:count},(_,r)=>'<div class="milft-global-column"><h4>'+(r===count-1?'Finale':r===count-2?'Demi-finales':r===count-3?'Quarts':r===count-4?'Huitièmes':'Tour '+(r+1))+'</h4>'+regular.filter(m=>m.round===r).map(m=>koMatch(p,m)).join('')+'</div>').join('');
+  const rounds=Array.from({length:count},(_,r)=>'<div class="milft-global-column"><h4>'+(r===count-1?'Finale':r===count-2?'Demi-finales':r===count-3?'Quarts':r===count-4?'Huitièmes':'Tour '+(r+1))+'</h4>'+regular.filter(m=>m.round===r).map(m=>koMatch(p,m)).join('')+(r===count-1?(p.matches||[]).filter(m=>m.bronze).map(m=>koMatch(p,m)).join(''):'')+'</div>').join('');
   return '<section class="milft-global-phase"><h3>'+esc(p.id===parent.finalId?'Tableau A':'Tableau B')+'</h3><div class="milft-global-scroll" tabindex="0" aria-label="Parcours horizontal des tours du tableau"><div class="milft-global-columns">'+rounds+'</div></div></section>';
  }).join('');
  card.innerHTML='<div class="row between"><h2>Vue globale des tableaux</h2><button class="mutedbtn" type="button" onclick="milftGlobalBracket()">Fermer</button></div><p class="muted">Vue en lecture seule. Trois tours visibles sur écran large ; défilement horizontal pour accéder aux suivants.</p>'+blocks;
