@@ -661,7 +661,7 @@ function milftUpdateRegistrationCount(form){if(!form)return;const inputs=[...for
 function renderAfterPresenceChange(){const expanded=!!document.querySelector('.milft-annual-presence details')?.open;render();const panel=document.querySelector('.milft-annual-presence details');if(panel)panel.open=expanded}
 function toggleAllPresence(checked){const t=active();if(!t||t.closed)return;t.presence??={};t.roster.forEach(p=>t.presence[p.id]=checked);save();renderAfterPresenceChange()}
 function setPresence(id,v){const t=active();if(!t||t.closed)return;t.presence??={};if(!t.roster.some(p=>p.id===id))return;t.presence[id]=v;save();renderAfterPresenceChange()}
-function toggleHold(id){const t=active(),m=t.matches.find(m=>m.id===id);m.hold=!m.hold;if(t.mode==='challenge')m.annualResumePriority=!m.hold;save();render()}
+function toggleHold(id){const t=active(),m=t.matches.find(m=>m.id===id);m.hold=!m.hold;if(t.mode==='challenge')m.annualResumePriority=!m.hold;if(!m.hold)autoAssign(t);save();render()}
 function challengeMatchCard(t,m){
  const wa=m.sets.filter(s=>s.a>s.b).length,wb=m.sets.filter(s=>s.b>s.a).length;
  const best=t.mode==="knockout"||t.mode==="challenge"?5:(t.bestOf||1),needed=Math.ceil(best/2); const current=m.sets.length+1,decider=best>1&&wa===needed-1&&wb===needed-1;
