@@ -229,3 +229,21 @@ console.log('OK interface : tables et priorites inactives sur phases abandonnees
 /* Regression : le deplacement manuel doit aussi refuser une phase abandonnee. */
 assert(extract('moveMatch').includes('t.closed||t.abandoned'),'Deplacement autorise dans une phase abandonnee');
 console.log('OK deplacement manuel interdit sur phase abandonnee');
+
+/* Regression fonctionnelle : plusieurs tables, joueur commun et priorites inter-phases. */
+const parallelRoot={id:'parallel-root',mode:'poules',roster:[],matches:[],tables:[1,2,3].map(id=>({id,state:'free'}))};
+const parallelA={id:'parallel-A',sourceId:'parallel-root',mode:'knockout',roster:[],matches:[match('A-priority','J1','J2',true),match('A-overlap','J1','J3')],tables:[1,2,3].map(id=>({id,state:'free'}))};
+const parallelB={id:'parallel-B',sourceId:'parallel-root',mode:'knockout',roster:[],matches:[match('B-priority','J4','J5',true),match('B-overlap','J2','J6'),match('B-independent','J7','J8')],tables:[1,2,3].map(id=>({id,state:'free'}))};
+context.db.tournaments=[parallelRoot,parallelA,parallelB];
+context.autoAssign(parallelRoot);
+const runningParallel=[...parallelA.matches,...parallelB.matches].filter(m=>m.status==='playing');
+assert.strictEqual(runningParallel.length,3,'Trois tables doivent accueillir trois rencontres compatibles');
+assert.strictEqual(new Set(runningParallel.map(m=>m.table)).size,3,'Une table attribuee deux fois');
+const occupiedParallel=runningParallel.flatMap(m=>[m.a,m.b]);
+assert.strictEqual(new Set(occupiedParallel).size,occupiedParallel.length,'Un joueur attribue deux fois');
+assert.strictEqual(parallelA.matches[0].status,'playing','Priorite A non respectee');
+assert.strictEqual(parallelB.matches[0].status,'playing','Priorite B non respectee');
+assert.strictEqual(parallelA.matches[1].status,'waiting','Joueur J1 attribue deux fois');
+assert.strictEqual(parallelB.matches[1].status,'waiting','Joueur J2 attribue deux fois');
+assert.strictEqual(parallelB.matches[2].status,'playing','Rencontre independante non lancee');
+console.log('OK parc multi-tables : trois attributions, priorites A/B, aucun doublon joueur ou table');
