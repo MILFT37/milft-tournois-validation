@@ -1097,7 +1097,7 @@ function milftEventRootId(t){
  if(parent)return parent.id;
  // Anciennes sauvegardes : tableaux crees avant l'enregistrement des liens.
  if(t.mode==='knockout'&&t.bracketLetter&&t.date){
-  const base=String(t.name||'').replace(/\\s*[—–-]\\s*Tableau\\s+[AB]\\s*$/i,'').trim();
+  const base=String(t.name||'').replace(/\s*[—–-]\s*Tableau\s+[AB]\s*$/i,'').trim();
   const original=db.tournaments.find(x=>x.mode==='poules'&&x.date===t.date&&String(x.name||'').trim()===base&&x.finalPhase);
   if(original)return original.id;
  }
