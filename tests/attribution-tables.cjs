@@ -102,3 +102,13 @@ assert(!/phases\.some\(t=>!t\.closed&&!t\.abandoned&&!milftCanClose\(t\)\)/.test
 assert(dashboardSource.includes('clôture à vérifier'),'Signalement de cloture absent');
 assert(dashboardSource.includes('phase à poursuivre'),'Le tableau de bord ne distingue pas la prochaine phase de la cloture');
 console.log('OK accueil : competition non cloturee conservee et signalement explicite');
+
+/* Regression navigation entre phases : utiliser le meme regroupement que l'accueil. */
+const phaseStart=html.indexOf('function milftQuickPhase(target){');
+const phaseEnd=html.indexOf('\nfunction milftShowBracketOverview()',phaseStart);
+assert(phaseStart>=0&&phaseEnd>phaseStart,'Navigation Poules/A/B introuvable');
+const phaseSource=html.slice(phaseStart,phaseEnd);
+assert(phaseSource.includes('milftEventRootId(t)'),'La navigation des phases ne suit plus le regroupement evenement');
+assert(phaseSource.includes('milftEventRootId(x)===root'),'Les tableaux lies ne sont plus recherches par evenement');
+assert(phaseSource.includes('!x.abandoned'),'Une phase abandonnee peut reapparaitre dans la navigation');
+console.log('OK navigation phases : regroupement evenement, sauvegardes historiques et exclusion abandon');
