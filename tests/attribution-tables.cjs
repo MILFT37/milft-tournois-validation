@@ -5,9 +5,14 @@ for(const [i,source] of scripts.entries()){new vm.Script(source,{filename:'inlin
 const checks={
  'attribution apres resultat':/if\(t\.mode==='knockout'\)advanceKnockout\(t\);\s*autoAssign\(t\);/.test(html),
  'attribution apres forfait':/autoAssign\(t\);\s*save\(\);flash\('Forfait enregistré/.test(html),
- 'report bloque avant reattribution':/m\.hold=true;autoAssign\(t\);save\(\);flash\('Rencontre reportée/.test(html),
+ 'report bloque avant reattribution':/m\.hold=true;milftReleaseSharedTable\(t,released\);autoAssign\(t\);save\(\);flash\('Rencontre reportée/.test(html),
  'reprise declenche attribution':/if\(!m\.hold\)autoAssign\(t\);save\(\);render\(\)/.test(html),
- 'deplacement libere et attribue':/next\.state='playing';autoAssign\(t\);save\(\);flash\('Match déplacé/.test(html),
+ 'deplacement libere et attribue':/milftReleaseSharedTable\(t,previous\);autoAssign\(t\);save\(\);flash\('Match déplacé/.test(html),
+ 'navigation phases sur ligne haute':/milft-has-phase-quicknav #milft-quicknav \[data-phase\]\{grid-row:1\}/.test(html),
+ 'navigation classique sur ligne basse':/milft-has-phase-quicknav #milft-quicknav \[data-section\]\{grid-row:2\}/.test(html),
+ 'regroupement phases dans liste':/function activeTournamentsPage\(\)[\s\S]*?const groups=new Map\(\)/.test(html),
+ 'vue trois niveaux':/function milftShowBracketOverview\(\)/.test(html)&&/milft-three-round-overview/.test(html),
+ 'choix poules ou tableaux':/function milftFinalDecisionNotice\(t\)/.test(html)&&/function milftExtendQualifications\(\)/.test(html),
  'priorite dans file':/eligible\.sort\(\(a,b\)=>\(Number\(!!b\.milftPriority\)-Number\(!!a\.milftPriority\)\)/.test(html)
 };
 for(const [name,ok] of Object.entries(checks)){console.log((ok?'OK ':'ECHEC ')+name);assert(ok,name);}
