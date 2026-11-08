@@ -267,7 +267,7 @@ const quickScoreBox={dataset:{allowed:'5-0,5-1,5-2,5-3,6-4,7-5,8-6,8-7'}};
 for(const key of ['score-a-test','score-b-test','validate-set-test','preview-test'])quickScoreElements[key]={value:'0',disabled:true,dataset:{},innerHTML:''};
 const scoreContext={document:{querySelector:selector=>selector.includes('data-match="test"')?quickScoreBox:null,getElementById:id=>quickScoreElements[id]||null}};
 vm.createContext(scoreContext);
-vm.runInContext(extract('milftQuickScore'),scoreContext);
+vm.runInContext(extract('milftHighlightScoreWinner')+'\n'+extract('milftQuickScore'),scoreContext);
 scoreContext.milftQuickScore('test','a');
 assert.strictEqual(quickScoreElements['score-a-test'].value,'5');
 assert.strictEqual(quickScoreElements['score-b-test'].value,'3');
