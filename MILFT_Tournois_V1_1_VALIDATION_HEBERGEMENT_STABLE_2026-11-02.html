@@ -719,8 +719,7 @@ function addChallengeSet(id){
    if(!confirm('Valider la rencontre terminée et libérer la table ?')){m.sets.pop();return}
    m.status='done';
    m.score=best===1?{...m.sets[0]}:{a:wa,b:wb};
-   const table=t.tables.find(x=>x.id===m.table);if(table)table.state='free';
-   m.table=null;
+   const releasedTable=m.table;m.table=null;milftReleaseSharedTable(t,releasedTable);
    if(t.mode==='knockout')advanceKnockout(t);
   autoAssign(t);
  }
@@ -1009,6 +1008,13 @@ function milftToggleMatchPriority(id){
  save();flash(prioritized?(m.status==='playing'?'Rencontre prioritaire attribuée à une table libre.':'Rencontre ajoutée à la file prioritaire.'):'Priorité annulée.');
 }
 function milftPriorityButton(t,m){return m.status==='waiting'?`<button type="button" class="mutedbtn" onclick="milftToggleMatchPriority('${m.id}')" ${t.closed?'disabled':''}>${m.milftPriority?'Annuler priorité':'Prioriser'}</button>`:''}
+function milftReleaseSharedTable(t,id){
+ if(id==null)return;
+ const root=t.sourceId||t.id;
+ const phases=(typeof db!=='undefined'&&db.tournaments||[]).filter(x=>x.id===root||x.sourceId===root);
+ if(phases.some(x=>(x.matches||[]).some(m=>m.status==='playing'&&String(m.table)===String(id))))return;
+ for(const phase of phases.length?phases:[t]){const table=phase.tables?.find(y=>String(y.id)===String(id));if(table&&table.state==='playing')table.state='free';}
+}
 function milftFreeTables(t){
  const root=t.sourceId||t.id;
  const linked=(typeof db!=='undefined'&&db.tournaments||[]).filter(x=>x.id===root||x.sourceId===root);
@@ -1028,7 +1034,8 @@ function autoAssign(t){
   const selected=candidates[0];if(!selected)continue;
   const x=selected.phase,m=selected.match,ownTable=x.tables.find(y=>String(y.id)===String(table.id));
   if(!ownTable||ownTable.state!=='free')continue;
-  m.status='playing';m.milftPriority=false;m.milftPriorityAt=null;m.annualResumePriority=false;m.table=ownTable.id;m.startedAt=Date.now();ownTable.state='playing';
+  m.status='playing';m.milftPriority=false;m.milftPriorityAt=null;m.annualResumePriority=false;m.table=ownTable.id;m.startedAt=Date.now();
+  for(const phase of linked){const shared=phase.tables?.find(y=>String(y.id)===String(table.id));if(shared)shared.state='playing';}
   for(const id of matchPlayerIds(x,m))busy.add(id);
  }
 }
