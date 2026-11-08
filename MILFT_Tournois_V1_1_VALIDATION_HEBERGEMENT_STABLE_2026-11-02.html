@@ -1463,7 +1463,7 @@ function milftQuicknavTargets(root){
  root.querySelectorAll('.card h2').forEach(h=>{
   const label=(h.textContent||'').trim().toLocaleLowerCase('fr');
   let key=null;
-  if(label.includes('rencontres en cours')||label.includes('matchs en cours')||label==='rencontres'||label.startsWith('rencontres —')||label.startsWith('rencontres à jouer')||label.startsWith('rencontres a jouer')||label.startsWith('rencontres à lancer')||label.startsWith('matchs à lancer'))key='matchs';
+  if(label.includes('rencontres en cours')||label.includes('matchs en cours')||label==='rencontres'||label.startsWith('rencontres —')||label.startsWith('rencontres à jouer')||label.startsWith('rencontres a jouer')||label.startsWith('rencontres à lancer')||label.startsWith('matchs à lancer')||label==='attribution des rencontres')key='matchs';
   else if(label==='tables'||label==='gestion des tables'||label.includes('disponibilité des tables')||label.includes('disponibilités des tables'))key='tables';
   else if(label.startsWith('classement')||label.startsWith('poule ')||label==='vainqueur')key='classement';
   else if(label.startsWith('avancement du tournoi')||label.startsWith('avancement — course aux points')||label==='avancement')key='avancement';
