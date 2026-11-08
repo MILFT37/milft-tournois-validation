@@ -341,14 +341,10 @@ button:focus-visible,summary:focus-visible,input:focus-visible,select:focus-visi
 #view .milft-tournament-list-item{gap:6px 10px!important;margin:7px 0!important;padding:10px!important}
 #view .milft-tournament-list-item>p{line-height:1.3}
 #view .milft-tournament-list-item>button{min-height:42px}
-#view .milft-compact-tables{gap:6px!important}
-#view .milft-compact-tables>.item{padding:8px 10px!important;margin:0!important}
-#view .milft-compact-tables>.item h3{margin-bottom:5px!important}
-#view .milft-compact-tables>.item>.row{gap:6px!important}
-#view .milft-compact-tables>.item>.row select{min-height:42px!important}
+/* Les cartes de tables utilisent exclusivement le modele compact valide plus bas. */
 #view .milft-live-commands{gap:7px!important}
 #view .milft-live-commands>button{min-height:44px!important}
-@media(max-width:600px){#view .milft-tournament-list-item{grid-template-columns:minmax(0,1fr) auto!important}#view .milft-tournament-list-item>button{grid-column:2!important;grid-row:1/span 2!important;min-width:90px!important;width:auto!important;padding:9px!important}#view .milft-compact-tables>.item{padding:8px!important}#view .milft-match-header{gap:8px!important}}
+@media(max-width:600px){#view .milft-tournament-list-item{grid-template-columns:minmax(0,1fr) auto!important}#view .milft-tournament-list-item>button{grid-column:2!important;grid-row:1/span 2!important;min-width:90px!important;width:auto!important;padding:9px!important}#view .milft-match-header{gap:8px!important}}
 
 /* Vue tableau : 3 tours reels visibles simultanement sur mobile. */
 @media(max-width:600px){
