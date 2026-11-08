@@ -137,6 +137,11 @@ html,body{background:var(--milft-page);color:var(--milft-ink)}header{background:
 #milft-settings .settings-backup{border-top:1px solid #dce3eb;padding:0}
 #milft-settings .settings-backup .backup-actions{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
 #milft-settings .settings-backup .backup-actions button{font-size:.77rem;padding:9px 6px;white-space:normal;margin:0;min-width:0}
+/* Troisieme action longue : ligne complete, sans bouton isole en demi-colonne. */
+#milft-settings .settings-backup .backup-actions button:nth-child(3){grid-column:1/-1}
+#milft-settings .settings-panel summary{min-height:48px}
+#milft-settings .settings-panel-body{min-width:0}
+@media(max-width:600px){#milft-settings details[open]>.settings-panel-body{padding-left:0}#milft-settings .settings-action-grid button,#milft-settings .settings-backup .backup-actions button{min-height:44px}}
 #milft-settings #milft-backup{padding:0;margin:0}
 #milft-settings #milft-backup details{border:0;padding:0}
 #milft-settings #milft-backup summary{display:none}
