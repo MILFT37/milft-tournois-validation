@@ -112,3 +112,16 @@ assert(phaseSource.includes('milftEventRootId(t)'),'La navigation des phases ne 
 assert(phaseSource.includes('milftEventRootId(x)===root'),'Les tableaux lies ne sont plus recherches par evenement');
 assert(phaseSource.includes('!x.abandoned'),'Une phase abandonnee peut reapparaitre dans la navigation');
 console.log('OK navigation phases : regroupement evenement, sauvegardes historiques et exclusion abandon');
+
+/* Regression : les raccourcis et la vue globale ignorent les phases abandonnees. */
+const refreshStart=html.indexOf('function milftRefreshQuicknav(){');
+const refreshEnd=html.indexOf('\nfunction milftJump(',refreshStart);
+assert(refreshStart>=0&&refreshEnd>refreshStart,'Rafraichissement navigation introuvable');
+const refreshSource=html.slice(refreshStart,refreshEnd);
+assert(refreshSource.includes('!x.abandoned'),'Raccourcis : phases abandonnees non exclues');
+assert(refreshSource.includes('phases=visible?'),'Navigation hors tournoi non neutralisee');
+const overviewStart=html.indexOf('function milftShowBracketOverview(){');
+const overviewEnd=html.indexOf('\nfunction milftQuicknavTargets(',overviewStart);
+assert(overviewStart>=0&&overviewEnd>overviewStart,'Vue generale tableau introuvable');
+assert(html.slice(overviewStart,overviewEnd).includes('!x.abandoned'),'Vue tableau : phase abandonnee selectionnable');
+console.log('OK navigation : phases abandonnees exclues des raccourcis et de la vue tableau');
