@@ -1057,7 +1057,25 @@ function autoAssign(t){
 }
 function milftHasPendingStages(t){if(!t||t.closed||t.abandoned)return false;if((t.mode==='poules'||(t.mode==='monster'&&t.monsterMode!=='season'))&&Number(t.roundLimit)>Number(t.currentRound))return true;if(t.mode==='poules'&&t.finalPhase&&!t.finalId)return true;return false;}
 function milftCanClose(t){return !!t&&(t.matches||[]).length>0&&(t.matches||[]).every(m=>m.status==='done')&&!milftHasPendingStages(t);}
-function activeTournamentsPage(){const open=db.tournaments.filter(t=>!t.closed&&!t.abandoned).slice().sort((a,b)=>String(b.date||'').localeCompare(String(a.date||''))),items=open.filter(t=>!milftCanClose(t)),toClose=open.filter(t=>milftCanClose(t));const entry=t=>`<div class="item milft-tournament-list-item"><b>${title(t)}</b><p class="muted">${t.mode==='cap'?'Course aux points':t.mode==='challenge'?'Championnat annuel':t.mode==='monster'?'Monster DYP':t.mode==='knockout'?'Élimination directe':'Tournoi'} · ${t.matches.filter(m=>m.status==='done').length}/${t.matches.length} rencontres terminées</p><button onclick="openTournament('${t.id}')">${milftCanClose(t)?'Clôturer':'Reprendre'}</button></div>`;return `<div class="card"><h2>Tournois en cours</h2><p class="muted">${items.length} compétition(s) à poursuivre</p>${items.map(entry).join('')||'<p>Aucune rencontre en attente.</p>'}${toClose.length?`<div class="card milft-to-close"><h3>${toClose.length} tournoi${toClose.length>1?'s':''} à clôturer</h3>${toClose.map(entry).join('')}</div>`:''}<button class="mutedbtn" onclick="setTab('new')">Créer un tournoi</button></div>`;} function milftRoundReadyForNext(t){if(!t||!Number.isFinite(Number(t.currentRound))||Number(t.currentRound)>=Number(t.roundLimit))return false;const current=(t.matches||[]).filter(m=>Number(m.round)===Number(t.currentRound));return current.length>0&&current.every(m=>m.status==='done');}
+function activeTournamentsPage(){
+ const open=db.tournaments.filter(t=>!t.closed&&!t.abandoned).slice().sort((a,b)=>String(b.date||'').localeCompare(String(a.date||'')));
+ const groups=new Map();
+ for(const t of open){
+  const key=t.sourceId||t.id;
+  if(!groups.has(key))groups.set(key,[]);
+  groups.get(key).push(t);
+ }
+ const entries=[...groups.entries()].map(([key,phases])=>{
+  const root=db.tournaments.find(x=>x.id===key)||phases[0];
+  const unfinished=phases.some(x=>!milftCanClose(x));
+  const count=phases.reduce((n,x)=>n+(x.matches||[]).length,0);
+  const done=phases.reduce((n,x)=>n+(x.matches||[]).filter(m=>m.status==='done').length,0);
+  const phasesNav=phases.length>1?'<div class="row" style="gap:6px;flex-wrap:wrap">'+phases.map(x=>'<button class="mutedbtn" onclick="openTournament(\''+x.id+'\')">'+(x.mode==='poules'?'Poules':x.bracketLetter?'Tableau '+x.bracketLetter:'Tableau')+'</button>').join('')+'</div>':'';
+  return {unfinished,html:'<div class="item milft-tournament-list-item"><b>'+title(root)+'</b><p class="muted">'+done+'/'+count+' rencontres terminées'+(phases.length>1?' · Poules et tableaux liés':'')+'</p>'+phasesNav+'<button onclick="openTournament(\''+(phases.find(x=>!milftCanClose(x))||phases[0]).id+'\')">'+(unfinished?'Reprendre':'Clôturer')+'</button></div>'};
+ });
+ const items=entries.filter(x=>x.unfinished),toClose=entries.filter(x=>!x.unfinished);
+ return '<div class="card"><h2>Tournois en cours</h2><p class="muted">'+items.length+' compétition(s) à poursuivre</p>'+items.map(x=>x.html).join('')+(items.length?'':'<p>Aucune rencontre en attente.</p>')+(toClose.length?'<div class="card milft-to-close"><h3>'+toClose.length+' tournoi(s) à clôturer</h3>'+toClose.map(x=>x.html).join('')+'</div>':'')+'<button class="mutedbtn" onclick="setTab(\'new\')">Créer un tournoi</button></div>';
+} function milftRoundReadyForNext(t){if(!t||!Number.isFinite(Number(t.currentRound))||Number(t.currentRound)>=Number(t.roundLimit))return false;const current=(t.matches||[]).filter(m=>Number(m.round)===Number(t.currentRound));return current.length>0&&current.every(m=>m.status==='done');}
 function milftRoundNextNotice(t){if(!milftRoundReadyForNext(t))return '';return '<div class="milft-next-round-banner" role="status"><span class="milft-next-round-symbol">✓</span><div><strong>Tour '+t.currentRound+' terminé — tous les matchs sont joués.</strong><p>Lance le tour '+(Number(t.currentRound)+1)+' pour poursuivre le tournoi et attribuer les tables.</p></div><button type="button" onclick="nextRound()">Lancer le tour '+(Number(t.currentRound)+1)+'</button></div>';}
 function milftFinalDecisionNotice(t){
  if(t.mode!=='poules'||!t.finalPhase||t.finalId||t.currentRound<t.roundLimit||!t.matches.length||t.matches.some(m=>m.status!=='done'))return '';
