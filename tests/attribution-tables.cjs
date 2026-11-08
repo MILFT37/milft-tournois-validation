@@ -225,3 +225,7 @@ assert(stateHandler.includes('t.closed||t.abandoned'),'Etat des tables modifiabl
 assert(priorityButton.includes('t.closed||t.abandoned'),'Bouton de priorite actif sur phase abandonnee');
 assert(generalAssign.includes('t.closed||t.abandoned'),'Attribution generale active sur phase abandonnee');
 console.log('OK interface : tables et priorites inactives sur phases abandonnees');
+
+/* Regression : le deplacement manuel doit aussi refuser une phase abandonnee. */
+assert(extract('moveMatch').includes('t.closed||t.abandoned'),'Deplacement autorise dans une phase abandonnee');
+console.log('OK deplacement manuel interdit sur phase abandonnee');
