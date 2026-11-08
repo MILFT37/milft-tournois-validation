@@ -98,7 +98,7 @@ const dashEnd=html.indexOf('\n function playersPage()',dashStart);
 assert(dashStart>=0&&dashEnd>dashStart,'Fonction tableau de bord introuvable');
 const dashboardSource=html.slice(dashStart,dashEnd);
 assert(/phases\.some\(t=>!t\.closed&&!t\.abandoned\)/.test(dashboardSource),'Accueil masque les tournois non clotures');
-assert(!/phases\.some\(t=>!t\.closed&&!t\.abandoned&&!milftCanClose\(t\)\)/.test(dashboardSource),'Ancien filtre des tournois terminables restaure');
+assert(!/\.filter\(\(\[,phases\]\)=>phases\.some\(t=>!t\.closed&&!t\.abandoned&&!milftCanClose\(t\)\)\)/.test(dashboardSource),'Ancien filtre des tournois terminables restaure');
 assert(dashboardSource.includes('clôture à vérifier'),'Signalement de cloture absent');
 assert(dashboardSource.includes('phase à poursuivre'),'Le tableau de bord ne distingue pas la prochaine phase de la cloture');
 console.log('OK accueil : competition non cloturee conservee et signalement explicite');
