@@ -1005,7 +1005,8 @@ function milftToggleMatchPriority(id){
  const t=active(),m=t?.matches?.find(x=>String(x.id)===String(id));
  if(!m||t.closed||m.status!=='waiting')return;
  m.milftPriority=!m.milftPriority;m.milftPriorityAt=m.milftPriority?Date.now():null;
- save();flash(m.milftPriority?'Rencontre ajoutée à la file prioritaire.':'Priorité annulée.');
+ const prioritized=m.milftPriority;if(prioritized)autoAssign(t);
+ save();flash(prioritized?(m.status==='playing'?'Rencontre prioritaire attribuée à une table libre.':'Rencontre ajoutée à la file prioritaire.'):'Priorité annulée.');
 }
 function milftPriorityButton(t,m){return m.status==='waiting'?`<button type="button" class="mutedbtn" onclick="milftToggleMatchPriority('${m.id}')" ${t.closed?'disabled':''}>${m.milftPriority?'Annuler priorité':'Prioriser'}</button>`:''}
 function milftFreeTables(t){const root=t.sourceId||t.id;const linked=(typeof db!=='undefined'&&db.tournaments||[]).filter(x=>x.id!==t.id&&(x.id===root||x.sourceId===root));const occupied=new Set(linked.flatMap(x=>(x.matches||[]).filter(m=>m.status==='playing'&&m.table!=null).map(m=>String(m.table))));return (t.tables||[]).filter(x=>x.state==='free'&&!occupied.has(String(x.id))).sort((a,b)=>{const x=Number(a.id),y=Number(b.id);return Number.isFinite(x)&&Number.isFinite(y)?x-y:String(a.id).localeCompare(String(b.id),undefined,{numeric:true});});}
@@ -1056,12 +1057,12 @@ function changeTableState(id){
  const table=t.tables.find(x=>String(x.id)===String(id));
  const state=$('state-'+id)?.value;
  if(!table||!['free','maintenance','excluded'].includes(state))return alert('Choisis un état valide.');
- const running=t.matches.filter(m=>m.status==='playing'&&m.table!=null&&String(m.table)===String(id));
+ const root=t.sourceId||t.id,linked=db.tournaments.filter(x=>x.id===root||x.sourceId===root);const running=linked.flatMap(x=>(x.matches||[]).filter(m=>m.status==='playing'&&m.table!=null&&String(m.table)===String(id)).map(m=>({phase:x,match:m})));
  if(running.length>1)return alert('Anomalie : plusieurs rencontres occupent cette table. Aucune modification effectuée.');
  if(running.length&&state==='free')return alert('Cette table accueille un match en cours. Termine, reporte ou déplace ce match avant de la libérer.');
  if(running.length){
   if(!confirm('Un match utilise cette table. Le remettre en attente sans perdre ses manches et son temps de jeu ?'))return;
-  const m=running[0];pauseMatchClock(m);m.status='waiting';m.table=null;if(t.mode==='challenge')m.hold=true;
+  const {phase,match:m}=running[0];pauseMatchClock(m);m.status='waiting';m.table=null;if(phase.mode==='challenge')m.hold=true;const linkedTable=phase.tables.find(x=>String(x.id)===String(id));if(linkedTable)linkedTable.state='free';
  }
  table.state=state;if(state==='free')autoAssign(t);save();flash('État de la table '+id+' mis à jour.');
 }
