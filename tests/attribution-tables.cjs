@@ -156,3 +156,13 @@ assert(stateStart>=0&&stateEnd>stateStart,'Changement etat tables absent');
 const stateSource=html.slice(stateStart,stateEnd);
 assert(stateSource.includes('milftEventRootId(t)')&&stateSource.includes('milftEventRootId(x)===root'),'Changement etat ignore les phases historiques');
 console.log('OK tables partagees : liberation protegee et changement etat coherent avec A/B historiques');
+
+/* Regression : attribution manuelle, deplacement et attribution generale partagent le meme parc. */
+for(const [name,next] of [['moveMatch','milftLaunchSelectedAnnual'],['assignSpecific','autoNow'],['autoNow','editDone']]){
+ const begin=html.indexOf('function '+name+'('),end=html.indexOf('function '+next+'(',begin+1);
+ assert(begin>=0&&end>begin,'Fonction '+name+' introuvable');
+ const body=html.slice(begin,end);
+ assert(body.includes('milftEventRootId(t)'),'Parc evenement absent dans '+name);
+ assert(body.includes('milftEventRootId(x)===root'),'Phases liees non prises en compte dans '+name);
+}
+console.log('OK attribution manuelle, deplacement et attribution generale : parc evenement commun');
