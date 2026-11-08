@@ -1103,8 +1103,8 @@ function milftToggleMatchPriority(id){
 function milftPriorityButton(t,m){return m.status==='waiting'?`<button type="button" class="mutedbtn" onclick="milftToggleMatchPriority('${m.id}')" ${t.closed?'disabled':''}>${m.milftPriority?'Annuler priorité':'Prioriser'}</button>`:''}
 function milftReleaseSharedTable(t,id){
  if(id==null)return;
- const root=t.sourceId||t.id;
- const phases=(typeof db!=='undefined'&&db.tournaments||[]).filter(x=>x.id===root||x.sourceId===root);
+ const root=milftEventRootId(t);
+ const phases=(typeof db!=='undefined'&&db.tournaments||[]).filter(x=>milftEventRootId(x)===root);
  if(phases.some(x=>(x.matches||[]).some(m=>m.status==='playing'&&String(m.table)===String(id))))return;
  for(const phase of phases.length?phases:[t]){const table=phase.tables?.find(y=>String(y.id)===String(id));if(table&&table.state==='playing')table.state='free';}
 }
@@ -1217,7 +1217,7 @@ function changeTableState(id){
  const table=t.tables.find(x=>String(x.id)===String(id));
  const state=$('state-'+id)?.value;
  if(!table||!['free','maintenance','excluded'].includes(state))return alert('Choisis un état valide.');
- const root=t.sourceId||t.id,linked=db.tournaments.filter(x=>x.id===root||x.sourceId===root);const running=linked.flatMap(x=>(x.matches||[]).filter(m=>m.status==='playing'&&m.table!=null&&String(m.table)===String(id)).map(m=>({phase:x,match:m})));
+ const root=milftEventRootId(t),linked=db.tournaments.filter(x=>milftEventRootId(x)===root);const running=linked.flatMap(x=>(x.matches||[]).filter(m=>m.status==='playing'&&m.table!=null&&String(m.table)===String(id)).map(m=>({phase:x,match:m})));
  if(running.length>1)return alert('Anomalie : plusieurs rencontres occupent cette table. Aucune modification effectuée.');
  if(running.length&&state==='free')return alert('Cette table accueille un match en cours. Termine, reporte ou déplace ce match avant de la libérer.');
  if(running.length){
