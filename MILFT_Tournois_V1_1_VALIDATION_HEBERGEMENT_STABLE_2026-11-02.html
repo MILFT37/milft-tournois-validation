@@ -1063,7 +1063,7 @@ function createFinalFromQualifications(){
  db.selected=a.id;tab='live';save();flash(b?'Tableaux A et B créés séparément.':'Tableau A créé.');window.scrollTo(0,0);
 }
 function matchPlayerIds(t,m){return t.mode==='monster'?[...(m.teamA||[]),...(m.teamB||[])].filter(Boolean):[...participantMembers(t,m.a),...participantMembers(t,m.b)]}
-function busyPlayers(t){const busy=new Set();const root=t.sourceId||t.id;const linked=(typeof db!=='undefined'&&db.tournaments||[]).filter(x=>x.id===t.id||x.id===root||x.sourceId===root);for(const x of linked.length?linked:[t])for(const m of x.matches||[])if(m.status==='playing')for(const id of matchPlayerIds(x,m))busy.add(id);for(const p of t.roster||[])if(p.members?.some(id=>busy.has(id)))busy.add(p.id);return busy}
+function busyPlayers(t){const busy=new Set();const root=milftEventRootId(t);const linked=(typeof db!=='undefined'&&db.tournaments||[]).filter(x=>milftEventRootId(x)===root);for(const x of linked.length?linked:[t])for(const m of x.matches||[])if(m.status==='playing')for(const id of matchPlayerIds(x,m))busy.add(id);for(const p of t.roster||[])if(p.members?.some(id=>busy.has(id)))busy.add(p.id);return busy}
 function milftAnnualNextMatch(t,busy){
  const played=id=>t.matches.filter(x=>x.status==='done'&&!x.bye&&(x.a===id||x.b===id)).length;
  const last=id=>{let n=-1;for(let i=0;i<t.matches.length;i++){const x=t.matches[i];if(x.status==='done'&&(x.a===id||x.b===id))n=i;}return n;};
@@ -1109,16 +1109,16 @@ function milftReleaseSharedTable(t,id){
  for(const phase of phases.length?phases:[t]){const table=phase.tables?.find(y=>String(y.id)===String(id));if(table&&table.state==='playing')table.state='free';}
 }
 function milftFreeTables(t){
- const root=t.sourceId||t.id;
- const linked=(typeof db!=='undefined'&&db.tournaments||[]).filter(x=>x.id===root||x.sourceId===root);
+ const root=milftEventRootId(t);
+ const linked=(typeof db!=='undefined'&&db.tournaments||[]).filter(x=>milftEventRootId(x)===root);
  const phases=linked.length?linked:[t];
  const occupied=new Set(phases.flatMap(x=>(x.matches||[]).filter(m=>m.status==='playing'&&m.table!=null).map(m=>String(m.table))));
  const blocked=new Set(phases.flatMap(x=>(x.tables||[]).filter(y=>y.state==='excluded'||y.state==='maintenance').map(y=>String(y.id))));
  return (t.tables||[]).filter(x=>x.state==='free'&&!occupied.has(String(x.id))&&!blocked.has(String(x.id))).sort((a,b)=>{const x=Number(a.id),y=Number(b.id);return Number.isFinite(x)&&Number.isFinite(y)?x-y:String(a.id).localeCompare(String(b.id),undefined,{numeric:true});});
 }
 function autoAssign(t){
- const root=t.sourceId||t.id;
- const phases=(typeof db!=='undefined'&&db.tournaments||[]).filter(x=>!x.closed&&!x.abandoned&&(x.id===root||x.sourceId===root));
+ const root=milftEventRootId(t);
+ const phases=(typeof db!=='undefined'&&db.tournaments||[]).filter(x=>!x.closed&&!x.abandoned&&milftEventRootId(x)===root);
  const linked=phases.length>1?phases:[t],busy=busyPlayers(t);
  const tables=linked.flatMap(x=>milftFreeTables(x)).filter((table,i,all)=>all.findIndex(y=>String(y.id)===String(table.id))===i).sort((a,b)=>Number(a.id)-Number(b.id));
  for(const table of tables){
