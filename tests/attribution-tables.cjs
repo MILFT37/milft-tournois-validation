@@ -91,3 +91,13 @@ assert.strictEqual(canClose({...capFinal,cap:{...capFinal.cap,matches:[capMatch(
 assert.strictEqual(canClose({...capFinal,cap:{...capFinal.cap,matches:[capMatch('done'),{status:'done',phase:'bracket',round:1,relays:[{a:42,b:30}]},{status:'done',phase:'bracket',round:1,relays:[{a:42,b:30}]}]}},false),'Tour final non acheve');
 assert.strictEqual(canClose({mode:'poules',matches:[{status:'done'}]}),true,'Formats classiques conserves');
 console.log('OK Course aux points : 7 cas de cloture et format classique');
+
+/* Regression accueil : ne jamais masquer une competition terminee mais non cloturee. */
+const dashStart=html.indexOf('function dashboard(){');
+const dashEnd=html.indexOf('\n function playersPage()',dashStart);
+assert(dashStart>=0&&dashEnd>dashStart,'Fonction tableau de bord introuvable');
+const dashboardSource=html.slice(dashStart,dashEnd);
+assert(/phases\.some\(t=>!t\.closed&&!t\.abandoned\)/.test(dashboardSource),'Accueil masque les tournois non clotures');
+assert(!/phases\.some\(t=>!t\.closed&&!t\.abandoned&&!milftCanClose\(t\)\)/.test(dashboardSource),'Ancien filtre des tournois terminables restaure');
+assert(dashboardSource.includes('clôture à vérifier'),'Signalement de cloture absent');
+console.log('OK accueil : competition non cloturee conservee et signalement explicite');
