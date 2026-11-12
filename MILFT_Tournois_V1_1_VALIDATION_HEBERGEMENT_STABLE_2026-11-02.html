@@ -929,7 +929,8 @@ function correctChallengeSet(id,index){
 }
 
 function addChallengeSet(id){
- const t=active(),m=t.matches.find(m=>m.id===id);if(!m||m.status!=='playing'||t.closed)return;
+ const t=active(),m=t?.matches.find(m=>m.id===id);if(!t||!m||m.status!=='playing'||t.closed)return;
+ if(t.mode==='knockout'&&m.table!=null){const moved=milftReconcileBracketTables(t);if(moved)save();if(m.status!=='playing'||!milftTableAllowed(t,m.table)){flash('Conflit de table : rencontre non prioritaire remise en attente, manches conservées.');return;}}
  const best=t.mode==='challenge'||t.mode==='knockout'?5:(t.bestOf||1),needed=Math.ceil(best/2);
  const a=Number($('score-a-'+id)?.value),b=Number($('score-b-'+id)?.value);if(!$('validate-set-'+id)||$('validate-set-'+id).disabled)return;
  const wa0=m.sets.filter(s=>s.a>s.b).length,wb0=m.sets.filter(s=>s.b>s.a).length,decider=best>1&&wa0===needed-1&&wb0===needed-1;
@@ -1285,6 +1286,19 @@ function milftResolveTableConflict(t,id,preference){
  }
  return displaced.length;
 }
+function milftReconcileBracketTables(t){
+ if(!t||t.mode!=='knockout')return 0;
+ const linked=db.tournaments.filter(x=>milftEventRootId(x)===milftEventRootId(t));
+ const ids=[...new Set(linked.flatMap(x=>(x.tables||[]).map(y=>String(y.id))))];
+ let moved=0;
+ for(const id of ids){
+  const running=linked.reduce((n,x)=>n+(x.matches||[]).filter(m=>m.status==='playing'&&String(m.table)===id).length,0);
+  const preference=linked.flatMap(x=>x.tables||[]).find(x=>String(x.id)===id&&x.milftBracketPreference)?.milftBracketPreference||'auto';
+  const incompatible=linked.some(x=>(x.matches||[]).some(m=>m.status==='playing'&&String(m.table)===id&&!milftTableAllowed(x,id)));
+  if(running>1||incompatible)moved+=milftResolveTableConflict(t,id,preference);
+ }
+ return moved;
+}
 function milftSetBracketPreference(id){
  const t=active(),select=document.getElementById('milft-bracket-pref-'+id);
  if(!t||!select||!['auto','A','B'].includes(select.value)||t.closed||t.abandoned)return;
@@ -1454,7 +1468,7 @@ function historyRenderResults(){const target=document.getElementById('history-re
 
 function historyPage(){const years=[...new Set(db.tournaments.map(t=>historyDate(t).slice(0,4)).filter(Boolean))].sort().reverse();const f=historyFilters;const months=['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];return `<div class="card"><h2>Tournois enregistrés</h2><div id="history-controls"><div class="field"><label for="history-query">Rechercher dans tous les noms</label><input id="history-query" type="search" placeholder="Ex. : DYP, championnat…" value="${esc(f.query)}" oninput="historyUpdate('query',this.value)"></div><div class="grid"><div class="field"><label for="history-status">Filtrer par statut</label><select id="history-status" onchange="historyUpdate('status',this.value)"><option value="" ${f.status===''?'selected':''}>Tous</option>${[['active','En cours'],['finished','Terminés'],['abandoned','Abandonnés']].map(([v,label])=>`<option value="${v}" ${f.status===v?'selected':''}>${label}</option>`).join('')}</select></div><div class="field"><label for="history-sort">Trier par date de création</label><select id="history-sort" onchange="historyUpdate('sort',this.value)"><option value="desc" ${f.sort==='desc'?'selected':''}>Plus récent d'abord</option><option value="asc" ${f.sort==='asc'?'selected':''}>Plus ancien d'abord</option></select></div></div><details><summary>Filtres avancés (année, mois, période)</summary><div class="grid"><div class="field"><label for="history-year">Année</label><select id="history-year" onchange="historyUpdate('year',this.value)"><option value="">Toutes les années</option>${years.map(y=>`<option value="${y}" ${f.year===y?'selected':''}>${y}</option>`).join('')}</select></div><div class="field"><label for="history-month">Mois</label><select id="history-month" onchange="historyUpdate('month',this.value)"><option value="">Tous les mois</option>${months.map((m,i)=>`<option value="${String(i+1).padStart(2,'0')}" ${f.month===String(i+1).padStart(2,'0')?'selected':''}>${m}</option>`).join('')}</select></div><div class="field"><label for="history-from">Du</label><input id="history-from" type="date" value="${f.from}" onchange="historyUpdate('from',this.value)"></div><div class="field"><label for="history-to">Au (inclus)</label><input id="history-to" type="date" value="${f.to}" onchange="historyUpdate('to',this.value)"></div></div></details></div><div class="row between"><span id="history-count" class="muted"></span><button class="mutedbtn" onclick="historyReset()">Effacer les filtres</button></div><p id="history-status-summary" class="muted" aria-live="polite"></p><div id="history-results"></div></div>`}
 
-function openTournament(id){const t=db.tournaments.find(x=>x.id===id);if(!t)return;db.selected=id;save();tab=(t.closed||t.abandoned)?'archive':'live-detail';render();window.scrollTo(0,0)}
+function openTournament(id){const t=db.tournaments.find(x=>x.id===id);if(!t)return;db.selected=id;const reconciled=milftReconcileBracketTables(t);save();tab=(t.closed||t.abandoned)?'archive':'live-detail';if(reconciled)notice=reconciled+' rencontre(s) non prioritaires remises en attente (manches conservées).';render();window.scrollTo(0,0)}
 function milftReopenArchivedTournament(){
  const t=active();if(!t||( !t.closed && !t.abandoned))return;
  const wasAbandoned=!!t.abandoned;
