@@ -857,7 +857,7 @@ function challengeMatchCard(t,m){
  </div>
  <div class="score-preview" id="preview-${m.id}">Score : <b>0 – 0</b></div><button id="validate-set-${m.id}" onclick="addChallengeSet('${m.id}')" disabled>✓ Valider la manche ${current}</button></div></div>
  <div class="row"><button class="mutedbtn" onclick="pauseChallenge('${m.id}')" ${t.closed?'disabled':''}>Mettre en attente</button>${forfaitButton(t,m)}</div>
- <div class="row milft-match-move" style="margin-top:5px"><select id="move-${m.id}" aria-label="Changer de table pour cette rencontre" onchange="milftConfirmMoveMatch('${m.id}')" ${t.closed?'disabled':''}><option value="">Changer de table…</option>${free.map(x=>`<option value="${x.id}">Table ${x.id}</option>`).join('')}</select></div></div>`;
+ <div class="row milft-match-move" style="margin-top:5px"><select id="move-${m.id}" aria-label="Changer de table pour cette rencontre" onchange="milftConfirmMoveMatch('${m.id}')" ${t.closed?'disabled':''}><option value="">${free.length?'Changer de table…':'Aucune autre table libre'}</option>${free.map(x=>`<option value="${x.id}">Table ${x.id}</option>`).join('')}</select></div></div>`;
 }
 function milftScoreChanged(id,side){
  const box=document.querySelector('[data-match="'+id+'"].milft-dual-score');if(!box)return;
