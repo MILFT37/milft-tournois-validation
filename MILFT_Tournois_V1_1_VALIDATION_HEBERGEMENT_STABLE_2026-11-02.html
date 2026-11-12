@@ -1265,12 +1265,38 @@ function milftTableAllowed(t,id){
  const preference=phases.flatMap(x=>x.tables||[]).find(x=>String(x.id)===String(id)&&x.milftBracketPreference)?.milftBracketPreference||'auto';
  return preference==='auto'||(t.mode==='knockout'&&t.bracketLetter===preference);
 }
+function milftResolveTableConflict(t,id,preference){
+ const root=milftEventRootId(t),linked=db.tournaments.filter(x=>milftEventRootId(x)===root);
+ const running=linked.flatMap(phase=>(phase.matches||[]).filter(m=>m.status==='playing'&&String(m.table)===String(id)).map(match=>({phase,match})));
+ if(!running.length)return 0;
+ const eligible=item=>preference==='auto'||(item.phase.mode==='knockout'&&item.phase.bracketLetter===preference);
+ const priority=item=>Number(!!item.match.milftPriority||!!item.match.annualResumePriority);
+ const started=item=>Number(item.match.startedAt)||Number.MAX_SAFE_INTEGER;
+ const ranked=running.slice().sort((a,b)=>priority(b)-priority(a)||Number(eligible(b))-Number(eligible(a))||started(a)-started(b)||String(a.match.id).localeCompare(String(b.match.id)));
+ const winner=ranked.find(eligible);
+ const displaced=running.filter(item=>item!==winner);
+ for(const {phase,match} of displaced){
+  pauseMatchClock(match);match.status='waiting';match.table=null;
+  // Preserve recorded sets, player assignments and priority for a later restart.
+ }
+ for(const phase of linked){
+  const table=phase.tables?.find(x=>String(x.id)===String(id));
+  if(table&&table.state!=='excluded'&&table.state!=='maintenance')table.state=winner?'playing':'free';
+ }
+ return displaced.length;
+}
 function milftSetBracketPreference(id){
  const t=active(),select=document.getElementById('milft-bracket-pref-'+id);
  if(!t||!select||!['auto','A','B'].includes(select.value)||t.closed||t.abandoned)return;
  const root=milftEventRootId(t),linked=db.tournaments.filter(x=>milftEventRootId(x)===root);
+ const previous=linked.flatMap(x=>x.tables||[]).find(x=>String(x.id)===String(id)&&x.milftBracketPreference)?.milftBracketPreference||'auto';
+ const running=linked.flatMap(phase=>(phase.matches||[]).filter(m=>m.status==='playing'&&String(m.table)===String(id)).map(match=>({phase,match})));
+ const compatible=running.filter(item=>select.value==='auto'||(item.phase.mode==='knockout'&&item.phase.bracketLetter===select.value));
+ const toWait=running.length-(compatible.length?1:0);
+ if(toWait&&!confirm('Table '+id+' : '+toWait+' rencontre(s) devront être remises en attente pour respecter la priorité '+(select.value==='auto'?'Auto A/B':'Tableau '+select.value)+'. Les manches saisies seront conservées. Continuer ?')){select.value=previous;return;}
  for(const phase of linked){const table=phase.tables?.find(x=>String(x.id)===String(id));if(table)table.milftBracketPreference=select.value;}
- save();flash('Préférence de la table '+id+' enregistrée : '+(select.value==='auto'?'Auto A/B':'Tableau '+select.value)+'.');
+ const moved=milftResolveTableConflict(t,id,select.value);
+ save();flash('Table '+id+' : '+(select.value==='auto'?'Auto A/B':'Tableau '+select.value)+(moved?' · '+moved+' rencontre(s) remises en attente.':' · Préférence enregistrée.'));
 }
 function milftFreeTables(t){
  const root=milftEventRootId(t);
