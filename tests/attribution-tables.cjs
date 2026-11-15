@@ -20,7 +20,7 @@ console.log('OK syntaxe de '+scripts.length+' scripts embarques; '+Object.keys(c
 const extract=name=>{const start=html.indexOf('function '+name+'(');assert(start>=0,name+' introuvable');const end=html.indexOf('\nfunction ',start+1);return html.slice(start,end<0?undefined:end);};
 const context={db:{tournaments:[]},matchPlayerIds:(t,m)=>[m.a,m.b],participantMembers:(t,id)=>[id],pauseMatchClock:()=>{},Date};
 vm.createContext(context);
-vm.runInContext(['milftEventRootId','milftTableAllowed','busyPlayers','milftAnnualNextMatch','milftFairNextMatch','milftFreeTables','autoAssign','milftResolveTableConflict','milftReconcileBracketTables'].map(extract).join('\n'),context);
+vm.runInContext(['milftEventRootId','milftTableAllowed','busyPlayers','milftAnnualNextMatch','milftFairNextMatch','milftFreeTables','autoAssign','milftResolveTableConflict','milftReconcileBracketTables','milftReconcileLinkedPlayers','milftReleaseSharedTable'].map(extract).join('\n'),context);
 const match=(id,a,b,priority=false,hold=false)=>({id,a,b,status:'waiting',round:1,milftPriority:priority,hold});
 const t={id:'solo',mode:'poules',currentRound:1,roundLimit:2,roster:[],matches:[match('normal','A','B'),match('prioritaire','C','D',true),match('reporte','E','F',true,true)],tables:[{id:1,state:'free'}]};
 context.db.tournaments=[t];context.autoAssign(t);
@@ -355,3 +355,19 @@ assert.strictEqual(resumedA.table,null,'Table liberee apres abandon');
 assert.strictEqual(resumedA.sets[0].b,3,'Manches conservees lors de l abandon');
 assert.strictEqual(closeSaveCount,3,'Une sauvegarde par operation groupee');
 console.log('OK evenement Poules/A/B : cloture protegee, archive, reouverture et abandon sans perte de manches');
+
+/* Regression 15/11 : conflit de joueur sur deux tables detecte meme via l'onglet Poules. */
+const staleRoot={id:'stale-root',mode:'poules',roster:[],matches:[],tables:[1,2].map(id=>({id,state:'playing'}))};
+const staleA={id:'stale-A',sourceId:'stale-root',mode:'knockout',bracketLetter:'A',roster:[],tables:[1,2].map(id=>({id,state:'playing'})),matches:[{id:'stale-a',a:'P1',b:'P2',status:'playing',table:1,startedAt:10,milftLaunchedPriority:true,milftLaunchedPriorityAt:5,sets:[{a:5,b:4}]}]};
+const staleB={id:'stale-B',sourceId:'stale-root',mode:'knockout',bracketLetter:'B',roster:[],tables:[1,2].map(id=>({id,state:'playing'})),matches:[{id:'stale-b',a:'P1',b:'P3',status:'playing',table:2,startedAt:20,sets:[{a:5,b:3}]}]};
+context.db.tournaments=[staleRoot,staleA,staleB];
+assert.strictEqual(context.milftReconcileBracketTables(staleRoot),1,'Conflit de joueur non detecte depuis les poules');
+assert.strictEqual(staleA.matches[0].status,'playing','La rencontre prioritaire A doit rester en jeu');
+assert.strictEqual(staleB.matches[0].status,'waiting','La rencontre concurrente B doit etre mise en attente');
+assert.strictEqual(staleB.matches[0].table,null,'Table B non liberee apres conflit de joueur');
+assert.strictEqual(staleB.matches[0].sets[0].b,3,'Manches B effacees lors de la reconciliation');
+assert.strictEqual(staleB.tables[1].state,'free','Table 2 non synchronisee apres conflit');
+const archivedStale={id:'stale-archive',sourceId:'stale-root',mode:'knockout',closed:true,roster:[],tables:[1,2].map(id=>({id,state:'playing'})),matches:[{id:'stale-old',a:'P4',b:'P5',status:'playing',table:2}]};
+context.db.tournaments.push(archivedStale);
+assert.deepStrictEqual(Array.from(context.milftFreeTables(staleB),x=>x.id),[2],'Phase deja archivee bloque une table libre');
+console.log('OK ancienne sauvegarde : reconciliation par Poules et joueurs concurrents sur tables distinctes');
