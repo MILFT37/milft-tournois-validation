@@ -409,3 +409,20 @@ assert.strictEqual(historyDb.tournaments[0].id,'hist-other','Suppression groupee
 assert.strictEqual(historySaves,1,'Suppression groupee doit sauvegarder une seule fois');
 assert.strictEqual(historyConfirms,1,'Confirmation initiale obligatoire');
 console.log('OK historique : regroupement Poules/A/B, filtres, bilan et suppression protegee');
+
+/* Regression JSON des tables : l'etat physique joue dans A doit etre acceptable dans B. */
+const backupHelpers=new Function(extract('milftBackupEventRootId')+'\n'+extract('milftBackupLinkedTableOccupied')+';return {milftBackupLinkedTableOccupied,milftBackupEventRootId};')();
+const backupRoot={id:'backup-root',mode:'poules',finalPhase:true,finalId:'backup-A',finalBId:'backup-B',matches:[],tables:[{id:2,state:'playing'}]};
+const backupA={id:'backup-A',sourceId:'backup-root',mode:'knockout',bracketLetter:'A',matches:[{status:'playing',table:2}],tables:[{id:2,state:'playing'}]};
+const backupB={id:'backup-B',sourceId:'backup-root',mode:'knockout',bracketLetter:'B',matches:[],tables:[{id:2,state:'playing'}]};
+const backupOther={id:'backup-other',mode:'poules',matches:[],tables:[{id:2,state:'playing'}]};
+const backupPhases=[backupRoot,backupA,backupB,backupOther];
+assert(backupHelpers.milftBackupLinkedTableOccupied(backupB,2,backupPhases),'Restauration refuse la table 2 occupee dans le tableau A');
+assert(backupHelpers.milftBackupLinkedTableOccupied(backupRoot,2,backupPhases),'Restauration refuse la table 2 partagee vue des poules');
+assert(!backupHelpers.milftBackupLinkedTableOccupied(backupOther,2,backupPhases),'Restauration confond deux evenements independants');
+assert(!backupHelpers.milftBackupLinkedTableOccupied(backupB,3,backupPhases),'Une table sans rencontre est marquee occupee');
+assert(!backupHelpers.milftBackupLinkedTableOccupied(backupB,2,[backupRoot,{...backupA,closed:true},backupB]),'Rencontre close ne doit pas occuper une table active');
+const legacyBackupRoot={...backupRoot,id:'old-backup',finalId:'old-final',finalBId:'old-B',date:'2026-11-08',name:'Tournoi historique'};
+const legacyBackupA={...backupA,id:'old-final',sourceId:null,date:legacyBackupRoot.date,name:'Tournoi historique — Tableau A'};
+assert.strictEqual(backupHelpers.milftBackupEventRootId(legacyBackupA,[legacyBackupRoot,legacyBackupA]),'old-backup','Lien ancien finalId ignore au moment de restaurer');
+console.log('OK sauvegarde JSON : tables physiques partagees, independance et liens historiques');
