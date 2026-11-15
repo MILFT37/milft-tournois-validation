@@ -2083,6 +2083,23 @@ async function milftMergeAnnualBackup(input){
   flash(additions.length+' championnat(s) annuel(s) intégré(s). Sauvegarde de secours : '+protection.protectedId);
  }catch(e){alert('Import sélectif annulé : '+e.message);}
 }
+// Utilisé UNIQUEMENT pour valider un JSON avant restauration : ne dépend pas de la base locale active.
+function milftBackupEventRootId(t,tournaments){
+ if(t.sourceId&&tournaments.some(x=>x.id===t.sourceId))return t.sourceId;
+ const parent=tournaments.find(x=>x.id!==t.id&&(x.finalId===t.id||x.finalBId===t.id));
+ if(parent)return parent.id;
+ if(t.mode==='knockout'&&t.bracketLetter&&t.date){
+  const base=String(t.name||'').replace(/\s*[—–-]\s*Tableau\s+[AB]\s*$/i,'').trim();
+  const original=tournaments.find(x=>x.mode==='poules'&&x.date===t.date&&String(x.name||'').trim()===base&&x.finalPhase);
+  if(original)return original.id;
+ }
+ return t.id;
+}
+function milftBackupLinkedTableOccupied(t,tableId,tournaments){
+ const root=milftBackupEventRootId(t,tournaments);
+ return tournaments.some(phase=>phase.id!==t.id&&!phase.closed&&!phase.abandoned&&milftBackupEventRootId(phase,tournaments)===root&&
+  (phase.matches||[]).some(m=>m.status==='playing'&&m.table!=null&&String(m.table)===String(tableId)));
+}
 async function milftImportBackup(input){
  const file=input.files&&input.files[0];input.value='';if(!file)return;
  try{
@@ -2140,7 +2157,7 @@ async function milftImportBackup(input){
      throw Error('Rencontre terminée ou en attente encore affectée à une table.');
     }
    }
-   if(t.tables.some(x=>x.state==='playing'&&!occupied.has(String(x.id))))throw Error('Table indiquée occupée sans rencontre en cours.');
+   if(t.tables.some(x=>x.state==='playing'&&!occupied.has(String(x.id))&&!milftBackupLinkedTableOccupied(t,x.id,migrated.tournaments)))throw Error('Table indiquée occupée sans rencontre en cours dans les phases liées.');
    // Un joueur ne peut participer à deux rencontres simultanées.
    // Monster DYP : les participants sont dans teamA/teamB, et non dans a/b.
    // Double fixe : a/b désignent des équipes dont on contrôle les deux membres.
