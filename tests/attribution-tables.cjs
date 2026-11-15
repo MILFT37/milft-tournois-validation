@@ -426,3 +426,36 @@ const legacyBackupRoot={...backupRoot,id:'old-backup',finalId:'old-final',finalB
 const legacyBackupA={...backupA,id:'old-final',sourceId:null,date:legacyBackupRoot.date,name:'Tournoi historique — Tableau A'};
 assert.strictEqual(backupHelpers.milftBackupEventRootId(legacyBackupA,[legacyBackupRoot,legacyBackupA]),'old-backup','Lien ancien finalId ignore au moment de restaurer');
 console.log('OK sauvegarde JSON : tables physiques partagees, independance et liens historiques');
+
+/* Regression Course aux points simple : relais, cloture et reouverture. */
+const capSimpleCanClose=new Function('capCompScore','milftHasPendingStages',extract('milftCanClose')+';return milftCanClose')(
+ m=>m?.relays?.length?m.relays[m.relays.length-1]:null,()=>false
+);
+const relayCases=[
+ {name:'termines',targets:[5,10,15],relays:[{a:5,b:3},{a:10,b:6},{a:15,b:10}],expected:true},
+ {name:'un relais manquant',targets:[5,10],relays:[{a:5,b:3}],expected:false},
+ {name:'un relais de trop',targets:[5],relays:[{a:5,b:3},{a:5,b:3}],expected:false},
+ {name:'score regressif',targets:[5,10],relays:[{a:5,b:2},{a:4,b:8}],expected:false},
+ {name:'score hors palier',targets:[5],relays:[{a:6,b:3}],expected:false},
+ {name:'score fractionnaire',targets:[5],relays:[{a:4.5,b:3}],expected:false},
+ {name:'relais nul',targets:[5],relays:[null],expected:false},
+ {name:'aucun relais',targets:[],relays:[],expected:false}
+];
+for(const tc of relayCases)
+ assert.strictEqual(capSimpleCanClose({mode:'cap',cap:{targets:tc.targets,relays:tc.relays},matches:[]}),tc.expected,'Course aux points : '+tc.name);
+let capSimpleAlerts=[],capSimpleSaves=0;
+const capSimpleState={mode:'cap',cap:{targets:[5,10],relays:[{a:5,b:3}]},closed:false};
+const capSimpleClose=new Function('active','milftCanClose','alert','save','flash',
+ extract('capClose')+';return capClose')(
+ ()=>capSimpleState,capSimpleCanClose,s=>capSimpleAlerts.push(s),()=>capSimpleSaves++,()=>{}
+);
+capSimpleClose();
+assert.strictEqual(capSimpleSaves,0,'CAP simple : cloture incomplete non bloquee');
+assert.strictEqual(capSimpleState.closed,false,'CAP simple : archive prematuree');
+capSimpleState.cap.relays.push({a:10,b:7});
+capSimpleClose();
+assert.strictEqual(capSimpleState.closed,true,'CAP simple : cloture valide refusee');
+capSimpleClose();
+assert.strictEqual(capSimpleState.closed,false,'CAP simple : reouverture impossible');
+assert.strictEqual(capSimpleSaves,2,'CAP simple : persistance cloture / reouverture');
+console.log('OK Course aux points simple : huit etats de relais, cloture protegee et reouverture');
