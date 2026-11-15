@@ -5,6 +5,7 @@ on:
     paths:
       - 'MILFT_Tournois_V1_1_VALIDATION_HEBERGEMENT_STABLE_2026-11-02.html'
       - 'tests/attribution-tables.cjs'
+      - 'tests/backup-restore.cjs'
       - '.github/workflows/attribution-tables.yml'
   workflow_dispatch:
 jobs:
@@ -16,4 +17,6 @@ jobs:
         with:
           node-version: '22'
       - name: Syntaxe JS et controles attribution
-        run: node tests/attribution-tables.cjs
+        run: |
+          node tests/attribution-tables.cjs
+          node tests/backup-restore.cjs
