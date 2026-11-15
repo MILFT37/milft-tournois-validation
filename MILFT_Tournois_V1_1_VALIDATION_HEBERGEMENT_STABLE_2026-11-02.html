@@ -885,6 +885,25 @@ function challengeLive(t){const done=t.matches.filter(m=>m.status==='done').leng
 function toggleClosed(){
  const t=active();if(!t)return;
  if(t.abandoned){if(!confirm('Rouvrir ce tournoi abandonné et reprendre les rencontres restantes ?'))return;t.abandoned=false;t.closed=false;tab='live-detail';save();flash('Tournoi rouvert.');return;}
+ const linked=db.tournaments.filter(x=>milftEventRootId(x)===milftEventRootId(t));
+ if(linked.length>1){
+  const eligible=linked.filter(x=>!x.abandoned);
+  const allClosed=eligible.every(x=>x.closed);
+  if(!allClosed){
+   const incomplete=eligible.filter(x=>!x.closed&&!milftCanClose(x));
+   if(incomplete.length){
+    alert('Clôture impossible : '+incomplete.length+' phase(s) de cet événement ne sont pas terminées. Termine les rencontres et les tours restants avant de clôturer Poules / A / B.');
+    return;
+   }
+   if(!confirm('Terminer et archiver toutes les phases de cet événement (Poules et tableaux A/B) ? Les résultats et les classements seront conservés.'))return;
+   for(const phase of eligible)phase.closed=true;
+   tab='history';save();flash('Événement complet terminé et archivé.');return;
+  }
+  if(!confirm('Rouvrir toutes les phases de cet événement ? Les classements redeviendront provisoires.'))return;
+  for(const phase of eligible)phase.closed=false;
+  tab='live-detail';save();flash('Événement rouvert : Poules et tableaux.');return;
+ }
+
  if(!t.closed){
   const unfinished=t.matches.filter(m=>m.status!=='done');
   if(unfinished.length)return alert('Clôture impossible : '+unfinished.length+' rencontre(s) restent à terminer. Tu peux les jouer ou les corriger avant de clôturer.');
@@ -1511,14 +1530,15 @@ function openTournament(id){const t=db.tournaments.find(x=>x.id===id);if(!t)retu
 function milftReopenArchivedTournament(){
  const t=active();if(!t||( !t.closed && !t.abandoned))return;
  const wasAbandoned=!!t.abandoned;
+ const linked=db.tournaments.filter(x=>milftEventRootId(x)===milftEventRootId(t));
  const capSimple=t.mode==='cap'&&!t.cap?.competition;
  const subject=capSimple?'cette course aux points':t.cap?.competition?'cette compétition':t.mode==='challenge'?'ce championnat':'ce tournoi';
  const remaining=capSimple?Math.max(0,(t.cap?.targets?.length||0)-(t.cap?.relays?.length||0)):null;
- if(!confirm(wasAbandoned
+ if(!confirm(linked.length>1?'Rouvrir toutes les phases liées de cet événement (Poules et tableaux A/B) ? Les rencontres et résultats seront conservés.':wasAbandoned
    ?'Rouvrir '+subject+' abandonné'+(capSimple||t.cap?.competition?'e':'')+' et reprendre '+(capSimple?'les '+remaining+' relais restants':'les rencontres restantes')+' ?'
    :'Rouvrir '+subject+' terminé'+(capSimple||t.cap?.competition?'e':'')+' ? Son classement redeviendra provisoire.'))return;
- t.closed=false;t.abandoned=false;
- tab='live-detail';save();flash('Tournoi rouvert.');
+ for(const phase of linked.length>1?linked:[t]){phase.closed=false;phase.abandoned=false;}
+ tab='live-detail';save();flash(linked.length>1?'Événement complet rouvert.':'Tournoi rouvert.');
 }
 function milftArchiveLinkedPhases(t){
  const root=milftEventRootId(t);
@@ -1527,7 +1547,22 @@ function milftArchiveLinkedPhases(t){
  return '<div class="milft-phase-list-nav row" style="gap:8px;flex-wrap:wrap;margin:12px 0"><strong style="width:100%">Autres phases de cet événement</strong>'+phases.map(x=>'<button type="button" class="mutedbtn" onclick="openTournament(\''+x.id+'\')">'+(x.mode==='poules'?'Poules':x.bracketLetter?'Tableau '+x.bracketLetter:'Phase liée')+(x.closed?' ✓':' · Reprendre')+'</button>').join('')+'</div>';
 }
 function archivePage(){const t=active();if(!t)return historyPage();return `<div class="card"><button class="mutedbtn" onclick="setTab('history')">← Retour à l'historique</button><h2>${title(t)}</h2><p><b>${t.abandoned?'Abandonné':'Terminé'}</b> • ${t.mode==='cap'&&!t.cap?.competition?`${t.cap?.relays?.length||0}/${t.cap?.targets?.length||0} relais`:`${(t.cap?.competition?t.cap.matches:t.matches).filter(m=>m.status==='done').length}/${(t.cap?.competition?t.cap.matches:t.matches).length} rencontres`}</p><p class="muted">Cette compétition est archivée et ne figure plus parmi les tournois en cours.</p>${milftArchiveLinkedPhases(t)}<button class="mutedbtn" onclick="milftReopenArchivedTournament()">Rouvrir ${t.mode==='challenge'?'le championnat':'le tournoi'}</button>${t.abandoned?` <button class="danger" onclick="deleteTournament('${t.id}')">Supprimer définitivement</button>`:''}</div>`;}
-function abandonTournament(){const t=active();if(!t||t.closed)return;const capSimple=t.mode==='cap'&&!t.cap?.competition;const remaining=capSimple?Math.max(0,(t.cap?.targets?.length||0)-(t.cap?.relays?.length||0)):(t.cap?.competition?t.cap.matches:t.matches).filter(m=>m.status!=='done').length;if(!confirm('Abandonner « '+t.name+' » ?\n'+remaining+(capSimple?' relais non terminé(s).':' rencontre(s) non terminée(s).')+'\nLes résultats déjà saisis seront conservés, sans classement définitif. Le tournoi restera dans l’historique.'))return;const answer=prompt('Dernière confirmation pour « '+t.name+' » : écris OK pour confirmer (ou Annuler).');if(answer===null)return;if(answer?.trim().toUpperCase()!=='OK'){alert('Abandon annulé : saisis OK pour confirmer.');return;}for(const m of t.matches){if(m.status==='playing'){pauseMatchClock(m);m.status='waiting';m.table=null;}}if(t.cap?.competition){for(const m of t.cap.matches||[]){if(m.status==='playing'){m.status='waiting';m.tableId=null;}}}for(const table of t.tables||[]){if(table.state==='playing')table.state='free';}t.abandoned=true;t.closed=true;db.selected=db.tournaments.find(x=>!x.closed&&!x.abandoned)?.id||null;tab='live';save();flash('Tournoi abandonné et archivé. Il peut être rouvert depuis l’historique.');}
+function abandonTournament(){const t=active();if(!t||t.closed)return;
+const linked=db.tournaments.filter(x=>milftEventRootId(x)===milftEventRootId(t));
+if(linked.length>1){
+ const remaining=linked.reduce((n,phase)=>n+(phase.matches||[]).filter(m=>m.status!=='done').length,0);
+ if(!confirm('Abandonner tout cet événement, y compris les poules et les tableaux A/B ?\n'+remaining+' rencontre(s) non terminée(s).\nLes manches et résultats déjà saisis seront conservés dans l’historique.'))return;
+ const answer=prompt('Dernière confirmation pour tout cet événement : écris OK (ou Annuler).');
+ if(answer===null)return;
+ if(answer.trim().toUpperCase()!=='OK'){alert('Abandon annulé : saisis OK pour confirmer.');return;}
+ for(const phase of linked){
+  for(const m of phase.matches||[]){if(m.status==='playing'){pauseMatchClock(m);m.status='waiting';m.table=null;}}
+  for(const table of phase.tables||[]){if(table.state==='playing')table.state='free';}
+  phase.abandoned=true;phase.closed=true;
+ }
+ db.selected=db.tournaments.find(x=>!x.closed&&!x.abandoned)?.id||null;tab='live';save();flash('Événement complet abandonné et archivé. Résultats conservés.');return;
+}
+const capSimple=t.mode==='cap'&&!t.cap?.competition;const remaining=capSimple?Math.max(0,(t.cap?.targets?.length||0)-(t.cap?.relays?.length||0)):(t.cap?.competition?t.cap.matches:t.matches).filter(m=>m.status!=='done').length;if(!confirm('Abandonner « '+t.name+' » ?\n'+remaining+(capSimple?' relais non terminé(s).':' rencontre(s) non terminée(s).')+'\nLes résultats déjà saisis seront conservés, sans classement définitif. Le tournoi restera dans l’historique.'))return;const answer=prompt('Dernière confirmation pour « '+t.name+' » : écris OK pour confirmer (ou Annuler).');if(answer===null)return;if(answer?.trim().toUpperCase()!=='OK'){alert('Abandon annulé : saisis OK pour confirmer.');return;}for(const m of t.matches){if(m.status==='playing'){pauseMatchClock(m);m.status='waiting';m.table=null;}}if(t.cap?.competition){for(const m of t.cap.matches||[]){if(m.status==='playing'){m.status='waiting';m.tableId=null;}}}for(const table of t.tables||[]){if(table.state==='playing')table.state='free';}t.abandoned=true;t.closed=true;db.selected=db.tournaments.find(x=>!x.closed&&!x.abandoned)?.id||null;tab='live';save();flash('Tournoi abandonné et archivé. Il peut être rouvert depuis l’historique.');}
 function deleteTournament(id){const t=db.tournaments.find(x=>x.id===id);if(!t)return;if(!confirm('Supprimer définitivement « '+t.name+' » et tous ses résultats ?\nCette action est irréversible.'))return;const answer=prompt('Dernière confirmation : écris SUPPRIMER en majuscules pour effacer ce tournoi.');if(answer!=='SUPPRIMER')return alert('Suppression annulée.');for(const table of t.tables||[]){if(table.state==='playing')table.state='free';}db.tournaments=db.tournaments.filter(x=>x.id!==id);if(db.selected===id)db.selected=db.tournaments.find(x=>!x.closed&&!x.abandoned)?.id||null;save();flash('Tournoi supprimé définitivement. Les joueurs sont conservés.');}
 
 
