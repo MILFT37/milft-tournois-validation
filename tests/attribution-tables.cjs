@@ -186,7 +186,7 @@ const archiveEnd=html.indexOf('\nfunction archivePage()',archiveStart);
 assert(archiveStart>=0&&archiveEnd>archiveStart,'Navigation des phases archivees absente');
 const archiveSource=html.slice(archiveStart,archiveEnd);
 assert(archiveSource.includes('milftEventRootId(x)===root'),'Archives : regroupement evenement manquant');
-assert(archiveSource.includes('!x.abandoned'),'Archives : phase abandonnee proposee');
+assert(archiveSource.includes("x.abandoned?' · Abandonné'"),'Archives : les phases abandonnees doivent etre identifiees dans l historique');
 assert(archiveSource.includes("openTournament("),'Archives : acces aux autres phases absent');
 assert(html.slice(archiveEnd,archiveEnd+1400).includes('${milftArchiveLinkedPhases(t)}'),'Archives : navigation non affichee');
 console.log('OK archives : navigation vers phases liees sans afficher les phases abandonnees');
@@ -371,3 +371,41 @@ const archivedStale={id:'stale-archive',sourceId:'stale-root',mode:'knockout',cl
 context.db.tournaments.push(archivedStale);
 assert.deepStrictEqual(Array.from(context.milftFreeTables(staleB),x=>x.id),[2],'Phase deja archivee bloque une table libre');
 console.log('OK ancienne sauvegarde : reconciliation par Poules et joueurs concurrents sur tables distinctes');
+
+/* Regression 15/11 : historique regroupe, filtres au niveau evenement et suppression sans orphelins. */
+const historyDb={selected:'hist-A',tournaments:[
+ {id:'hist-root',mode:'poules',name:'Evenement regroupe',date:'2026-11-15',roster:[],tables:[],matches:[{status:'done'}],closed:true},
+ {id:'hist-A',sourceId:'hist-root',mode:'knockout',bracketLetter:'A',name:'Evenement regroupe - A',date:'2026-11-15',roster:[],tables:[],matches:[{status:'done'}],closed:true},
+ {id:'hist-B',sourceId:'hist-root',mode:'knockout',bracketLetter:'B',name:'Evenement regroupe - B',date:'2026-11-15',roster:[],tables:[],matches:[{status:'done'}],closed:true},
+ {id:'hist-other',mode:'monster',name:'Autonome',date:'2026-11-14',roster:[],tables:[],matches:[{status:'waiting'}]}
+]};
+const historyElements={'history-results':{innerHTML:''},'history-count':{textContent:''},'history-status-summary':{textContent:''}};
+const historyFiltersTest={query:'',status:'',year:'',month:'',from:'',to:'',sort:'desc'};
+const historyRenderer=new Function('db','document','historyFilters','milftEventRootId','historyMatches','historyCreated','historyDate','title','milftHistoryProgress','milftEventMatches',
+ extract('historyRenderResults')+';return historyRenderResults;')(
+ historyDb,{getElementById:id=>historyElements[id]||null},historyFiltersTest,
+ t=>t.sourceId||t.id,
+ t=>!historyFiltersTest.status||(historyFiltersTest.status==='finished'?!!t.closed&&!t.abandoned:historyFiltersTest.status==='active'?!t.closed&&!t.abandoned:!!t.abandoned),
+ t=>Number(String(t.date||'').replace(/-/g,'')),t=>t.date||'',t=>t.name,
+ t=>(t.matches||[]).filter(m=>m.status==='done').length+'/'+(t.matches||[]).length+' matchs',
+ t=>t.matches||[]
+);
+historyRenderer();
+assert(historyElements['history-count'].textContent.startsWith('2 événement'),'Historique : 4 phases affichees au lieu de 2 evenements');
+assert(historyElements['history-results'].innerHTML.includes('3/3 matchs'),'Historique : bilan global des matchs incomplet');
+historyFiltersTest.status='active';historyRenderer();
+assert(historyElements['history-count'].textContent.startsWith('1 événement'),'Filtre actifs non regroupe');
+historyFiltersTest.status='finished';historyRenderer();
+assert(historyElements['history-count'].textContent.startsWith('1 événement'),'Filtre termines non regroupe');
+let historySaves=0,historyConfirms=0;
+const historyDeletion=new Function('db','milftEventRootId','confirm','prompt','alert','save','flash',
+ extract('deleteTournament')+';return deleteTournament;')(
+ historyDb,t=>t.sourceId||t.id,()=>{historyConfirms++;return true;},()=> 'SUPPRIMER',
+ ()=>{throw Error('Suppression annulee');},()=>historySaves++,()=>{}
+);
+historyDeletion('hist-A');
+assert.strictEqual(historyDb.tournaments.length,1,'Suppression de l evenement laisse des tableaux orphelins');
+assert.strictEqual(historyDb.tournaments[0].id,'hist-other','Suppression groupee touche un tournoi independant');
+assert.strictEqual(historySaves,1,'Suppression groupee doit sauvegarder une seule fois');
+assert.strictEqual(historyConfirms,1,'Confirmation initiale obligatoire');
+console.log('OK historique : regroupement Poules/A/B, filtres, bilan et suppression protegee');
