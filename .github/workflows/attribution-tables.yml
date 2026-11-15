@@ -6,6 +6,7 @@ on:
       - 'MILFT_Tournois_V1_1_VALIDATION_HEBERGEMENT_STABLE_2026-11-02.html'
       - 'tests/attribution-tables.cjs'
       - 'tests/backup-restore.cjs'
+      - 'tests/browser-smoke.cjs'
       - '.github/workflows/attribution-tables.yml'
   workflow_dispatch:
 jobs:
@@ -20,3 +21,16 @@ jobs:
         run: |
           node tests/attribution-tables.cjs
           node tests/backup-restore.cjs
+      - name: Installer Chromium pour la recette visuelle isolée
+        run: |
+          npm install --no-save playwright@1.56.1
+          npx playwright install --with-deps chromium
+      - name: Recette Chromium mobile et PC (données fictives)
+        run: node tests/browser-smoke.cjs
+      - name: Captures de recette automatique
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: milft-historique-chromium
+          path: test-results/*.png
+          if-no-files-found: ignore
