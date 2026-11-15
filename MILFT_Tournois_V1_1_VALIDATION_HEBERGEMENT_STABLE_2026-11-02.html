@@ -1449,6 +1449,16 @@ function autoAssign(t){
 function milftHasPendingStages(t){if(!t||t.closed||t.abandoned)return false;if((t.mode==='poules'||(t.mode==='monster'&&t.monsterMode!=='season'))&&Number(t.roundLimit)>Number(t.currentRound))return true;if(t.mode==='poules'&&t.finalPhase&&!t.finalId)return true;return false;}
 function milftCanClose(t){
  if(!t)return false;
+ if(t.mode==='cap'&&!t.cap?.competition){
+  const c=t.cap;
+  if(!Array.isArray(c?.targets)||!c.targets.length||!Array.isArray(c.relays)||c.relays.length!==c.targets.length)return false;
+  return c.relays.every((r,i)=>{
+   const prev=i?c.relays[i-1]:{a:0,b:0},target=Number(c.targets[i]);
+   return !!r&&Number.isSafeInteger(target)&&target>0&&
+    Number.isSafeInteger(r.a)&&Number.isSafeInteger(r.b)&&
+    r.a>=prev.a&&r.b>=prev.b&&r.a>=0&&r.b>=0&&r.a<=target&&r.b<=target;
+  });
+ }
  if(t.mode==='cap'&&Array.isArray(t.cap?.matches)){
   const c=t.cap,matches=c.matches;
   if(!matches.length||matches.some(m=>m.status!=='done'||!capCompScore(m)))return false;
@@ -2437,7 +2447,7 @@ function milftCapAbandon(){
 function capLive(t){const c=t.cap;if(!c)return '<div class="card">Données de course indisponibles.</div>';capNormalize(c);const s=capTotals(c),i=c.relays.length,goal=c.targets.at(-1),complete=i>=c.targets.length;return `${milftCapUnifiedHeader(t,'Course aux points • rencontre',i+'/'+c.targets.length+' relais • objectif '+goal,'capClose()','Terminer') }<div class="card"><p>${esc(c.teamA)} <b>${s.a} – ${s.b}</b> ${esc(c.teamB)}</p><p class="muted">${c.finish==='draw'?'Égalité autorisée':'Premier à l’objectif'}</p>${complete?'<p><b>Tous les relais sont renseignés.</b></p>':''}</div><div class="card"><h2>Relais</h2>${c.targets.map((p,j)=>{const r=c.relays[j],previous=j?c.relays[j-1]:{a:0,b:0};return `<div class="item"><b>Relais ${j+1} — ${c.types[j]==='S'?'Simple':'Double'} — palier ${p}</b> ${r?`<p>Score cumulé : ${esc(c.teamA)} <b>${r.a}</b> – <b>${r.b}</b> ${esc(c.teamB)}</p><p class="muted">Points dans ce relais : +${r.a-previous.a} / +${r.b-previous.b}</p><button class="mutedbtn" onclick="capEdit(${j})" ${t.closed?'disabled':''}>Corriger</button>`:j===i&&!t.closed?`<p>Score cumulé à la fin de ce relais (départ ${previous.a}–${previous.b})</p><div class="grid"><div class="field"><label>${esc(c.teamA)}</label><input id="cap-a" type="number" min="${previous.a}" max="${p}" value="${previous.a}"></div><div class="field"><label>${esc(c.teamB)}</label><input id="cap-b" type="number" min="${previous.b}" max="${p}" value="${previous.b}"></div></div><button onclick="capRecord()">Enregistrer le relais</button>`:'<p class="muted">En attente</p>'}</div>`}).join('')}</div><div class="card"><h2>Règles de la rencontre</h2><p class="muted">Les paliers et l’ordre des relais sont figés après création pour préserver les résultats. Ils restent personnalisables avant création.</p></div>`}
 function capRecord(){const t=active(),c=t?.cap;if(!c||t.closed||c.relays.length>=c.targets.length)return;capNormalize(c);const a=Number($('cap-a').value),b=Number($('cap-b').value),i=c.relays.length,prev=capTotals(c),limit=c.targets[i];if(!Number.isSafeInteger(a)||!Number.isSafeInteger(b)||a<prev.a||b<prev.b||a>limit||b>limit||(a===prev.a&&b===prev.b))return alert('Saisis les scores cumulés : ils ne peuvent pas diminuer, dépasser le palier ou rester inchangés.');if(Math.max(a,b)<limit&&!(i===c.targets.length-1&&c.finish==='draw'&&a===limit-1&&b===limit-1))return alert('Un club doit atteindre le palier pour terminer ce relais (sauf égalité finale autorisée).');c.relays.push({a,b});save();flash('Relais enregistré.');}
 function capEdit(i){const t=active(),c=t?.cap;if(!c||t.closed||i<0||i>=c.relays.length)return;capNormalize(c);if(i!==c.relays.length-1)return alert('Corrige d’abord les relais suivants, en partant du dernier.');if(!confirm('Retirer le dernier relais pour le ressaisir ?'))return;c.relays.pop();save();flash('Dernier relais prêt à être corrigé.');}
-function capClose(){const t=active();if(!t?.cap)return;if(!t.closed&&t.cap.relays.length!==t.cap.targets.length)return alert('Termine tous les relais avant de clôturer.');t.closed=!t.closed;save();if(t.closed){tab='history';flash('Course aux points terminée.')}else{tab='live-detail';flash('Course aux points rouverte.')}}
+function capClose(){const t=active();if(!t?.cap)return;if(!t.closed&&!milftCanClose(t))return alert('Clôture impossible : termine tous les relais et vérifie les scores cumulés.');t.closed=!t.closed;save();if(t.closed){tab='history';flash('Course aux points terminée.')}else{tab='live-detail';flash('Course aux points rouverte.')}}
 
 // V1.1 TEST — compétitions de clubs (moteur distinct des rencontres CAP historiques).
 const capCompScore=m=>m?.bye?(m.score&&Number.isFinite(m.score.a)&&Number.isFinite(m.score.b)?{a:m.score.a,b:m.score.b}:null):m?.relays?.length?m.relays[m.relays.length-1]:null;
