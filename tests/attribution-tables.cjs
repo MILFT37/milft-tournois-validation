@@ -93,7 +93,7 @@ const canClose=new Function('capCompScore','milftHasPendingStages',canCloseSourc
  ()=>false
 );
 const capMatch=(status,a=30,b=20)=>({status,phase:'groups',relays:[{a,b}]});
-const capBase={mode:'cap',matches:[],cap:{matches:[capMatch('done')],phase:'groups',bracket:false}};
+const capBase={mode:'cap',matches:[],cap:{competition:true,matches:[capMatch('done')],phase:'groups',bracket:false}};
 assert.strictEqual(canClose(capBase),true,'Course aux points finie sans tableau');
 assert.strictEqual(canClose({...capBase,cap:{...capBase.cap,matches:[capMatch('waiting')]}}),false,'Rencontre en attente');
 assert.strictEqual(canClose({...capBase,cap:{...capBase.cap,matches:[{status:'done',phase:'groups',relays:[]}]}}),false,'Score manquant');
