@@ -61,7 +61,7 @@ async function goHistory(page){
 }
 async function checkPage(browser,url,width,height,label){
  const context=await browser.newContext({viewport:{width,height},deviceScaleFactor:2});
- const init='localStorage.setItem('+JSON.stringify(KEY)+','+JSON.stringify(JSON.stringify(fixture))+');';
+ const init='if(!localStorage.getItem('+JSON.stringify(KEY)+'))localStorage.setItem('+JSON.stringify(KEY)+','+JSON.stringify(JSON.stringify(fixture))+');';
  await context.addInitScript({content:init});
  const page=await context.newPage();
  const errors=[];
@@ -73,9 +73,10 @@ async function checkPage(browser,url,width,height,label){
   assert.equal(first,2,label+': quatre phases au lieu de deux événements');
   const count=await page.locator('#history-count').innerText();
   assert.match(count,/2 événements sur 2/,label+': mauvais compteur');
-  const rows=page.locator('#history-results .milft-history-entry');
-  assert.match(await rows.first().innerText(),/Poules \/ Tableau A \/ Tableau B/,label+': phases absentes');
-  assert.match(await rows.first().innerText(),/3\/3 matchs/,label+': total des rencontres erroné');
+  const eventRow=page.locator('#history-results .milft-history-entry').filter({hasText:'Tournoi MILFT'});
+  assert.equal(await eventRow.count(),1,label+': événement regroupé non unique');
+  assert.match(await eventRow.innerText(),/Poules \/ Tableau A \/ Tableau B/,label+': phases absentes');
+  assert.match(await eventRow.innerText(),/3\/3 matchs/,label+': total des rencontres erroné');
   const buttonResult=await page.evaluate(()=>{
    return [...document.querySelectorAll('#history-results .milft-history-actions button')].map(button=>{
     const rect=button.getBoundingClientRect(),style=getComputedStyle(button);
