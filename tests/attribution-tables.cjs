@@ -46,7 +46,7 @@ const sharedDb={tournaments:[
  {id:'A',sourceId:'poules',mode:'knockout',matches:[{status:'playing',a:'J1',b:'J2',table:1}],roster:[],tables:[{id:1,state:'playing'},{id:2,state:'free'}]},
  {id:'B',sourceId:'poules',mode:'knockout',matches:[],roster:[],tables:[{id:1,state:'free'},{id:2,state:'free'}]}
 ]};
-const linked=new Function('db','matchPlayerIds',extract('milftEventRootId')+'\n'+busyFn[0]+'\n'+extract('milftFreeTables')+'\nreturn {busyPlayers,milftFreeTables}')(sharedDb,(t,m)=>[m.a,m.b]);
+const linked=new Function('db','matchPlayerIds',extract('milftEventRootId')+'\n'+extract('milftTableAllowed')+'\n'+busyFn[0]+'\n'+extract('milftFreeTables')+'\nreturn {busyPlayers,milftFreeTables}')(sharedDb,(t,m)=>[m.a,m.b]);
 assert.deepStrictEqual(linked.milftFreeTables(sharedDb.tournaments[2]).map(x=>x.id),[2],'La table 1 est deja occupee par A');
 assert(linked.busyPlayers(sharedDb.tournaments[2]).has('J1'),'Joueur de A non protege dans B');
 console.log('OK protections inter-tableaux : tables et joueurs occupes');
