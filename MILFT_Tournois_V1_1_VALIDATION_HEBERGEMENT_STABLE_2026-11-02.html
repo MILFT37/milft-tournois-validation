@@ -1314,7 +1314,7 @@ function milftReleaseSharedTable(t,id){
  if(id==null)return;
  const root=milftEventRootId(t);
  const phases=(typeof db!=='undefined'&&db.tournaments||[]).filter(x=>milftEventRootId(x)===root);
- if(phases.some(x=>(x.matches||[]).some(m=>m.status==='playing'&&String(m.table)===String(id))))return;
+ if(phases.some(x=>!x.closed&&!x.abandoned&&(x.matches||[]).some(m=>m.status==='playing'&&String(m.table)===String(id))))return;
  for(const phase of phases.length?phases:[t]){const table=phase.tables?.find(y=>String(y.id)===String(id));if(table&&table.state==='playing')table.state='free';}
 }
 function milftTableAllowed(t,id){
@@ -1324,7 +1324,7 @@ function milftTableAllowed(t,id){
 }
 function milftResolveTableConflict(t,id,preference){
  const root=milftEventRootId(t),linked=db.tournaments.filter(x=>milftEventRootId(x)===root);
- const running=linked.flatMap(phase=>(phase.matches||[]).filter(m=>m.status==='playing'&&String(m.table)===String(id)).map(match=>({phase,match})));
+ const running=linked.filter(x=>!x.closed&&!x.abandoned).flatMap(phase=>(phase.matches||[]).filter(m=>m.status==='playing'&&String(m.table)===String(id)).map(match=>({phase,match})));
  if(!running.length)return 0;
  const eligible=item=>preference==='auto'||(item.phase.mode==='knockout'&&item.phase.bracketLetter===preference);
  const priority=item=>Number(!!item.match.milftLaunchedPriority||!!item.match.milftPriority||!!item.match.annualResumePriority);
@@ -1345,15 +1345,47 @@ function milftResolveTableConflict(t,id,preference){
  return displaced.length;
 }
 function milftReconcileBracketTables(t){
- if(!t||t.mode!=='knockout')return 0;
- const linked=db.tournaments.filter(x=>milftEventRootId(x)===milftEventRootId(t));
- const ids=[...new Set(linked.flatMap(x=>(x.tables||[]).map(y=>String(y.id))))];
+ if(!t)return 0;
+ const root=milftEventRootId(t);
+ const phases=db.tournaments.filter(x=>milftEventRootId(x)===root);
+ if(phases.length<2)return 0;
+ const linked=phases.filter(x=>!x.closed&&!x.abandoned);
+ if(!linked.length)return 0;
+ const ids=[...new Set(phases.flatMap(x=>(x.tables||[]).map(y=>String(y.id))))];
  let moved=0;
  for(const id of ids){
   const running=linked.reduce((n,x)=>n+(x.matches||[]).filter(m=>m.status==='playing'&&String(m.table)===id).length,0);
-  const preference=linked.flatMap(x=>x.tables||[]).find(x=>String(x.id)===id&&x.milftBracketPreference)?.milftBracketPreference||'auto';
+  const preference=phases.flatMap(x=>x.tables||[]).find(x=>String(x.id)===id&&x.milftBracketPreference)?.milftBracketPreference||'auto';
   const incompatible=linked.some(x=>(x.matches||[]).some(m=>m.status==='playing'&&String(m.table)===id&&!milftTableAllowed(x,id)));
   if(running>1||incompatible)moved+=milftResolveTableConflict(t,id,preference);
+ }
+ moved+=milftReconcileLinkedPlayers(t,linked);
+ // Aligner les cartes des tables sur les rencontres encore en cours apres reconciliation.
+ for(const id of ids){
+  const occupied=linked.some(x=>(x.matches||[]).some(m=>m.status==='playing'&&String(m.table)===id));
+  for(const phase of phases){
+   const table=phase.tables?.find(y=>String(y.id)===id);
+   if(table&&table.state!=='excluded'&&table.state!=='maintenance')table.state=occupied?'playing':'free';
+  }
+ }
+ return moved;
+}
+function milftReconcileLinkedPlayers(t,linked){
+ const playing=linked.flatMap(phase=>(phase.matches||[]).filter(m=>m.status==='playing').map(match=>({phase,match})));
+ const priority=item=>Number(!!item.match.milftLaunchedPriority||!!item.match.milftPriority||!!item.match.annualResumePriority);
+ const started=item=>Number(item.match.startedAt)||Number.MAX_SAFE_INTEGER;
+ playing.sort((a,b)=>priority(b)-priority(a)||started(a)-started(b)||String(a.match.id).localeCompare(String(b.match.id)));
+ const busy=new Set();let moved=0;
+ for(const {phase,match} of playing){
+  const ids=[...new Set(matchPlayerIds(phase,match).filter(Boolean).map(String))];
+  if(ids.some(id=>busy.has(id))){
+   const oldTable=match.table;
+   pauseMatchClock(match);match.status='waiting';match.table=null;
+   if(match.milftLaunchedPriority){match.milftPriority=true;match.milftPriorityAt=Number(match.milftLaunchedPriorityAt)||Number(match.milftPriorityAt)||Date.now();}
+   match.milftLaunchedPriority=false;match.milftLaunchedPriorityAt=null;
+   milftReleaseSharedTable(t,oldTable);
+   moved++;
+  }else for(const id of ids)busy.add(id);
  }
  return moved;
 }
@@ -1374,7 +1406,7 @@ function milftFreeTables(t){
  const root=milftEventRootId(t);
  const linked=(typeof db!=='undefined'&&db.tournaments||[]).filter(x=>milftEventRootId(x)===root);
  const phases=linked.length?linked:[t];
- const occupied=new Set(phases.flatMap(x=>(x.matches||[]).filter(m=>m.status==='playing'&&m.table!=null).map(m=>String(m.table))));
+ const occupied=new Set(phases.filter(x=>!x.closed&&!x.abandoned).flatMap(x=>(x.matches||[]).filter(m=>m.status==='playing'&&m.table!=null).map(m=>String(m.table))));
  const blocked=new Set(phases.flatMap(x=>(x.tables||[]).filter(y=>y.state==='excluded'||y.state==='maintenance').map(y=>String(y.id))));
  return (t.tables||[]).filter(x=>x.state==='free'&&!occupied.has(String(x.id))&&!blocked.has(String(x.id))&&milftTableAllowed(t,x.id)).sort((a,b)=>{const x=Number(a.id),y=Number(b.id);return Number.isFinite(x)&&Number.isFinite(y)?x-y:String(a.id).localeCompare(String(b.id),undefined,{numeric:true});});
 }
