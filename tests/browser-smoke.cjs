@@ -113,6 +113,58 @@ async function checkPage(browser,url,width,height,label){
   console.log('OK navigateur '+label+' ('+width+'px) : historique, filtres, boutons, suppression et recharge');
  }finally{await context.close();}
 }
+async function checkLiveReload(browser,url){
+ const context=await browser.newContext({viewport:{width:390,height:844},deviceScaleFactor:2});
+ const fixtureLive=clone(fixture);
+ fixtureLive.tournaments=fixtureLive.tournaments.map(x=>clone(x));
+ fixtureLive.tournaments=fixtureLive.tournaments.filter(x=>x.id!=='solo');
+ const pools=fixtureLive.tournaments.find(x=>x.id==='root');
+ const phaseA=fixtureLive.tournaments.find(x=>x.id==='A');
+ const phaseB=fixtureLive.tournaments.find(x=>x.id==='B');
+ pools.closed=true;phaseA.closed=false;phaseB.closed=false;
+ phaseA.matches[0]={id:'A-LIVE',a:'P1',b:'P2',status:'playing',round:1,
+  startedAt:123456,elapsedMs:9000,table:1,sets:[{a:5,b:3}],milftLaunchedPriority:true};
+ phaseB.matches=[{id:'B-WAIT',a:'P3',b:'P4',status:'waiting',round:1,sets:[]}];
+ for(const phase of [pools,phaseA,phaseB]){
+  phase.tables=[{id:1,state:'playing'},{id:2,state:'free'}];
+ }
+ fixtureLive.selected='B';
+ await context.addInitScript({content:'if(!localStorage.getItem('+JSON.stringify(KEY)+'))localStorage.setItem('+
+  JSON.stringify(KEY)+','+JSON.stringify(JSON.stringify(fixtureLive))+');'});
+ const page=await context.newPage();
+ const errors=[];page.on('pageerror',error=>errors.push(error.message));
+ try{
+  await page.goto(url,{waitUntil:'domcontentloaded'});
+  const previous=await page.evaluate(()=>{
+   const b=db.tournaments.find(x=>x.id==='B');
+   const free=milftFreeTables(b).map(x=>x.id);
+   autoAssign(b);save();
+   const a=db.tournaments.find(x=>x.id==='A');
+   return {free,aStatus:a.matches[0].status,aSets:a.matches[0].sets,
+    aTable:a.matches[0].table,bStatus:b.matches[0].status,bTable:b.matches[0].table};
+  });
+  assert.deepEqual(previous.free,[2],'La table 1 de A est encore proposée à B');
+  assert.equal(previous.aStatus,'playing','A a été interrompu à tort');
+  assert.equal(previous.aSets[0].a,5,'Manche du tableau A altérée');
+  assert.equal(previous.bStatus,'playing','B non attribué à la table disponible');
+  assert.equal(previous.bTable,2,'B attribué sur la table occupée');
+  await page.reload({waitUntil:'domcontentloaded'});
+  const restored=await page.evaluate(key=>{
+   const saved=JSON.parse(localStorage.getItem(key));
+   const a=saved.tournaments.find(x=>x.id==='A'),b=saved.tournaments.find(x=>x.id==='B');
+   return {aStatus:a.matches[0].status,aSets:a.matches[0].sets,bStatus:b.matches[0].status,
+    bTable:b.matches[0].table,actualDbMatches:db.tournaments.find(x=>x.id==='B').matches.length};
+  },KEY);
+  assert.equal(restored.aStatus,'playing','A perdu après rechargement');
+  assert.equal(restored.aSets[0].b,3,'Manche A perdue après rechargement');
+  assert.equal(restored.bStatus,'playing','B perdu après rechargement');
+  assert.equal(restored.bTable,2,'Table B perdue après rechargement');
+  assert.equal(restored.actualDbMatches,1,'La base chargée ne retrouve pas la rencontre B');
+  assert.deepEqual(errors,[],'Erreurs JavaScript en rechargement A/B');
+  console.log('OK navigateur mobile : attribution inter-phases, conservation manches et recharge');
+ }finally{await context.close();}
+}
+
 async function main(){
  const {server,url}=await serveLocal();let browser;
  try{
@@ -120,6 +172,7 @@ async function main(){
   for(const [width,height,label] of [[360,800,'mobile-360'],[390,844,'mobile-390'],[1280,800,'pc-1280']]){
    await checkPage(browser,url,width,height,label);
   }
+  await checkLiveReload(browser,url);
  }finally{
   if(browser)await browser.close();
   await new Promise(resolve=>server.close(resolve));
