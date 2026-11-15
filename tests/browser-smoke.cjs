@@ -99,6 +99,20 @@ async function checkPage(browser,url,width,height,label){
   await page.selectOption('#history-status','');
   fs.mkdirSync(path.join(ROOT,'test-results'),{recursive:true});
   await page.screenshot({path:path.join(ROOT,'test-results','historique-'+label+'.png'),fullPage:true});
+  // Le refus à chacune des deux confirmations doit préserver toutes les données.
+  const beforeDeletion=await page.evaluate(key=>localStorage.getItem(key),KEY);
+  await page.evaluate(()=>{
+   window.confirm=()=>false;window.prompt=()=> 'SUPPRIMER';
+   deleteTournament('A');
+  });
+  assert.equal(await page.evaluate(key=>localStorage.getItem(key),KEY),beforeDeletion,
+   label+': suppression malgré annulation à la première confirmation');
+  await page.evaluate(()=>{
+   window.confirm=()=>true;window.prompt=()=>null;
+   deleteTournament('A');
+  });
+  assert.equal(await page.evaluate(key=>localStorage.getItem(key),KEY),beforeDeletion,
+   label+': suppression malgré annulation à la deuxième confirmation');
   // Suppression simulée dans un stockage temporaire créé pour ce test uniquement.
   await page.evaluate(()=>{
    window.confirm=()=>true;window.prompt=()=> 'SUPPRIMER';
