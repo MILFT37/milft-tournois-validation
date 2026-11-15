@@ -314,3 +314,44 @@ assert.strictEqual(requeued.status,'playing','La priorite la plus ancienne doit 
 assert.strictEqual(nextPriority.status,'waiting','Une priorite ulterieure doit attendre une table');
 assert.strictEqual([ ...conflictA.matches,...conflictB.matches].filter(m=>m.status==='playing'&&m.table===1).length,1,'Une seule rencontre doit occuper la table 1');
 console.log('OK regression A/B : conflit historique, scores conserves, date de priorite et redemarrage dans l ordre');
+
+/* Regression 15/11 : cloture, reouverture et abandon d'un evenement Poules/A/B sans perte de manches. */
+const linkedCloseDb={selected:'close-A',tournaments:[
+ {id:'close-root',mode:'poules',finalPhase:true,finalId:'close-A',finalBId:'close-B',currentRound:1,roundLimit:1,matches:[{id:'pool-done',status:'done'}],tables:[{id:1,state:'free'}]},
+ {id:'close-A',sourceId:'close-root',mode:'knockout',bracketLetter:'A',matches:[{id:'A-done',status:'done',sets:[{a:5,b:3}]}],tables:[{id:1,state:'free'}]},
+ {id:'close-B',sourceId:'close-root',mode:'knockout',bracketLetter:'B',matches:[{id:'B-waiting',status:'waiting'}],tables:[{id:1,state:'free'}]}
+]};
+let closeSaveCount=0,closeAlerts=[],closeConfirms=0;
+const lifecycle=new Function('db','active','confirm','alert','save','flash','prompt','pauseMatchClock','capCompScore',
+ 'let tab="live-detail";\n'+
+ extract('milftEventRootId')+'\n'+extract('milftHasPendingStages')+'\n'+extract('milftCanClose')+'\n'+
+ extract('toggleClosed')+'\n'+extract('abandonTournament')+'\n'+extract('milftReopenArchivedTournament')+
+ ';return {toggleClosed,abandonTournament,milftReopenArchivedTournament};')(
+ linkedCloseDb,
+ ()=>linkedCloseDb.tournaments.find(x=>x.id===linkedCloseDb.selected),
+ ()=>{closeConfirms++;return true;},
+ message=>closeAlerts.push(message),
+ ()=>closeSaveCount++,
+ ()=>{},
+ ()=> 'OK',
+ ()=>{},
+ ()=>null
+);
+lifecycle.toggleClosed();
+assert.strictEqual(closeSaveCount,0,'Cloture interdite si B encore en attente');
+assert.strictEqual(closeAlerts.length,1,'Alerte de phase inachevee obligatoire');
+assert(linkedCloseDb.tournaments.every(x=>!x.closed),'Cloture partielle interdite');
+linkedCloseDb.tournaments[2].matches[0].status='done';
+lifecycle.toggleClosed();
+assert.strictEqual(closeSaveCount,1,'Sauvegarde unique lors de la cloture groupee');
+assert(linkedCloseDb.tournaments.every(x=>x.closed),'Toutes les phases doivent etre archivees');
+lifecycle.milftReopenArchivedTournament();
+assert(linkedCloseDb.tournaments.every(x=>!x.closed),'Reouverture de toutes les phases liees obligatoire');
+const resumedA=linkedCloseDb.tournaments[1].matches[0];resumedA.status='playing';resumedA.table=1;linkedCloseDb.tournaments[1].tables[0].state='playing';
+lifecycle.abandonTournament();
+assert(linkedCloseDb.tournaments.every(x=>x.closed&&x.abandoned),'Abandon groupe de toutes les phases');
+assert.strictEqual(resumedA.status,'waiting','Match lance remis en attente lors de l abandon');
+assert.strictEqual(resumedA.table,null,'Table liberee apres abandon');
+assert.strictEqual(resumedA.sets[0].b,3,'Manches conservees lors de l abandon');
+assert.strictEqual(closeSaveCount,3,'Une sauvegarde par operation groupee');
+console.log('OK evenement Poules/A/B : cloture protegee, archive, reouverture et abandon sans perte de manches');
