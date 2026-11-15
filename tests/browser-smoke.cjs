@@ -179,6 +179,26 @@ async function checkLiveReload(browser,url){
  }finally{await context.close();}
 }
 
+async function checkEmptyNavigation(browser,url){
+ const context=await browser.newContext({viewport:{width:390,height:844},deviceScaleFactor:2});
+ const page=await context.newPage();
+ const errors=[];page.on('pageerror',e=>errors.push(e.message));
+ try{
+  const base=url.replace(HTML,'index.html');
+  await page.goto(base,{waitUntil:'domcontentloaded'});
+  await page.waitForURL(candidate=>candidate.pathname.endsWith('/'+HTML),{timeout:10000});
+  const labels=['Accueil','Joueurs','Nouveau tournoi','Tournoi en cours','Historique','Simulation','Avancement'];
+  for(const label of labels){
+   const tab=page.locator('#tabs button').filter({hasText:label});
+   assert.equal(await tab.count(),1,'Navigation : onglet absent '+label);
+   await tab.click();
+   assert(await page.locator('#view').innerText()!=='','Page vide : '+label);
+  }
+  assert.deepEqual(errors,[],'Erreur JavaScript en première ouverture : '+errors.join('; '));
+  console.log('OK navigateur mobile : index.html, installation vide et 7 menus');
+ }finally{await context.close();}
+}
+
 async function main(){
  const {server,url}=await serveLocal();let browser;
  try{
@@ -187,6 +207,7 @@ async function main(){
    await checkPage(browser,url,width,height,label);
   }
   await checkLiveReload(browser,url);
+  await checkEmptyNavigation(browser,url);
  }finally{
   if(browser)await browser.close();
   await new Promise(resolve=>server.close(resolve));
