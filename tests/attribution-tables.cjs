@@ -18,9 +18,9 @@ const checks={
 for(const [name,ok] of Object.entries(checks)){console.log((ok?'OK ':'ECHEC ')+name);assert(ok,name);}
 console.log('OK syntaxe de '+scripts.length+' scripts embarques; '+Object.keys(checks).length+' controles statiques.');
 const extract=name=>{const start=html.indexOf('function '+name+'(');assert(start>=0,name+' introuvable');const end=html.indexOf('\nfunction ',start+1);return html.slice(start,end<0?undefined:end);};
-const context={db:{tournaments:[]},matchPlayerIds:(t,m)=>[m.a,m.b],participantMembers:(t,id)=>[id],Date};
+const context={db:{tournaments:[]},matchPlayerIds:(t,m)=>[m.a,m.b],participantMembers:(t,id)=>[id],pauseMatchClock:()=>{},Date};
 vm.createContext(context);
-vm.runInContext(['milftEventRootId','busyPlayers','milftAnnualNextMatch','milftFairNextMatch','milftFreeTables','autoAssign'].map(extract).join('\n'),context);
+vm.runInContext(['milftEventRootId','milftTableAllowed','busyPlayers','milftAnnualNextMatch','milftFairNextMatch','milftFreeTables','autoAssign','milftResolveTableConflict','milftReconcileBracketTables'].map(extract).join('\n'),context);
 const match=(id,a,b,priority=false,hold=false)=>({id,a,b,status:'waiting',round:1,milftPriority:priority,hold});
 const t={id:'solo',mode:'poules',currentRound:1,roundLimit:2,roster:[],matches:[match('normal','A','B'),match('prioritaire','C','D',true),match('reporte','E','F',true,true)],tables:[{id:1,state:'free'}]};
 context.db.tournaments=[t];context.autoAssign(t);
@@ -291,3 +291,26 @@ assert.strictEqual(winnerButtons[0]['aria-pressed'],'true','Correction manuelle 
 assert.strictEqual(winnerButtons[1]['aria-pressed'],'false','Correction manuelle doit retirer ancien vainqueur');
 console.log('OK surlignage du vainqueur et synchronisation apres correction du score');
 console.log('OK raccourcis de score : deux vainqueurs, validation, belle et boutons presents');
+
+/* Regression 15/11 : un conflit A/B doit conserver les manches et l'heure de priorite d'origine. */
+const conflictRoot={id:'conflict-root',mode:'poules',roster:[],matches:[],tables:[{id:1,state:'playing',milftBracketPreference:'A'}]};
+const conflictA={id:'conflict-A',sourceId:'conflict-root',mode:'knockout',bracketLetter:'A',roster:[],matches:[{id:'keep-A',a:'J1',b:'J2',status:'playing',table:1,startedAt:200,sets:[{a:5,b:3}]}],tables:[{id:1,state:'playing',milftBracketPreference:'A'}]};
+const conflictB={id:'conflict-B',sourceId:'conflict-root',mode:'knockout',bracketLetter:'B',roster:[],matches:[{id:'wait-B',a:'J3',b:'J4',status:'playing',table:1,startedAt:100,round:1,milftLaunchedPriority:true,milftLaunchedPriorityAt:50,sets:[{a:5,b:2}]}],tables:[{id:1,state:'playing',milftBracketPreference:'A'}]};
+context.db.tournaments=[conflictRoot,conflictA,conflictB];
+assert.strictEqual(context.milftReconcileBracketTables(conflictA),1,'Le conflit ancien doit mettre un match en attente');
+const requeued=conflictB.matches[0];
+assert.strictEqual(requeued.status,'waiting','Le match B incompatible doit attendre');
+assert.strictEqual(requeued.table,null,'La table physique doit etre liberee pour B');
+assert.strictEqual(requeued.milftPriority,true,'La priorite manuelle doit etre restituee');
+assert.strictEqual(requeued.milftPriorityAt,50,'La priorite doit conserver sa date d origine');
+assert.strictEqual(requeued.sets[0].b,2,'Les manches du match reporte doivent etre preservees');
+assert.strictEqual(conflictA.matches[0].status,'playing','Le match compatible A doit rester en jeu');
+const nextPriority={id:'later-B',a:'J5',b:'J6',status:'waiting',round:1,milftPriority:true,milftPriorityAt:80};
+conflictB.matches.push(nextPriority);
+conflictA.matches[0].status='done';
+for(const phase of [conflictRoot,conflictA,conflictB]){phase.tables[0].state='free';phase.tables[0].milftBracketPreference='auto';}
+context.autoAssign(conflictB);
+assert.strictEqual(requeued.status,'playing','La priorite la plus ancienne doit redemarrer la premiere');
+assert.strictEqual(nextPriority.status,'waiting','Une priorite ulterieure doit attendre une table');
+assert.strictEqual([ ...conflictA.matches,...conflictB.matches].filter(m=>m.status==='playing'&&m.table===1).length,1,'Une seule rencontre doit occuper la table 1');
+console.log('OK regression A/B : conflit historique, scores conserves, date de priorite et redemarrage dans l ordre');
