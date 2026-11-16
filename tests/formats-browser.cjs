@@ -981,6 +981,94 @@ async function capManualTableControls(page){
  console.log('OK Chromium : CAP tables manuelles, conflits, exclusion, liberation et reprise');
 }
 
+
+/* Tableau classique a cinq joueurs, 3 BYE, deux demi-finales, finale, bronze,
+   classement podium et reprise : aucune donnee reelle impliquee. */
+async function classicKnockoutFivePlayers(page){
+ await page.evaluate(fixture=>{db.players=fixture;save();setTab('new');selectCreationMode('knockout');},players);
+ const form=page.locator('form[onsubmit="createKnockout(event)"]');
+ assert.equal(await form.count(),1,'Elimination directe : formulaire absent');
+ await form.locator('[name="name"]').fill('Test KO Cinq Joueurs');
+ for(let i=0;i<5;i++)await form.locator('input[name="participants"]').nth(i).check();
+ assert(await form.locator('input[name="bronze"]').isChecked(),
+  'Petite finale absente alors qu activee par defaut');
+ await form.locator('button').last().click();
+ const outcome=await page.evaluate(()=>{
+  const t=db.tournaments.find(x=>x.name==='Test KO Cinq Joueurs');
+  if(!t)return {error:'creation KO absente'};
+  window.__koAlerts=[];window.alert=x=>window.__koAlerts.push(String(x));
+  window.confirm=()=>true;
+  const round0=t.matches.filter(m=>m.round===0&&!m.bronze);
+  const byes=round0.filter(m=>m.bye);
+  const byesOk=byes.every(m=>m.status==='done'&&
+   [m.score?.a,m.score?.b].sort((a,b)=>a-b).join('-')==='3-5'&&
+   koWinner(m)&&(koWinner(m)===m.a||koWinner(m)===m.b));
+  const initial={players:t.roster.length,rounds:t.rounds,regular:t.matches.filter(m=>!m.bronze).length,
+   byes:byes.length,byesOk,firstRound:round0.length,bronze:t.matches.filter(m=>m.bronze).length};
+  toggleClosed();
+  const closeBlockedBefore=!t.closed;
+  function winA(m){
+   if(!m?.a||!m?.b)throw Error('KO rencontre incomplete : '+JSON.stringify({round:m?.round,a:m?.a,b:m?.b}));
+   m.status='done';m.score={a:3,b:0};m.sets=[{a:5,b:3},{a:5,b:2},{a:5,b:4}];
+   m.table=null;
+  }
+  for(const m of round0.filter(m=>!m.bye))winA(m);
+  advanceKnockout(t);
+  const semi=t.matches.filter(m=>m.round===1&&!m.bronze);
+  const semiTeams=semi.flatMap(m=>[m.a,m.b]).filter(Boolean);
+  const beforeSemis={count:semi.length,unique:new Set(semiTeams).size,teams:semiTeams.length,ready:semi.every(m=>m.a&&m.b)};
+  for(const m of semi)winA(m);
+  advanceKnockout(t);
+  const final=t.matches.find(m=>m.round===2&&!m.bronze),bronze=t.matches.find(m=>m.bronze);
+  const finalsReady=!!(final?.a&&final?.b&&bronze?.a&&bronze?.b);
+  const semiLosers=semi.map(m=>koLoser(m));
+  const bronzeFromSemi=!!bronze?.a&&!!bronze?.b&&
+   [bronze.a,bronze.b].every(id=>semiLosers.includes(id));
+  winA(final);
+  toggleClosed();
+  const closeBlockedWithoutBronze=!t.closed;
+  winA(bronze);
+  advanceKnockout(t);
+  const ranking=koRanking(t),medals=ranking.slice(0,3).map(id=>koRankMedal(t,id));
+  const firstThree=ranking.slice(0,3);
+  const correctPodium=ranking[0]===koWinner(final)&&ranking[1]===koLoser(final)&&
+   ranking[2]===koWinner(bronze);
+  toggleClosed();
+  save();
+  return {id:t.id,initial,closeBlockedBefore,beforeSemis,finalsReady,bronzeFromSemi,
+   closeBlockedWithoutBronze,medals,firstThree,correctPodium,closed:t.closed,
+   done:t.matches.filter(m=>m.status==='done').length,total:t.matches.length,
+   finalWinner:koWinner(final),bronzeWinner:koWinner(bronze)};
+ });
+ assert(!outcome.error,'KO cinq joueurs : '+JSON.stringify(outcome));
+ assert.deepEqual(outcome.initial,{players:5,rounds:3,regular:7,byes:3,
+  byesOk:true,firstRound:4,bronze:1},'KO : tableau et exemptions incorrectes');
+ assert(outcome.closeBlockedBefore,'KO : cloture initiale prematurée autorisee');
+ assert.deepEqual(outcome.beforeSemis,{count:2,unique:4,teams:4,ready:true},
+  'KO : propagation incorrecte en demi-finales');
+ assert(outcome.finalsReady&&outcome.bronzeFromSemi,'KO : finale/petite finale mal alimentees');
+ assert(outcome.closeBlockedWithoutBronze,'KO : cloture avant petite finale autorisee');
+ assert(outcome.correctPodium,'KO : podium non conforme aux resultats');
+ assert.deepEqual(outcome.medals,['🥇','🥈','🥉'],'KO : affichage medailles incorrect');
+ assert(outcome.closed&&outcome.done===outcome.total&&outcome.total===8,
+  'KO : cloture apres tous les matchs impossible');
+ await page.reload({waitUntil:'domcontentloaded'});
+ const snapshot=await page.evaluate(()=>{
+  const t=db.tournaments.find(x=>x.name==='Test KO Cinq Joueurs');
+  if(!t)return null;
+  const ranking=koRanking(t),final=t.matches.find(m=>m.round===2&&!m.bronze),
+   bronze=t.matches.find(m=>m.bronze);
+  return {closed:t.closed,byes:t.matches.filter(m=>m.bye).length,
+   done:t.matches.filter(m=>m.status==='done').length,
+   podium:[koWinner(final),koLoser(final),koWinner(bronze)],
+   ranking:ranking.slice(0,3)};
+ });
+ assert(snapshot&&snapshot.closed&&snapshot.byes===3&&snapshot.done===8,
+  'KO : etat ou BYE perdus au rechargement');
+ assert.deepEqual(snapshot.podium,snapshot.ranking,'KO : podium change apres rechargement');
+ console.log('OK Chromium : KO classique cinq joueurs, 3 BYE, demi-finales, podium bronze, cloture et reprise');
+}
+
 async function main(){
  const {server,url}=await serve();let browser;
  try{
@@ -1004,6 +1092,7 @@ async function main(){
   await capConcurrentTables(page);
   await capByeMultiRound(page);
   await capManualTableControls(page);
+  await classicKnockoutFivePlayers(page);
   assert.deepEqual(errors,[],'Erreurs navigateur : '+errors.join('; '));
   await context.close();
  }finally{
