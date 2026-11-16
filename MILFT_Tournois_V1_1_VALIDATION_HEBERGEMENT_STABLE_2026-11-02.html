@@ -2006,8 +2006,10 @@ async function milftPreserverAvantRestauration(){
  try{
   const entries=await transaction('readonly',store=>store.getAll());
   const archives=entries.filter(x=>x.id.startsWith('auto-')&&x.payload?.data?.tournaments?.length).sort((a,b)=>b.createdAt-a.createdAt);
-  const existing=archives[0];
   const current={format:'MILFT-TOURNOIS-BACKUP',version:1,exportedAt:new Date().toISOString(),data:JSON.parse(JSON.stringify(db)),planning:JSON.parse(JSON.stringify(plan)),progressPreferences:JSON.parse(JSON.stringify(progressPrefs))};
+  // Ne pas s'arrêter à l'archive automatique la plus récente si elle est
+  // identique aux données actuelles : une archive antérieure peut rester récupérable.
+  const existing=archives.find(x=>JSON.stringify(x.payload.data)!==JSON.stringify(current.data));
   const stamp=new Date().toISOString().replace(/[:.]/g,'-')+'-'+Math.random().toString(36).slice(2,8);
   // Toujours préserver les données ACTUELLES, même si une archive plus ancienne contient davantage de tournois.
   // Garder séparément la dernière archive utile si elle est différente : aucune source n'écrase l'autre.
