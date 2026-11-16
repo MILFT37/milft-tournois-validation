@@ -952,7 +952,7 @@ async function capManualTableControls(page){
   return {id:t.id,first,sameClubBlocked,sameClubAlert,sameTableBlocked,sameTableAlert,
    separated,resizeBlocked,excludeOccupiedBlocked,removalWhilePlayingBlocked,
    released,excluded,noAssignmentOnExcluded,
-   final:{ab:ab.tableId,cd:cd.tableId,ac:ac.tableId,tables:t.tables.map(x=>x.state)}};
+   final:{ab:ab.tableId??null,cd:cd.tableId??null,ac:ac.tableId??null,tables:t.tables.map(x=>x.state)}};
  });
  assert(!result.error,'CAP tables manuelles : '+JSON.stringify(result));
  assert.equal(result.first,1,'CAP manuel : attribution initiale sur table 1 echouee');
@@ -974,7 +974,7 @@ async function capManualTableControls(page){
   const t=db.tournaments.find(x=>x.id===id);
   const clubs=t.cap.clubs.map(c=>c.id);
   const m=(a,b)=>t.cap.matches.find(m=>[m.a,m.b].includes(clubs[a])&&[m.a,m.b].includes(clubs[b]));
-  return {tables:t.tables.map(x=>x.state),ab:m(0,1).tableId,cd:m(2,3).tableId,ac:m(0,2).tableId};
+  return {tables:t.tables.map(x=>x.state),ab:m(0,1).tableId??null,cd:m(2,3).tableId??null,ac:m(0,2).tableId??null};
  },result.id);
  assert.deepEqual(saved,{tables:['free','free'],ab:1,cd:2,ac:null},
   'CAP manuel : affectations ou parc non conserves au rechargement');
