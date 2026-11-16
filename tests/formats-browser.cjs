@@ -754,7 +754,10 @@ async function capConcurrentTables(page){
   const t=db.tournaments.find(x=>x.name==='Test Tables CAP');
   if(!t)return null;
   const c=t.cap;window.__capTableAlerts=[];window.alert=msg=>window.__capTableAlerts.push(String(msg));
-  capAddTable();
+  const tableCount=document.getElementById('cap-table-count');
+  if(!tableCount)throw Error('Panneau de nombre de tables manquant');
+  window.confirm=()=>true;tableCount.value='2';capSetTableCount();
+  if(t.tables.length!==2)throw Error('CAP tables : reglage a deux tables non applique');
   capAutoAssign();
   const playing=c.matches.filter(m=>m.tableId!=null);
   const occupied=playing.flatMap(m=>[m.a,m.b]);
