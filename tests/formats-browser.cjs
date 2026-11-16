@@ -508,6 +508,118 @@ async function capCompetitionCupFlow(page){
  console.log('OK Chromium : Championnat interclubs 3 clubs, 2/1/0, difference et persistance');
 }
 
+
+/* Course aux points : saisie interactive dans la vraie interface fictive. */
+async function capInteractiveRelayFlow(page){
+ await page.evaluate(fixture=>{db.players=fixture;save();setTab('new');selectCreationMode('cap');},players);
+ const form=page.locator('form[onsubmit="capCompCreate(event)"]');
+ await form.locator('[name="name"]').fill('Test Saisie relais interclubs');
+ await form.locator('[name="structure"]').selectOption('league');
+ await form.locator('[name="clubs"]').fill('Equipe Est\nEquipe Ouest');
+ await form.locator('[name="targets"]').fill('5,10');
+ await form.locator('[name="types"]').fill('S,D');
+ await form.locator('[name="minPlayers"]').fill('2');
+ await form.locator('[name="maxPlayers"]').fill('2');
+ await form.locator('button').last().click();
+ const refs=await page.evaluate(()=>{
+  const t=db.tournaments.find(x=>x.name==='Test Saisie relais interclubs');
+  if(!t)return null;
+  window.__capInteractiveAlerts=[];
+  window.alert=msg=>window.__capInteractiveAlerts.push(String(msg));
+  return {id:t.id,clubs:t.cap.clubs.map(x=>x.id),match:t.cap.matches[0].id};
+ });
+ assert(refs&&refs.clubs.length===2,'Interclubs interactif : echec creation');
+ // The function must reject an empty roster and prevent score entry without composition.
+ const premature=await page.evaluate(id=>{
+  capSaveRosters();
+  const t=active(),m=t.cap.matches.find(x=>x.id===id);
+  capCompRecord(id);
+  return {rosters:t.cap.rosters||null,relays:m.relays.length,alerts:window.__capInteractiveAlerts.slice()};
+ },refs.match);
+ assert(!premature.rosters&&premature.relays===0,'CAP : effectifs incomplets ou composition absente acceptes');
+ assert(premature.alerts.some(x=>x.includes('sélectionne entre')),'CAP : message de contrôle effectif absent');
+ assert(premature.alerts.some(x=>x.includes('compositions')),'CAP : saisie sans composition non bloquee');
+ // Select two distinct fictitious players per club through the rendered roster checkboxes.
+ const chosen=await page.evaluate(({clubs,playerIds})=>{
+  for(let i=0;i<clubs.length;i++){
+   for(let j=0;j<2;j++){
+    const el=document.querySelector('[data-cap-roster="'+clubs[i]+'"][value="'+playerIds[i*2+j]+'"]');
+    if(!el)throw Error('Case de joueur fictif absente');
+    el.checked=true;
+   }
+  }
+  capSaveRosters();
+  const t=active(),sizes=t.cap.clubs.map(x=>t.cap.rosters[x.id]?.length||0);
+  render();
+  return sizes;
+ },{clubs:refs.clubs,playerIds:players.map(x=>x.id)});
+ assert.deepEqual(chosen,[2,2],'Interclubs : enregistrement des effectifs a echoue');
+ // Fill all six selects in the real composition editor (S for each club, D for each club).
+ for(let i=0;i<2;i++){
+  const team=refs.clubs[i],names=players.slice(i*2,i*2+2).map(p=>p.first+' '+p.last);
+  await page.locator('[id="cap-pick-'+refs.match+'-'+team+'-0-0"]').selectOption(names[0]);
+  await page.locator('[id="cap-pick-'+refs.match+'-'+team+'-1-0"]').selectOption(names[0]);
+  await page.locator('[id="cap-pick-'+refs.match+'-'+team+'-1-1"]').selectOption(names[1]);
+ }
+ await page.locator('button[onclick="capSaveComposition(\''+refs.match+'\')"]').click();
+ const comp=await page.evaluate(id=>{
+  const m=active().cap.matches.find(x=>x.id===id);
+  return {validated:m.compositionsValidated,slots:Object.values(m.compositions||{}).map(s=>s.map(x=>x.length))};
+ },refs.match);
+ assert(comp.validated,'CAP : composition validee non enregistree');
+ assert.deepEqual(comp.slots,[[1,2],[1,2]],'CAP : composition simple/double alteree');
+ // A relay below its target must be rejected before accepting 5-3.
+ await page.locator('[id="capca-'+refs.match+'"]').fill('4');
+ await page.locator('[id="capcb-'+refs.match+'"]').fill('3');
+ await page.locator('button[onclick="capCompRecord(\''+refs.match+'\')"]').click();
+ const refused=await page.evaluate(id=>active().cap.matches.find(x=>x.id===id).relays.length,refs.match);
+ assert.equal(refused,0,'CAP : score sous palier accepte a tort');
+ await page.locator('[id="capca-'+refs.match+'"]').fill('5');
+ await page.locator('button[onclick="capCompRecord(\''+refs.match+'\')"]').click();
+ const first=await page.evaluate(id=>active().cap.matches.find(x=>x.id===id).relays,refs.match);
+ assert.deepEqual(first,[{a:5,b:3}],'CAP : premier relais 5-3 non enregistre');
+ await page.evaluate(()=>render());
+ await page.locator('[id="capca-'+refs.match+'"]').fill('10');
+ await page.locator('[id="capcb-'+refs.match+'"]').fill('7');
+ await page.locator('button[onclick="capCompRecord(\''+refs.match+'\')"]').click();
+ let completed=await page.evaluate(id=>{
+  const m=active().cap.matches.find(x=>x.id===id);
+  return {score:capCompScore(m),status:m.status};
+ },refs.match);
+ assert.deepEqual(completed,{score:{a:10,b:7},status:'done'},'CAP : rencontre deux relais non terminee');
+ await page.evaluate(()=>{window.confirm=()=>true;render();});
+ await page.locator('button[onclick="capCompUndo(\''+refs.match+'\')"]').first().click();
+ const undone=await page.evaluate(id=>{
+  const m=active().cap.matches.find(x=>x.id===id);
+  return {relays:m.relays,done:m.status==='done'};
+ },refs.match);
+ assert.deepEqual(undone,{relays:[{a:5,b:3}],done:false},'CAP : correction a perdu le premier relais');
+ await page.evaluate(()=>render());
+ await page.locator('[id="capca-'+refs.match+'"]').fill('10');
+ await page.locator('[id="capcb-'+refs.match+'"]').fill('8');
+ await page.locator('button[onclick="capCompRecord(\''+refs.match+'\')"]').click();
+ const final=await page.evaluate(id=>{
+  const t=active(),m=t.cap.matches.find(x=>x.id===id);
+  capCompClose();
+  return {closed:t.closed,relays:m.relays,status:m.status,validated:m.compositionsValidated,
+   sizes:t.cap.clubs.map(x=>t.cap.rosters[x.id].length)};
+ },refs.match);
+ assert(final.closed&&final.validated&&final.status==='done','CAP : cloture ou composition invalide');
+ assert.deepEqual(final.relays,[{a:5,b:3},{a:10,b:8}],'CAP : score corrige 10-8 non conserve');
+ assert.deepEqual(final.sizes,[2,2],'CAP : effectifs perdus');
+ await page.reload({waitUntil:'domcontentloaded'});
+ const persisted=await page.evaluate(id=>{
+  const t=db.tournaments.find(x=>x.name==='Test Saisie relais interclubs');
+  const m=t?.cap.matches.find(x=>x.id===id);
+  return {closed:t?.closed,relays:m?.relays,composition:m?.compositionsValidated,
+   rosterSizes:t?.cap.clubs.map(x=>t.cap.rosters?.[x.id]?.length)};
+ },refs.match);
+ assert(persisted.closed&&persisted.composition,'CAP : cloture/composition perdues au rechargement');
+ assert.deepEqual(persisted.relays,[{a:5,b:3},{a:10,b:8}],'CAP : relais perdus au rechargement');
+ assert.deepEqual(persisted.rosterSizes,[2,2],'CAP : effectifs perdus au rechargement');
+ console.log('OK Chromium : CAP interclubs saisie DOM, effectifs, composition, relais, correction et persistance');
+}
+
 async function main(){
  const {server,url}=await serve();let browser;
  try{
@@ -526,6 +638,7 @@ async function main(){
   await correctionStandings(page);
   await monsterMiniOddRotation(page);
   await capCompetitionCupFlow(page);
+  await capInteractiveRelayFlow(page);
   assert.deepEqual(errors,[],'Erreurs navigateur : '+errors.join('; '));
   await context.close();
  }finally{
