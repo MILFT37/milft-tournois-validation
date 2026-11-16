@@ -529,6 +529,7 @@ async function capInteractiveRelayFlow(page){
   return {id:t.id,clubs:t.cap.clubs.map(x=>x.id),match:t.cap.matches[0].id};
  });
  assert(refs&&refs.clubs.length===2,'Interclubs interactif : echec creation');
+ await page.evaluate(()=>render());
  // The function must reject an empty roster and prevent score entry without composition.
  const premature=await page.evaluate(id=>{
   capSaveRosters();
@@ -537,8 +538,8 @@ async function capInteractiveRelayFlow(page){
   return {rosters:t.cap.rosters||null,relays:m.relays.length,alerts:window.__capInteractiveAlerts.slice()};
  },refs.match);
  assert(!premature.rosters&&premature.relays===0,'CAP : effectifs incomplets ou composition absente acceptes');
- assert(premature.alerts.some(x=>x.includes('sélectionne entre')),'CAP : message de contrôle effectif absent');
- assert(premature.alerts.some(x=>x.includes('compositions')),'CAP : saisie sans composition non bloquee');
+ assert(premature.alerts.some(x=>x.includes('sélectionne entre')),'CAP : message de contrôle effectif absent : '+JSON.stringify(premature));
+ assert(premature.alerts.some(x=>x.includes('compositions')),'CAP : saisie sans composition non bloquee : '+JSON.stringify(premature));
  // Select two distinct fictitious players per club through the rendered roster checkboxes.
  const chosen=await page.evaluate(({clubs,playerIds})=>{
   for(let i=0;i<clubs.length;i++){
