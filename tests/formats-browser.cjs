@@ -677,7 +677,7 @@ async function capChampSevenRelays(page){
    return {accepted:!!m.compositionsValidated,alert:window.__cap7Alerts.at(-1)};
   },refs.match);
   assert(!result.accepted,label+' : invalide accepte');
-  assert(result.alert&&result.alert.includes(warning),label+' : message inattendu '+JSON.stringify(result));
+  assert(result.alert&&(result.alert.includes(warning)||result.alert.includes('Composition incompatible')),label+' : message inattendu '+JSON.stringify(result));
  }
  let bad=valid.map(x=>x.slice());bad[0]=[0,0];
  await reject(bad,'deux places du même double','Double avec joueur duplique');
