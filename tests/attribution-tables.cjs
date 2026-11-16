@@ -459,3 +459,19 @@ capSimpleClose();
 assert.strictEqual(capSimpleState.closed,false,'CAP simple : reouverture impossible');
 assert.strictEqual(capSimpleSaves,2,'CAP simple : persistance cloture / reouverture');
 console.log('OK Course aux points simple : huit etats de relais, cloture protegee et reouverture');
+
+/* Regressions : la clôture suit aussi les paliers de la saisie, pas seulement le nombre de relais. */
+const capThresholdCases=[
+ {label:'palier normal atteint',cap:{targets:[5,10],relays:[{a:5,b:2},{a:9,b:10}]},allowed:true},
+ {label:'egalite finale autorisee',cap:{targets:[5,10],relays:[{a:5,b:3},{a:9,b:9}],finish:'draw'},allowed:true},
+ {label:'egalite finale non autorisee',cap:{targets:[5,10],relays:[{a:5,b:3},{a:9,b:9}],finish:'first'},allowed:false},
+ {label:'premier palier non atteint',cap:{targets:[5,10],relays:[{a:4,b:3},{a:10,b:7}]},allowed:false},
+ {label:'dernier palier non atteint',cap:{targets:[5,10],relays:[{a:5,b:3},{a:9,b:8}]},allowed:false},
+ {label:'relais sans progression',cap:{targets:[5,10],relays:[{a:5,b:3},{a:5,b:3}]},allowed:false},
+ {label:'paliers non croissants',cap:{targets:[5,5],relays:[{a:5,b:3},{a:5,b:4}]},allowed:false}
+];
+for(const tc of capThresholdCases)assert.strictEqual(
+ capSimpleCanClose({mode:'cap',cap:tc.cap,matches:[]}),tc.allowed,'CAP : '+tc.label
+);
+console.log('OK Course aux points simple : paliers, progression et égalité finale');
+
