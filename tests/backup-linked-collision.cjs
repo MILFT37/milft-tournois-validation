@@ -30,14 +30,14 @@ async function main(){
    const phase=(letter,indices)=>({
     id:'COLLISION-'+letter,name:'Fictif — Tableau '+letter,mode:'knockout',
     bracketLetter:letter,sourceId:rootId,discipline:'single',date:'2026-11-16',
-    roster:indices.map(i=>players[i]),tables:[{id:2,state:'playing'}],closed:false,
+    roster:indices.map(i=>players[i]),tables:[{id:2,state:'playing'},{id:5,state:'free'}],rounds:2,created:Date.now(),closed:false,
     matches:[{id:'LIVE-'+letter,a:players[indices[0]].id,b:players[indices[1]].id,
       status:'playing',round:0,table:2,sets:letter==='B'?[{a:5,b:3}]:[],
       score:null,startedAt:Date.now()}]
    });
    const root={id:rootId,name:'Fictif',mode:'poules',discipline:'single',
     finalId:'COLLISION-A',finalBId:'COLLISION-B',date:'2026-11-16',
-    roster:players,tables:[{id:2,state:'playing'}],closed:true,matches:[]};
+    roster:players,tables:[{id:2,state:'playing'},{id:5,state:'free'}],closed:true,matches:[]};
    db={players,tournaments:[],selected:null};save();
    const before=localStorage.getItem('milft_iso_20261102_tournois_v01');
    const payload={format:'MILFT-TOURNOIS-BACKUP',version:1,
@@ -46,16 +46,44 @@ async function main(){
    const setsBefore=JSON.stringify(payload.data.tournaments[2].matches[0].sets);
    const file=new File([JSON.stringify(payload)],'collision-fictive.json',{type:'application/json'});
    await milftImportBackup({files:[file],value:'collision-fictive.json'});
-   return {alerts,confirmations,before,after:localStorage.getItem('milft_iso_20261102_tournois_v01'),
+   const rejected={alerts:alerts.slice(),confirmations:confirmations.slice(),before,
+    after:localStorage.getItem('milft_iso_20261102_tournois_v01'),
     setsUnchanged:JSON.stringify(payload.data.tournaments[2].matches[0].sets)===setsBefore};
+   const repaired=JSON.parse(JSON.stringify(payload));
+   repaired.data.selected='COLLISION-B';
+   const resumed=repaired.data.tournaments[2].matches[0];
+   resumed.status='waiting';resumed.table=null; // Ne toucher a aucune manche
+   await milftImportBackup({files:[new File([JSON.stringify(repaired)],'copie-fictive-coherente.json',{type:'application/json'})],value:'copie-fictive-coherente.json'});
+   const phaseB=db.tournaments.find(t=>t.id==='COLLISION-B');
+   const valid={confirmations:confirmations.length,reopenedStatus:phaseB?.matches[0].status,
+    reopenedTable:phaseB?.matches[0].table,storedSet:phaseB?.matches[0].sets,
+    protected:localStorage.getItem('milft_iso_20261102_tournois_v01')!==before};
+   db.selected='COLLISION-B';assignSpecific('LIVE-B');
+   const match=phaseB.matches[0];
+   const afterResume={status:match.status,table:match.table,sets:match.sets};
+   return {rejected,valid,afterResume};
   });
-  assert.equal(result.confirmations.length,0,'Collision non rejetee AVANT confirmations');
-  assert.equal(result.before,result.after,'Collision a ecrase les donnees existantes');
-  assert.equal(result.setsUnchanged,true,'Manche B modifiee');
-  assert(result.alerts.some(a=>a.includes('Table 2')&&a.includes('simultanément')),
-   'Diagnostic de collision A/B absent : '+result.alerts.join(' | '));
+  assert.equal(result.rejected.confirmations.length,0,'Collision non rejetee AVANT confirmations');
+  assert.equal(result.rejected.before,result.rejected.after,'Collision a ecrase les donnees existantes');
+  assert.equal(result.rejected.setsUnchanged,true,'Manche B modifiee');
+  assert(result.rejected.alerts.some(a=>a.includes('Table 2')&&a.includes('simultanément')),
+   'Diagnostic de collision A/B absent : '+result.rejected.alerts.join(' | '));
+  assert.equal(result.valid.confirmations,3,'Copie coherente : confirmations de protection absentes');
+  assert.equal(result.valid.reopenedStatus,'waiting','Copie coherente : match B non mis en attente');
+  assert.equal(result.valid.reopenedTable,null,'Copie coherente : ancienne table B conservee');
+  assert.deepEqual(result.valid.storedSet,[{a:5,b:3}],'Copie coherente : manche B perdue');
+  assert.equal(result.valid.protected,true,'Copie coherente : stockage non restaure');
+  assert.deepEqual(result.afterResume,{status:'playing',table:5,sets:[{a:5,b:3}]},
+   'Copie coherente : reprise B sur table libre perd le resultat');
+  await page.reload({waitUntil:'domcontentloaded'});
+  const recovered=await page.evaluate(()=>{
+   const phase=db.tournaments.find(t=>t.id==='COLLISION-B');
+   return {status:phase.matches[0].status,table:phase.matches[0].table,sets:phase.matches[0].sets};
+  });
+  assert.deepEqual(recovered,{status:'playing',table:5,sets:[{a:5,b:3}]},
+   'Copie coherente : rechargement a perdu la reprise du tableau B');
   assert.deepEqual(errors,[],'Erreur JavaScript : '+errors.join('; '));
-  console.log('OK : conflit reel A/B table 2 bloque avant confirmation, stockage inchange, manche B 5-3 intacte');
+  console.log('OK : collision A/B refusee sans ecriture ; copie coherente importee ; B reprend sur table 5 avec manche 5-3 intacte');
  }finally{
   if(browser)await browser.close();
   await new Promise(resolve=>server.close(resolve));
