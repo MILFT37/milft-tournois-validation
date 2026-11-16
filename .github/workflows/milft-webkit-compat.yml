@@ -28,3 +28,7 @@ jobs:
           npx playwright install --with-deps webkit
       - name: Recette WebKit mobile isolée
         run: node tests/webkit-smoke.cjs
+      - name: Export et restauration JSON reels en WebKit avec preservation IndexedDB
+        env:
+          MILFT_BROWSER: webkit
+        run: node tests/indexeddb-browser.cjs
