@@ -4,6 +4,7 @@ on:
     branches: [main]
     paths:
       - 'tests/webkit-smoke.cjs'
+      - 'tests/indexeddb-browser.cjs'
       - 'MILFT_Tournois_V1_1_VALIDATION_HEBERGEMENT_STABLE_2026-11-02.html'
       - 'manifest.webmanifest'
       - 'index.html'
