@@ -312,6 +312,72 @@ async function correctionStandings(page){
  console.log('OK Chromium : correction championnat annuel 3-1 vers 2-3, classement inversé et persistance');
 }
 
+
+/* Recette isolée : cinq joueurs, cinq tours mini, chacun doit se reposer exactement une fois. */
+async function monsterMiniOddRotation(page){
+ await page.evaluate(fixture=>{db.players=fixture;save();render();},players);
+ const form=await creation(page,'monster');
+ await form.locator('input[name="name"]').fill('Test Monster mini impair');
+ await form.locator('input[name="rounds"]').fill('5');
+ await playersChecked(form,5);
+ await submit(form);
+ const outcome=await page.evaluate(()=>{
+  const t=db.tournaments.find(x=>x.name==='Test Monster mini impair');
+  if(!t)return {error:'Tournoi mini impair introuvable'};
+  window.confirm=()=>true;
+  const rounds=[];
+  for(let n=1;n<=5;n++){
+   if(n>1)nextMonsterRound();
+   const matches=t.matches.filter(m=>m.round===n);
+   const ids=matches.flatMap(m=>[...m.teamA,...m.teamB]);
+   const rest=t.miniRests?.find(x=>x.round===n)?.players||[];
+   rounds.push({round:t.currentRound,matchCount:matches.length,players:ids,rest});
+   for(const m of matches){
+    m.status='done';m.score={a:8,b:6};m.sets=[{a:8,b:6}];m.table=null;
+   }
+   t.tables.forEach(table=>table.state='free');
+  }
+  save();
+  const before={round:t.currentRound,matches:t.matches.length};
+  nextMonsterRound();
+  const limitBlocked=t.currentRound===before.round&&t.matches.length===before.matches;
+  return {id:t.id,rounds,limitBlocked,limit:t.roundLimit,matches:t.matches.length,
+   allPlayed:t.matches.every(m=>m.status==='done')};
+ });
+ assert(!outcome.error,'Monster mini impair : '+JSON.stringify(outcome));
+ assert.equal(outcome.limit,5,'Monster mini : limite des cinq tours non conservée');
+ assert.equal(outcome.rounds.length,5,'Monster mini : cinq tours non générés');
+ assert.equal(outcome.matches,5,'Monster mini impair : cinq rencontres attendues');
+ assert(outcome.limitBlocked,'Monster mini : un sixième tour a été généré malgré la limite');
+ assert(outcome.allPlayed,'Monster mini : un score de test non conservé');
+ const rests=[];
+ for(let n=0;n<outcome.rounds.length;n++){
+  const r=outcome.rounds[n];
+  assert.equal(r.round,n+1,'Monster mini : mauvais numéro de tour');
+  assert.equal(r.matchCount,1,'Monster mini : une seule table de quatre joueurs attendue');
+  assert.equal(r.players.length,4,'Monster mini : quatre joueurs actifs par tour');
+  assert.equal(new Set(r.players).size,4,'Monster mini : joueur en double dans un tour');
+  assert.equal(r.rest.length,1,'Monster mini : exactement un joueur au repos par tour');
+  assert(!r.players.includes(r.rest[0]),'Monster mini : joueur simultanément actif et au repos');
+  rests.push(r.rest[0]);
+ }
+ assert.equal(new Set(rests).size,5,'Monster mini : repos inégaux sur cinq tours, un joueur répété');
+ await page.reload({waitUntil:'domcontentloaded'});
+ const persisted=await page.evaluate(()=>{
+  const t=db.tournaments.find(x=>x.name==='Test Monster mini impair');
+  return {round:t?.currentRound,restCount:t?.miniRests?.length,
+   done:t?.matches?.filter(m=>m.status==='done').length,
+   firstScore:t?.matches?.[0]?.score,
+   swissPreserved:db.tournaments.some(x=>x.name==='Test Suisse')};
+ });
+ assert.equal(persisted.round,5,'Monster mini : numéro de tour perdu au rechargement');
+ assert.equal(persisted.restCount,5,'Monster mini : historique des repos perdu');
+ assert.equal(persisted.done,5,'Monster mini : résultats perdus');
+ assert.deepEqual(persisted.firstScore,{a:8,b:6},'Monster mini : premier score perdu');
+ assert(persisted.swissPreserved,'Monster mini : tournoi Suisse indépendant absent après recharge');
+ console.log('OK Chromium : Monster mini impair, cinq repos tournants, limite et persistance');
+}
+
 async function main(){
  const {server,url}=await serve();let browser;
  try{
@@ -328,6 +394,7 @@ async function main(){
   await monsterAndSimulation(page);
   await oddAndSeason(page);
   await correctionStandings(page);
+  await monsterMiniOddRotation(page);
   assert.deepEqual(errors,[],'Erreurs navigateur : '+errors.join('; '));
   await context.close();
  }finally{
