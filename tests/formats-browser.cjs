@@ -155,6 +155,68 @@ async function monsterAndSimulation(page){
   'Perte de données après fermeture/réouverture dans Chromium');
  console.log('OK Chromium : Simulation/Avancement, projection 4→8 tables, trois tournois conservés');
 }
+async function oddAndSeason(page){
+ let form=await creation(page,'poules');
+ await form.locator('input[name="name"]').fill('Test Suisse impair');
+ await form.locator('input[name="rounds"]').fill('2');
+ await playersChecked(form,5);
+ await submit(form);
+ const oddSwiss=await page.evaluate(()=>{
+  const t=db.tournaments.find(x=>x.name==='Test Suisse impair');
+  const r1=t.matches.filter(m=>m.round===1),bye1=r1.find(m=>m.bye)?.a;
+  for(const m of r1.filter(m=>!m.bye)){m.status='done';m.score={a:8,b:6};m.sets=[{a:8,b:6}];m.table=null;}
+  window.confirm=()=>true;nextRound();
+  const r2=t.matches.filter(m=>m.round===2);
+  return {bye1,bye2:r2.find(m=>m.bye)?.a,first:r1.length,second:r2.length,
+   doneByes:t.matches.filter(m=>m.bye&&m.status==='done').length};
+ });
+ assert(oddSwiss.bye1&&oddSwiss.bye2&&oddSwiss.bye1!==oddSwiss.bye2,
+  'Suisse impair : repos BYE non tournant : '+JSON.stringify(oddSwiss));
+ assert.equal(oddSwiss.first,3,'Suisse impair : trois résultats dont un BYE attendus');
+ assert.equal(oddSwiss.second,3,'Suisse impair : trois résultats dont un BYE au tour 2');
+ assert.equal(oddSwiss.doneByes,2,'Suisse impair : BYE 5-3 non conservés');
+ console.log('OK Chromium : Suisse impair, deux BYE attribués à deux joueurs différents');
+
+ form=await creation(page,'monster');
+ await form.locator('input[name="name"]').fill('Test Monster saison');
+ await form.locator('select[name="seasonMode"]').selectOption('season');
+ await playersChecked(form,5);
+ await submit(form);
+ const season=await page.evaluate(()=>{
+  const t=db.tournaments.find(x=>x.name==='Test Monster saison');
+  if(!t)return {error:'creation absente'};
+  window.confirm=()=>true;
+  generateMonsterSession();
+  const before=t.matches.length,round1=t.matches.filter(m=>m.round===1);
+  const blockedBefore= t.currentRound;
+  generateMonsterSession();
+  const blocked=t.currentRound===blockedBefore&&t.matches.length===before;
+  for(const m of round1){m.status='done';m.score={a:8,b:6};m.sets=[{a:8,b:6}];m.table=null;}
+  t.tables.forEach(x=>x.state='free');
+  generateMonsterSession();
+  const r1=t.sessions.find(x=>x.round===1),r2=t.sessions.find(x=>x.round===2);
+  return {id:t.id,blocked,round:t.currentRound,total:t.matches.length,
+   rest1:r1?.rest||[],rest2:r2?.rest||[],firstScore:t.matches.find(x=>x.round===1)?.score,
+   sessionLengths:t.sessions.map(s=>s.players.length),preservedSession:t.sessions.length};
+ });
+ assert(season.blocked&&season.round===2&&season.total===2&&season.preservedSession===2,
+  'Monster saisonnier : blocage ou passage de séance incorrect : '+JSON.stringify(season));
+ assert.equal(season.rest1.length,1,'Monster saisonnier : un repos attendu en séance 1');
+ assert.equal(season.rest2.length,1,'Monster saisonnier : un repos attendu en séance 2');
+ assert.notEqual(season.rest1[0],season.rest2[0],'Monster saisonnier : deux repos identiques malgré cinq joueurs');
+ assert.deepEqual(season.sessionLengths,[4,4],'Monster saisonnier : quatre joueurs par séance');
+ assert.deepEqual(season.firstScore,{a:8,b:6},'Monster saisonnier : résultat initial perdu');
+ await page.reload({waitUntil:'domcontentloaded'});
+ const snapshot=await page.evaluate(()=>{
+  const t=db.tournaments.find(x=>x.name==='Test Monster saison');
+  return {sessions:t?.sessions?.length,round:t?.currentRound,score:t?.matches?.find(m=>m.round===1)?.score};
+ });
+ assert.equal(snapshot.sessions,2,'Séances saisonnières perdues au rechargement');
+ assert.equal(snapshot.round,2,'Numéro de séance perdu');
+ assert.deepEqual(snapshot.score,{a:8,b:6},'Score saisonnier perdu au rechargement');
+ console.log('OK Chromium : Monster saisonnier cinq joueurs, rotation des repos et reprise');
+}
+
 async function main(){
  const {server,url}=await serve();let browser;
  try{
@@ -169,6 +231,7 @@ async function main(){
   await page.evaluate(fixture=>{db.players=fixture.players;db.tournaments=[];db.selected=null;plan.events=[];plan.progress=[];planSave();save();render();},initial);
   await swissAndDouble(page);
   await monsterAndSimulation(page);
+  await oddAndSeason(page);
   assert.deepEqual(errors,[],'Erreurs navigateur : '+errors.join('; '));
   await context.close();
  }finally{
