@@ -1,0 +1,30 @@
+name: Compatibilite WebKit V1.1 (simulation Safari)
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'tests/webkit-smoke.cjs'
+      - 'MILFT_Tournois_V1_1_VALIDATION_HEBERGEMENT_STABLE_2026-11-02.html'
+      - 'manifest.webmanifest'
+      - 'index.html'
+      - 'MILFT_Tournois_192.png'
+      - 'MILFT_Tournois_512.png'
+      - '.github/workflows/milft-webkit-compat.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  webkit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Installer Playwright WebKit
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps webkit
+      - name: Recette WebKit mobile isolée
+        run: node tests/webkit-smoke.cjs
