@@ -219,6 +219,99 @@ async function oddAndSeason(page){
  console.log('OK Chromium : Monster saisonnier cinq joueurs, rotation des repos et reprise');
 }
 
+async function correctionStandings(page){
+ const context=await page.evaluate(()=>{
+  const t=db.tournaments.find(x=>x.name==='Test Monster saison');
+  if(!t)throw Error('Monster saisonnier fictif absent');
+  const m=t.matches.find(x=>x.round===1&&x.status==='done');
+  if(!m)throw Error('Résultat de séance fictif absent');
+  db.selected=t.id;tab='live-detail';save();render();
+  return {id:m.id,a:m.teamA[0],b:m.teamB[0],score:{...m.score},
+   beforeA:monsterStats(t).find(x=>x.id===m.teamA[0]).pts,
+   beforeB:monsterStats(t).find(x=>x.id===m.teamB[0]).pts};
+ });
+ assert.equal(context.beforeA,2,'Monster : gagnant initial non crédité');
+ assert.equal(context.beforeB,0,'Monster : perdant initial crédité');
+ await page.evaluate(id=>correctMonsterResult(id),context.id);
+ assert.equal(await page.locator('#monster-corrections').count(),1,'Éditeur Monster absent');
+ await page.evaluate(id=>cancelMonsterCorrection(id),context.id);
+ const cancelled=await page.evaluate(id=>{
+  const t=active(),m=t.matches.find(x=>x.id===id);
+  return {score:m.score,correcting:!!m.correcting};
+ },context.id);
+ assert.deepEqual(cancelled.score,{a:8,b:6},'Monster : Annuler a modifié le résultat officiel');
+ assert.equal(cancelled.correcting,false,'Monster : édition toujours ouverte après Annuler');
+ await page.evaluate(id=>correctMonsterResult(id),context.id);
+ await page.locator('[id="corr-win-'+context.id+'-0"]').selectOption('b');
+ await page.evaluate(()=>{window.confirm=()=>true;});
+ await page.locator('#monster-corrections button').filter({hasText:'Valider la correction'}).click();
+ const changed=await page.evaluate(id=>{
+  const t=active(),m=t.matches.find(x=>x.id===id);
+  return {score:m.score,sets:m.sets,correcting:!!m.correcting,
+   a:monsterStats(t).find(x=>x.id===m.teamA[0]),
+   b:monsterStats(t).find(x=>x.id===m.teamB[0])};
+ },context.id);
+ assert.deepEqual(changed.score,{a:6,b:8},'Monster : inversion du score non enregistrée');
+ assert.equal(changed.correcting,false,'Monster : correction non terminée');
+ assert.equal(changed.a.pts,0,'Monster : anciens points conservés chez le perdant');
+ assert.equal(changed.b.pts,2,'Monster : nouveaux points absents chez le gagnant');
+ assert.equal(changed.a.diff,-2,'Monster : différence de buts non recalculée');
+ assert.equal(changed.b.diff,2,'Monster : différence de buts adverse erronée');
+ console.log('OK Chromium : correction Monster, Annuler intact, résultat inverse, classement recalculé');
+
+ await page.evaluate(players=>{db.players=players;save();render();},players);
+ await page.evaluate(()=>{setTab('new');selectCreationMode('challenge');});
+ const form=page.locator('#annual-classic-form');
+ await form.locator('input[name="name"]').fill('Championnat corrections test');
+ await form.locator('input[name="participants"]').nth(0).check();
+ await form.locator('input[name="participants"]').nth(1).check();
+ await form.locator('button').last().click();
+ const annual=await page.evaluate(()=>{
+  const t=db.tournaments.find(x=>x.name==='Championnat corrections test');
+  if(!t)throw Error('Championnat annuel test non créé');
+  const m=t.matches[0];
+  m.status='done';m.table=null;
+  m.sets=[{a:5,b:2},{a:5,b:3},{a:3,b:5},{a:5,b:4}];m.score={a:3,b:1};
+  save();
+  const ranking=challengeStandings(t);
+  return {id:t.id,match:m.id,first:t.roster[0].first,second:t.roster[1].first,
+   firstBeforeSecond:ranking.indexOf(t.roster[0].first)<ranking.indexOf(t.roster[1].first)};
+ });
+ assert(annual.firstBeforeSecond,'Championnat annuel : classement initial incorrect');
+ const corrected=await page.evaluate(id=>{
+  const t=db.tournaments.find(x=>x.id===id);
+  const m=t.matches[0];const original=JSON.stringify({score:m.score,sets:m.sets});
+  window.prompt=()=> 'erreur';
+  window.confirm=()=>true;
+  correctChallenge(m.id);
+  const rejected=JSON.stringify({score:m.score,sets:m.sets})===original;
+  const prompts=['3-5','5-3','3-5','5-3','3-5'];
+  window.prompt=()=>prompts.shift();
+  correctChallenge(m.id);
+  const ranking=challengeStandings(t);
+  return {rejected,score:m.score,sets:m.sets,status:m.status,
+   winnerFirst:ranking.indexOf(t.roster[1].first)<ranking.indexOf(t.roster[0].first)};
+ },annual.id);
+ assert(corrected.rejected,'Championnat annuel : correction invalide a modifié les résultats');
+ assert.deepEqual(corrected.score,{a:2,b:3},'Championnat annuel : résultat après correction erroné');
+ assert.equal(corrected.sets.length,5,'Championnat annuel : cinq manches attendues');
+ assert.equal(corrected.status,'done','Championnat annuel : rencontre terminée doit rester terminée');
+ assert(corrected.winnerFirst,'Championnat annuel : classement non recalculé après inversion');
+ await page.reload({waitUntil:'domcontentloaded'});
+ const loaded=await page.evaluate(()=>{
+  const m=db.tournaments.find(x=>x.name==='Championnat corrections test')?.matches[0];
+  const season=db.tournaments.find(x=>x.name==='Test Monster saison');
+  return {annualScore:m?.score,annualSets:m?.sets?.length,
+   monsterScore:season?.matches.find(x=>x.round===1)?.score,
+   untouchedSwiss:db.tournaments.some(x=>x.name==='Test Suisse')};
+ });
+ assert.deepEqual(loaded.annualScore,{a:2,b:3},'Rechargement : correction championnat perdue');
+ assert.equal(loaded.annualSets,5,'Rechargement : manches du championnat perdues');
+ assert.deepEqual(loaded.monsterScore,{a:6,b:8},'Rechargement : correction Monster perdue');
+ assert(loaded.untouchedSwiss,'Correction scores : tournoi suisse indépendant disparu');
+ console.log('OK Chromium : correction championnat annuel 3-1 vers 2-3, classement inversé et persistance');
+}
+
 async function main(){
  const {server,url}=await serve();let browser;
  try{
@@ -234,6 +327,7 @@ async function main(){
   await swissAndDouble(page);
   await monsterAndSimulation(page);
   await oddAndSeason(page);
+  await correctionStandings(page);
   assert.deepEqual(errors,[],'Erreurs navigateur : '+errors.join('; '));
   await context.close();
  }finally{
