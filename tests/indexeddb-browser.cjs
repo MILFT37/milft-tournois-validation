@@ -142,7 +142,7 @@ async function checkLinkedABBackupRoundTrip(page){
  assert.deepEqual(recovered,{count:3,selected:'PHASE-A-BACKUP',links:true,
   playing:'playing',table:1,forfeit:{a:5,b:3},corrected:{a:0,b:3}},
   'Backup A/B : perte de données après rechargement');
- console.log('OK '+browserName+ : export réel JSON et import A/B liés, forfait, correction, table partagée, rejet et reprise');
+ console.log('OK '+browserName+' : export réel JSON et import A/B liés, forfait, correction, table partagée, rejet et reprise');
 }
 
 async function main(){
@@ -216,7 +216,7 @@ async function main(){
   assert.deepEqual(persisted.score,{a:8,b:6},'Résultat perdu après réouverture');
   await checkLinkedABBackupRoundTrip(page);
   assert.deepEqual(errors,[],'Erreurs Javascript dans le navigateur');
-  console.log('OK '+browserName+ IndexedDB : session locale et archive récupérable protégées, import valide, refus incohérent et reprise');
+  console.log('OK '+browserName+' IndexedDB : session locale et archive récupérable protégées, import valide, refus incohérent et reprise');
   await context.close();
  }finally{
   if(browser)await browser.close();
