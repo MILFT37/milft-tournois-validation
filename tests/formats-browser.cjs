@@ -1069,6 +1069,141 @@ async function classicKnockoutFivePlayers(page){
  console.log('OK Chromium : KO classique cinq joueurs, 3 BYE, demi-finales, podium bronze, cloture et reprise');
 }
 
+
+/* Evénement à phases liées : poules vers A/B, un seul compteur, table commune,
+   refus de clôture prématurée, archivage groupé et reprise sur données fictives. */
+async function linkedPoolsABLifecycle(page){
+ await page.evaluate(fixture=>{db.players=fixture;save();setTab('new');selectCreationMode('poules');},players);
+ const form=page.locator('form[data-mode="poules"]');
+ await form.locator('[name="name"]').fill('Test Phases Liées AB');
+ await form.locator('[name="rounds"]').fill('2');
+ await form.locator('[name="tables"]').fill('1');
+ await playersChecked(form,8);
+ await form.locator('[name="finalPhase"]').check();
+ await form.locator('[name="allQualifiers"]').uncheck();
+ await form.locator('[name="qualifiers"]').fill('4');
+ await form.locator('[name="enableTableB"]').check();
+ await form.locator('[name="qualifiersB"]').fill('4');
+ await submit(form);
+ const result=await page.evaluate(()=>{
+  const root=db.tournaments.find(x=>x.name==='Test Phases Liées AB');
+  if(!root)return {error:'Tournoi poules non cree'};
+  window.__abAlerts=[];window.alert=msg=>window.__abAlerts.push(String(msg));window.confirm=()=>true;
+  const initial={round:root.currentRound,limit:root.roundLimit,finalPhase:root.finalPhase,
+   qualifiers:root.qualifiers,qualifiersB:root.qualifiersB,tables:root.tables.length,
+   players:root.roster.length};
+  createFinalFromQualifications();
+  const prematureFinalBlocked=!root.finalId&&db.tournaments.filter(x=>x.sourceId===root.id).length===0;
+  toggleClosed();
+  const prematureClosureBlocked=!root.closed;
+  function finish(m){m.status='done';m.score={a:8,b:6};m.sets=[{a:8,b:6}];m.table=null;}
+  root.matches.filter(m=>m.round===1).forEach(finish);
+  root.tables.forEach(x=>x.state='free');
+  nextRound();
+  const secondRound=root.currentRound;
+  root.matches.filter(m=>m.round===2).forEach(finish);
+  root.tables.forEach(x=>x.state='free');
+  save();
+  const ranking=qualificationRanking(root),expectedA=ranking.slice(0,4),expectedB=ranking.slice(4,8);
+  const decisionVisible=milftFinalDecisionNotice(root).includes('Créer les tableaux');
+  createFinalFromQualifications();
+  const A=db.tournaments.find(x=>x.id===root.finalId);
+  const B=db.tournaments.find(x=>x.id===root.finalBId);
+  if(!A||!B)throw Error('Tableau A/B non cree');
+  const actualA=A.roster.map(p=>p.id),actualB=B.roster.map(p=>p.id);
+  const grouping=db.tournaments.filter(x=>milftEventRootId(x)===root.id).length;
+  const list=document.createElement('div');list.innerHTML=activeTournamentsPage();
+  const items=[...list.querySelectorAll('.milft-tournament-list-item')].filter(el=>el.textContent.includes('Test Phases Liées AB'));
+  const navigation=items.map(el=>[...el.querySelectorAll('button')].map(b=>b.textContent.trim()));
+  toggleClosed();
+  const blockedBeforeFinals=[root.closed,A.closed,B.closed].every(x=>!x);
+  // Une seule table : les rencontres A et B doivent se relayer, sans double attribution.
+  autoAssign(A);
+  const firstA=A.matches.find(m=>m.status==='playing'),firstB=B.matches.find(m=>m.status==='playing');
+  autoAssign(B);
+  const simultaneousAfterAttempt=[...A.matches,...B.matches].filter(m=>m.status==='playing');
+  const oneTableExclusive=!!firstA&&!firstB&&simultaneousAfterAttempt.length===1;
+  const sharedStateOnBoth=A.tables[0].state==='playing'&&B.tables[0].state==='playing';
+  if(!firstA)throw Error('Aucun match lancé en tableau A');
+  const releasedId=firstA.table;
+  firstA.status='done';firstA.sets=[{a:5,b:3},{a:5,b:2},{a:5,b:4}];firstA.score={a:3,b:0};firstA.table=null;
+  milftReleaseSharedTable(A,releasedId);
+  autoAssign(B);
+  const bNow=B.matches.find(m=>m.status==='playing');
+  const transferToB=!!bNow&&bNow.table===releasedId&&!A.matches.some(m=>m.status==='playing');
+  // Les autres matchs sont complétés dans l'instance de test (pas la saisie écran).
+  function finishKo(t){
+   t.matches.filter(m=>m.round===0&&!m.bronze).forEach(m=>{
+    if(m.status!=='done'){
+     m.status='done';m.sets=[{a:5,b:3},{a:5,b:2},{a:5,b:4}];m.score={a:3,b:0};m.table=null;
+    }
+   });
+   t.tables.forEach(x=>x.state='free');
+   advanceKnockout(t);
+   for(const m of t.matches.filter(m=>m.round>=1)){
+    if(!m.a||!m.b)throw Error('Match final incomplet : '+t.bracketLetter);
+    m.status='done';m.sets=[{a:5,b:3},{a:5,b:2},{a:5,b:4}];m.score={a:3,b:0};m.table=null;
+   }
+  }
+  finishKo(A);finishKo(B);
+  root.tables.forEach(x=>x.state='free');
+  save();
+  db.selected=B.id;
+  const finalReady=[root,A,B].every(milftCanClose);
+  toggleClosed();
+  const closedTogether=[root.closed,A.closed,B.closed].every(Boolean);
+  const archiveTab=tab;
+  return {id:root.id,aId:A.id,bId:B.id,initial,prematureFinalBlocked,prematureClosureBlocked,
+   secondRound,decisionVisible,expectedA,expectedB,actualA,actualB,grouping,
+   itemCount:items.length,navigation,blockedBeforeFinals,oneTableExclusive,sharedStateOnBoth,
+   transferToB,finalReady,closedTogether,archiveTab,
+   scores:{pools:root.matches.filter(m=>m.status==='done').length,
+    A:A.matches.filter(m=>m.status==='done').length,B:B.matches.filter(m=>m.status==='done').length}};
+ });
+ assert(!result.error,'Phases A/B : '+JSON.stringify(result));
+ assert.deepEqual(result.initial,{round:1,limit:2,finalPhase:true,qualifiers:4,
+  qualifiersB:4,tables:1,players:8},'Poules A/B : configuration initiale incorrecte');
+ assert(result.prematureFinalBlocked&&result.prematureClosureBlocked,
+  'Poules A/B : final ou fermeture anticipée permis');
+ assert.equal(result.secondRound,2,'Poules A/B : tour 2 non genere');
+ assert(result.decisionVisible,'Poules A/B : choix de tableau absent a la fin');
+ assert.deepEqual(new Set(result.actualA),new Set(result.expectedA),
+  'Poules A/B : tableau A non conforme au classement');
+ assert.deepEqual(new Set(result.actualB),new Set(result.expectedB),
+  'Poules A/B : tableau B non conforme au classement');
+ assert.equal(result.grouping,3,'Poules A/B : phases non rattachees au meme evenement');
+ assert.equal(result.itemCount,1,'Poules A/B : plus d une entree dans la liste des tournois');
+ assert(result.navigation[0]?.some(x=>x.includes('Tableau A'))&&
+  result.navigation[0]?.some(x=>x.includes('Tableau B')),
+  'Poules A/B : navigation entre phases absente');
+ assert(result.blockedBeforeFinals,'Poules A/B : cloture groupée prematuree');
+ assert(result.oneTableExclusive&&result.sharedStateOnBoth&&result.transferToB,
+  'Poules A/B : table commune simultanee ou non transferee');
+ assert(result.finalReady&&result.closedTogether&&result.archiveTab==='history',
+  'Poules A/B : cloture/archivage global incorrect : '+JSON.stringify(result));
+ assert.deepEqual(result.scores,{pools:8,A:4,B:4},
+  'Poules A/B : scores finaux incomplets avant sauvegarde');
+ await page.reload({waitUntil:'domcontentloaded'});
+ const persisted=await page.evaluate(ids=>{
+  const root=db.tournaments.find(t=>t.id===ids.id),A=db.tournaments.find(t=>t.id===ids.aId),
+   B=db.tournaments.find(t=>t.id===ids.bId);
+  const before=[root,A,B].map(t=>t.closed);
+  db.selected=A.id;window.confirm=()=>true;
+  toggleClosed();
+  const reopened=[root,A,B].map(t=>t.closed);
+  return {before,reopened,linked:root.finalId===A.id&&root.finalBId===B.id,
+   sourceIds:A.sourceId===root.id&&B.sourceId===root.id,
+   scores:[root,A,B].map(t=>t.matches.filter(m=>m.status==='done').length),
+   unrelated:db.tournaments.some(t=>t.name==='Test KO Cinq Joueurs')};
+ },{id:result.id,aId:result.aId,bId:result.bId});
+ assert.deepEqual(persisted.before,[true,true,true],'Poules A/B : clotures non conservees');
+ assert.deepEqual(persisted.reopened,[false,false,false],'Poules A/B : reouverture groupée incorrecte');
+ assert(persisted.linked&&persisted.sourceIds&&persisted.unrelated,
+  'Poules A/B : liens ou tournoi indépendant perdus après rechargement');
+ assert.deepEqual(persisted.scores,[8,4,4],'Poules A/B : scores perdus apres rechargement');
+ console.log('OK Chromium : poules vers A/B liés, classement, table unique, cloture/reouverture et reprise');
+}
+
 async function main(){
  const {server,url}=await serve();let browser;
  try{
@@ -1093,6 +1228,7 @@ async function main(){
   await capByeMultiRound(page);
   await capManualTableControls(page);
   await classicKnockoutFivePlayers(page);
+  await linkedPoolsABLifecycle(page);
   assert.deepEqual(errors,[],'Erreurs navigateur : '+errors.join('; '));
   await context.close();
  }finally{
