@@ -7,6 +7,7 @@ on:
       - 'tests/attribution-tables.cjs'
       - 'tests/backup-restore.cjs'
       - 'tests/browser-smoke.cjs'
+      - 'tests/formats-browser.cjs'
       - '.github/workflows/attribution-tables.yml'
   workflow_dispatch:
 jobs:
@@ -26,7 +27,9 @@ jobs:
           npm install --no-save playwright@1.56.1
           npx playwright install --with-deps chromium
       - name: Recette Chromium mobile et PC (données fictives)
-        run: node tests/browser-smoke.cjs
+        run: |
+          node tests/browser-smoke.cjs
+          node tests/formats-browser.cjs
       - name: Captures de recette automatique
         if: always()
         uses: actions/upload-artifact@v4
