@@ -1540,8 +1540,9 @@ function declareForfait(id){
  const who=prompt('FORFAIT : indique le joueur bénéficiaire de la victoire 5–3 :\nA = '+participantName(t,m.a)+'\nB = '+participantName(t,m.b)+'\nAnnuler = aucune modification','A');
  if(who===null)return;const choice=who.trim().toUpperCase();if(choice!=='A'&&choice!=='B')return alert('Saisis A ou B.');
  const winner=choice==='A'?'a':'b';if(!confirm('Confirmer le forfait ?\n'+participantName(t,m[winner])+' gagne 5–3.'))return;
- if(m.table!=null){const table=t.tables.find(x=>String(x.id)===String(m.table));if(table&&table.state==='playing')table.state='free';}
+ const releasedTable=m.table;
  m.table=null;m.status='done';m.forfait=true;m.forfaitWinner=winner;m.bye=false;m.score=winner==='a'?{a:5,b:3}:{a:3,b:5};m.sets=[];delete m.correcting;if(typeof monsterCorrectionDrafts==='object')delete monsterCorrectionDrafts[m.id];if(t.mode==='knockout')advanceKnockout(t);
+ milftReleaseSharedTable(t,releasedTable);
  autoAssign(t);
  save();flash('Forfait enregistré : victoire 5–3.');
 }
