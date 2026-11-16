@@ -738,6 +738,70 @@ async function capChampSevenRelays(page){
  console.log('OK Chromium : CAP Championnat 42 points, 7 relais, compositions contraintes et correction');
 }
 
+
+/* Course aux points, championnat fictif à quatre clubs et deux tables :
+   attribution automatique sans collision, refus exclusion et libération. */
+async function capConcurrentTables(page){
+ await page.evaluate(()=>{setTab('new');selectCreationMode('cap');});
+ const f=page.locator('form[onsubmit="capCompCreate(event)"]');
+ await f.locator('[name="name"]').fill('Test Tables CAP');
+ await f.locator('[name="structure"]').selectOption('league');
+ await f.locator('[name="clubs"]').fill('Club A\nClub B\nClub C\nClub D');
+ await f.locator('[name="targets"]').fill('5,10');
+ await f.locator('[name="types"]').fill('S,D');
+ await f.locator('button').last().click();
+ const data=await page.evaluate(()=>{
+  const t=db.tournaments.find(x=>x.name==='Test Tables CAP');
+  if(!t)return null;
+  const c=t.cap;window.__capTableAlerts=[];window.alert=msg=>window.__capTableAlerts.push(String(msg));
+  capAddTable();
+  capAutoAssign();
+  const playing=c.matches.filter(m=>m.tableId!=null);
+  const occupied=playing.flatMap(m=>[m.a,m.b]);
+  const first={tables:playing.map(m=>m.tableId),clubs:occupied,matchIds:playing.map(m=>m.id)};
+  capAutoAssign();
+  const repeated=c.matches.filter(m=>m.tableId!=null).length;
+  const x=document.getElementById('cap-table-state-1');
+  if(!x)throw Error('Panneau de tables manquant');
+  x.value='excluded';capSetTable(1);
+  const blocked=t.tables.find(x=>x.id===1)?.state==='free';
+  const excludedAlert=window.__capTableAlerts.at(-1)||'';
+  // Finish one and verify the other table remains reserved.
+  const one=playing[0],two=playing[1];
+  one.status='done';one.relays=[{a:5,b:3},{a:10,b:8}];one.tableId=null;save();
+  capAutoAssign();
+  const afterOne=c.matches.filter(m=>m.tableId!=null).map(m=>m.id);
+  two.status='done';two.relays=[{a:5,b:3},{a:10,b:8}];two.tableId=null;save();
+  capAutoAssign();
+  const secondWave=c.matches.filter(m=>m.tableId!=null);
+  const clubs2=secondWave.flatMap(m=>[m.a,m.b]);
+  const snapshot={first,repeated,blocked,excludedAlert,afterOne,secondWave:secondWave.map(m=>({table:m.tableId,id:m.id})),
+   clubs2,done:c.matches.filter(m=>m.status==='done').length};
+  return snapshot;
+ });
+ assert(data,'CAP tables : championnat fictif absent');
+ assert.equal(data.first.tables.length,2,'CAP tables : deux tables non attribuees');
+ assert.equal(new Set(data.first.tables).size,2,'CAP tables : meme table attribuee deux fois');
+ assert.equal(new Set(data.first.clubs).size,4,'CAP tables : meme club affecte a deux rencontres');
+ assert.equal(data.repeated,2,'CAP tables : auto-attribution a doublement reserve');
+ assert(data.blocked&&data.excludedAlert.includes('attribuée'),'CAP tables : exclusion de table occupee autorisee');
+ assert.deepEqual(data.afterOne,[data.first.matchIds[1]],'CAP tables : nouveau match attribue avec club deja occupe');
+ assert.equal(data.secondWave.length,2,'CAP tables : deux rencontres suivantes non attribuees');
+ assert.equal(new Set(data.secondWave.map(x=>x.table)).size,2,'CAP tables : collision deuxieme vague');
+ assert.equal(new Set(data.clubs2).size,4,'CAP tables : club en double apres liberation');
+ assert.equal(data.done,2,'CAP tables : scores de la premiere vague non preserves');
+ await page.reload({waitUntil:'domcontentloaded'});
+ const resumed=await page.evaluate(()=>{
+  const t=db.tournaments.find(x=>x.name==='Test Tables CAP');
+  return {tables:t?.tables?.length,occupied:t?.cap?.matches?.filter(m=>m.tableId!=null).map(m=>m.tableId),
+   done:t?.cap?.matches?.filter(m=>m.status==='done').length};
+ });
+ assert.equal(resumed.tables,2,'CAP tables : parc perdu au rechargement');
+ assert.equal(resumed.done,2,'CAP tables : scores perdus au rechargement');
+ assert.equal(new Set(resumed.occupied).size,2,'CAP tables : doublon de table apres reprise');
+ console.log('OK Chromium : CAP quatre clubs, deux tables, exclusivite clubs, exclusion bloquee et reprise');
+}
+
 async function main(){
  const {server,url}=await serve();let browser;
  try{
@@ -758,6 +822,7 @@ async function main(){
   await capCompetitionCupFlow(page);
   await capInteractiveRelayFlow(page);
   await capChampSevenRelays(page);
+  await capConcurrentTables(page);
   assert.deepEqual(errors,[],'Erreurs navigateur : '+errors.join('; '));
   await context.close();
  }finally{
