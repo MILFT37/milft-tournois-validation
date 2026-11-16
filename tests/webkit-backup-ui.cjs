@@ -27,7 +27,7 @@ async function serve(){
 async function showBackup(page){
  await page.locator('#milft-settings-toggle').click();
  const section=page.locator('#milft-settings details.settings-backup');
- await section.locator('summary').click();
+ await section.locator(':scope > summary').click();
  await section.locator('#milft-backup button').first().waitFor({state:'visible'});
  return section;
 }
