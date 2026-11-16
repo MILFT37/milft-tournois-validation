@@ -538,7 +538,7 @@ async function capInteractiveRelayFlow(page){
   return {rosters:t.cap.rosters||null,relays:m.relays.length,alerts:window.__capInteractiveAlerts.slice()};
  },refs.match);
  assert(!premature.rosters&&premature.relays===0,'CAP : effectifs incomplets ou composition absente acceptes');
- assert(premature.alerts.some(x=>x.includes('sélectionne entre')),'CAP : message de contrôle effectif absent : '+JSON.stringify(premature));
+ assert(premature.alerts.some(x=>x.includes('entre 2 et 2 joueurs')),'CAP : message de contrôle effectif absent : '+JSON.stringify(premature));
  assert(premature.alerts.some(x=>x.includes('compositions')),'CAP : saisie sans composition non bloquee : '+JSON.stringify(premature));
  // Select two distinct fictitious players per club through the rendered roster checkboxes.
  const chosen=await page.evaluate(({clubs,playerIds})=>{
