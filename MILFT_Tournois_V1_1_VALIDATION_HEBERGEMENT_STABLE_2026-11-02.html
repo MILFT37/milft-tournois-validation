@@ -1452,16 +1452,21 @@ function milftCanClose(t){
  if(t.mode==='cap'&&!t.cap?.competition){
   const c=t.cap;
   if(!Array.isArray(c?.targets)||!c.targets.length||!Array.isArray(c.relays)||c.relays.length!==c.targets.length)return false;
+  let totalA=0,totalB=0;
   return c.relays.every((r,i)=>{
-   const prev=i?c.relays[i-1]:{a:0,b:0},target=Number(c.targets[i]);
-   const last=i===c.targets.length-1;
+   const target=Number(c.targets[i]),last=i===c.targets.length-1;
    if(!r||!Number.isSafeInteger(target)||target<=0||
     (i&&target<=Number(c.targets[i-1]))||
-    !Number.isSafeInteger(r.a)||!Number.isSafeInteger(r.b)||
-    r.a<prev.a||r.b<prev.b||r.a<0||r.b<0||
-    r.a>target||r.b>target||(r.a===prev.a&&r.b===prev.b))return false;
+    !Number.isSafeInteger(r.a)||!Number.isSafeInteger(r.b)||r.a<0||r.b<0)return false;
+   // Les anciennes sauvegardes gardent les points de chaque relais, pas les totaux.
+   // Calcul en mémoire uniquement : aucun changement de score ni de sauvegarde.
+   const a=c.scoreMode==='cumulative'?r.a:totalA+r.a;
+   const b=c.scoreMode==='cumulative'?r.b:totalB+r.b;
+   if(!Number.isSafeInteger(a)||!Number.isSafeInteger(b)||
+    a<totalA||b<totalB||a>target||b>target||(a===totalA&&b===totalB))return false;
+   totalA=a;totalB=b;
    // Même règle qu'à la saisie : un club atteint le palier, sauf l'égalité finale autorisée.
-   return Math.max(r.a,r.b)>=target||(last&&c.finish==='draw'&&r.a===target-1&&r.b===target-1);
+   return Math.max(a,b)>=target||(last&&c.finish==='draw'&&a===target-1&&b===target-1);
   });
  }
  if(t.mode==='cap'&&Array.isArray(t.cap?.matches)){
