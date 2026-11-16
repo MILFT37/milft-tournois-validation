@@ -378,6 +378,136 @@ async function monsterMiniOddRotation(page){
  console.log('OK Chromium : Monster mini impair, cinq repos tournants, limite et persistance');
 }
 
+
+/* Course aux points interclubs : verification des transitions de phases et des classements.
+   Les relais finis ci-dessous sont injectes dans l'unique navigateur de demonstration pour
+   isoler les transitions (ce n'est pas une simulation de saisie des compositions nominatives). */
+async function capCompetitionCupFlow(page){
+ await page.evaluate(()=>{setTab('new');selectCreationMode('cap');});
+ let form=page.locator('form[onsubmit="capCompCreate(event)"]');
+ assert.equal(await form.count(),1,'Formulaire Course aux points interclubs absent');
+ await form.locator('[name="name"]').fill('Test Coupe interclubs');
+ await form.locator('[name="structure"]').selectOption('cup');
+ await form.locator('[name="clubs"]').fill('Club Alpha\nClub Beta\nClub Gamma\nClub Delta');
+ await form.locator('[name="groupCount"]').fill('2');
+ await form.locator('[name="qualifiers"]').fill('1');
+ await form.locator('[name="targets"]').fill('5,10');
+ await form.locator('[name="types"]').fill('S,D');
+ await form.locator('[name="minPlayers"]').fill('2');
+ await form.locator('[name="maxPlayers"]').fill('4');
+ await form.locator('button').last().click();
+ const created=await page.evaluate(()=>{
+  const t=db.tournaments.find(x=>x.name==='Test Coupe interclubs');
+  if(!t)return null;
+  const c=t.cap;
+  window.__capTestAlerts=[];
+  window.alert=msg=>window.__capTestAlerts.push(String(msg));
+  capCompClose();
+  return {id:t.id,mode:t.mode,competition:c.competition,phase:c.phase,
+   groups:c.matches.filter(m=>m.phase==='groups').length,pools:c.pools.length,
+   min:c.minPlayers,max:c.maxPlayers,blocked:!t.closed};
+ });
+ assert(created&&created.mode==='cap'&&created.competition,'Coupe interclubs : creation echouee');
+ assert.equal(created.phase,'groups','Coupe interclubs : debut hors des poules');
+ assert.equal(created.pools,2,'Coupe interclubs : deux poules attendues');
+ assert.equal(created.groups,2,'Coupe interclubs : deux rencontres de poule attendues');
+ assert(created.blocked,'Coupe interclubs : cloture permise avant les rencontres');
+ assert.equal(created.min,2,'Course aux points : minimum effectif non conserve');
+ assert.equal(created.max,4,'Course aux points : maximum effectif non conserve');
+ const transition=await page.evaluate(id=>{
+  const t=db.tournaments.find(x=>x.id===id),c=t.cap;
+  for(const m of c.matches.filter(x=>x.phase==='groups')){
+   m.relays=[{a:5,b:3},{a:10,b:8}];m.status='done';
+  }
+  const winners=c.pools.map((pool,i)=>capCompRanking(t,pool,'groups',i)[0].id);
+  capCompClose();
+  const blockedWithoutFinal=!t.closed;
+  capCompNext();
+  const final=c.matches.filter(m=>m.phase==='bracket');
+  capCompClose();
+  const blockedUnplayedFinal=!t.closed;
+  return {phase:c.phase,round:c.round,winners,
+   final:final.map(m=>({a:m.a,b:m.b,status:m.status})),
+   blockedWithoutFinal,blockedUnplayedFinal,
+   groupResults:c.matches.filter(m=>m.phase==='groups').map(m=>m.relays.length)};
+ },created.id);
+ assert.equal(transition.phase,'bracket','Coupe interclubs : tableau final non cree');
+ assert.equal(transition.round,1,'Coupe interclubs : premier tour du tableau incorrect');
+ assert.equal(transition.final.length,1,'Coupe interclubs : finale a deux clubs attendue');
+ assert.deepEqual([transition.final[0].a,transition.final[0].b],transition.winners,
+  'Coupe interclubs : qualifes non conformes aux classements de poule');
+ assert.equal(transition.final[0].status,'waiting','Finale doit etre en attente');
+ assert(transition.blockedWithoutFinal&&transition.blockedUnplayedFinal,
+  'Coupe interclubs : cloture autorisee avant finale');
+ assert.deepEqual(transition.groupResults,[2,2],'Relais de qualification perdus en creant le tableau');
+ const finished=await page.evaluate(id=>{
+  const t=db.tournaments.find(x=>x.id===id),c=t.cap;
+  const m=c.matches.find(x=>x.phase==='bracket');
+  m.relays=[{a:5,b:2},{a:10,b:7}];m.status='done';save();
+  capCompClose();
+  return {closed:t.closed,phase:c.phase,finalScore:capCompScore(m),
+   matchCount:c.matches.length,priorRelays:c.matches.filter(x=>x.phase==='groups').map(x=>x.relays.length)};
+ },created.id);
+ assert(finished.closed,'Coupe interclubs : cloture finale refusee');
+ assert.equal(finished.matchCount,3,'Coupe interclubs : rencontre perdue apres cloture');
+ assert.deepEqual(finished.finalScore,{a:10,b:7},'Coupe interclubs : score final incorrect');
+ assert.deepEqual(finished.priorRelays,[2,2],'Coupe interclubs : relais de poule perdus a la cloture');
+ await page.reload({waitUntil:'domcontentloaded'});
+ const resumed=await page.evaluate(id=>{
+  const t=db.tournaments.find(x=>x.id===id),c=t?.cap;
+  if(!t)return null;
+  const before=t.closed;
+  db.selected=t.id;
+  capCompClose();
+  return {before,after:t.closed,phase:c.phase,
+   matches:c.matches.map(m=>({status:m.status,score:capCompScore(m)})),
+   separateSwiss:db.tournaments.some(x=>x.name==='Test Suisse'),
+   separateMonster:db.tournaments.some(x=>x.name==='Test Monster mini impair')};
+ },created.id);
+ assert(resumed&&resumed.before&&!resumed.after,'Coupe interclubs : cloture/reouverture non preservees');
+ assert(resumed.matches.every(x=>x.status==='done'),'Coupe interclubs : rencontres perdues au rechargement');
+ assert.deepEqual(resumed.matches.map(x=>x.score),[{a:10,b:8},{a:10,b:8},{a:10,b:7}],
+  'Coupe interclubs : scores modifies par la reprise');
+ assert(resumed.separateSwiss&&resumed.separateMonster,'Coupe interclubs : un tournoi independant a disparu');
+ console.log('OK Chromium : Coupe interclubs, poules vers finale, cloture bloquee, scores et reprise');
+
+ // Championnat : trois clubs avec victoire, nul final 9-9 et classement 2/1/0.
+ await page.evaluate(()=>{setTab('new');selectCreationMode('cap');});
+ form=page.locator('form[onsubmit="capCompCreate(event)"]');
+ await form.locator('[name="name"]').fill('Test Championnat interclubs');
+ await form.locator('[name="structure"]').selectOption('league');
+ await form.locator('[name="clubs"]').fill('Club Un\nClub Deux\nClub Trois');
+ await form.locator('[name="targets"]').fill('5,10');
+ await form.locator('[name="types"]').fill('S,D');
+ await form.locator('[name="minPlayers"]').fill('2');
+ await form.locator('[name="maxPlayers"]').fill('4');
+ await form.locator('button').last().click();
+ const league=await page.evaluate(()=>{
+  const t=db.tournaments.find(x=>x.name==='Test Championnat interclubs');
+  if(!t)return null;
+  const c=t.cap,ids=c.clubs.map(x=>x.id);
+  capCompClose();
+  const blocked=!t.closed;
+  // Rencontres issues des couples (0-1), (0-2), (1-2).
+  const scores=[[10,7],[9,9],[6,10]];
+  c.matches.forEach((m,i)=>{m.status='done';m.relays=[{a:5,b:3},{a:scores[i][0],b:scores[i][1]}];});
+  const ranking=capCompRanking(t,ids,'league');
+  capCompClose();
+  return {id:t.id,phase:c.phase,count:c.matches.length,blocked,closed:t.closed,
+   ranking:ranking.map(x=>({name:capCompName(c,x.id),pts:x.pts,diff:x.for-x.against,played:x.played}))};
+ });
+ assert(league&&league.phase==='league'&&league.count===3,'Championnat interclubs : calendrier incorrect');
+ assert(league.blocked&&league.closed,'Championnat interclubs : controles de cloture incorrects');
+ assert.deepEqual(league.ranking.map(x=>[x.name,x.pts,x.diff,x.played]),
+  [['Club Trois',3,4,2],['Club Un',3,3,2],['Club Deux',0,-7,2]],
+  'Championnat interclubs : classement points/nul/difference incorrect : '+JSON.stringify(league.ranking));
+ await page.reload({waitUntil:'domcontentloaded'});
+ const persisted=await page.evaluate(()=>{const t=db.tournaments.find(x=>x.name==='Test Championnat interclubs');return {closed:t?.closed,results:t?.cap?.matches?.map(m=>capCompScore(m)),cup:db.tournaments.find(x=>x.name==='Test Coupe interclubs')?.cap?.phase};});
+ assert(persisted.closed&&persisted.results?.length===3,'Championnat interclubs : perdus apres recharge');
+ assert.equal(persisted.cup,'bracket','Championnat interclubs : Coupe independante alteree');
+ console.log('OK Chromium : Championnat interclubs 3 clubs, 2/1/0, difference et persistance');
+}
+
 async function main(){
  const {server,url}=await serve();let browser;
  try{
@@ -395,6 +525,7 @@ async function main(){
   await oddAndSeason(page);
   await correctionStandings(page);
   await monsterMiniOddRotation(page);
+  await capCompetitionCupFlow(page);
   assert.deepEqual(errors,[],'Erreurs navigateur : '+errors.join('; '));
   await context.close();
  }finally{
