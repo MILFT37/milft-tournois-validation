@@ -1239,6 +1239,8 @@ async function linkedABForfeitAndCorrection(page){
   const waitingB=B.matches.find(m=>m.status==='waiting'&&m.a&&m.b);
   if(!playingA||!waitingB)throw Error('Rencontres A jouee / B en attente absentes');
   waitingB.milftPriority=true;waitingB.milftPriorityAt=1;
+  // Empêcher le réenchaînement immédiat d'un autre match A : vérifier le transfert A → B.
+  A.matches.filter(m=>m.status==='waiting').forEach(m=>m.hold=true);
   window.prompt=()=> 'A';
   const before={A:A.tables[0].state,B:B.tables[0].state,matchA:playingA.id,matchB:waitingB.id};
   declareForfait(playingA.id);
