@@ -1204,6 +1204,103 @@ async function linkedPoolsABLifecycle(page){
  console.log('OK Chromium : poules vers A/B liés, classement, table unique, cloture/reouverture et reprise');
 }
 
+
+/* Forfait dans tableau A actif, libération d'une table commune et correction
+   du résultat dans tableau B avant toute progression de phase. */
+async function linkedABForfeitAndCorrection(page){
+ await page.evaluate(fixture=>{db.players=fixture;save();setTab('new');selectCreationMode('poules');},players);
+ const f=page.locator('form[data-mode="poules"]');
+ await f.locator('[name="name"]').fill('Test Forfait AB Partage');
+ await f.locator('[name="rounds"]').fill('2');
+ await f.locator('[name="tables"]').fill('1');
+ await playersChecked(f,8);
+ await f.locator('[name="finalPhase"]').check();
+ await f.locator('[name="allQualifiers"]').uncheck();
+ await f.locator('[name="qualifiers"]').fill('4');
+ await f.locator('[name="enableTableB"]').check();
+ await f.locator('[name="qualifiersB"]').fill('4');
+ await submit(f);
+ const progress=await page.evaluate(()=>{
+  const root=db.tournaments.find(t=>t.name==='Test Forfait AB Partage');
+  if(!root)return {error:'Qualifications absentes'};
+  window.alert=msg=>(window.__linkedABAlerts??=[]).push(String(msg));
+  window.confirm=()=>true;
+  for(const m of root.matches){m.status='done';m.score={a:8,b:6};m.sets=[{a:8,b:6}];m.table=null;}
+  root.tables.forEach(x=>x.state='free');
+  nextRound();
+  for(const m of root.matches.filter(m=>m.round===2)){m.status='done';m.score={a:8,b:6};m.sets=[{a:8,b:6}];m.table=null;}
+  root.tables.forEach(x=>x.state='free');save();
+  createFinalFromQualifications();
+  const A=db.tournaments.find(t=>t.id===root.finalId),B=db.tournaments.find(t=>t.id===root.finalBId);
+  if(!A||!B)throw Error('Tableaux A/B absents');
+  db.selected=A.id;
+  autoAssign(A);
+  const playingA=A.matches.find(m=>m.status==='playing');
+  const waitingB=B.matches.find(m=>m.status==='waiting'&&m.a&&m.b);
+  if(!playingA||!waitingB)throw Error('Rencontres A jouee / B en attente absentes');
+  waitingB.milftPriority=true;waitingB.milftPriorityAt=1;
+  window.prompt=()=> 'A';
+  const before={A:A.tables[0].state,B:B.tables[0].state,matchA:playingA.id,matchB:waitingB.id};
+  declareForfait(playingA.id);
+  const activeB=B.matches.find(m=>m.status==='playing');
+  const after={score:playingA.score,forfait:playingA.forfait,winner:koWinner(playingA),status:playingA.status,
+   A:A.tables[0].state,B:B.tables[0].state,playingA:A.matches.filter(m=>m.status==='playing').length,
+   playingB:B.matches.filter(m=>m.status==='playing').length,activeBId:activeB?.id||null};
+  if(!activeB)return {rootId:root.id,AId:A.id,BId:B.id,before,after,failedToTransfer:true};
+  // Resultat joué de B puis correction annulable et correction inverse avant la finale.
+  const baselineA=JSON.stringify(A.matches),baselinePools=JSON.stringify(root.matches);
+  activeB.status='done';activeB.sets=[{a:5,b:3},{a:5,b:2},{a:5,b:4}];
+  activeB.score={a:3,b:0};const tabId=activeB.table;activeB.table=null;
+  milftReleaseSharedTable(B,tabId);advanceKnockout(B);
+  for(const m of A.matches.filter(m=>m.status==='waiting'))m.hold=true;
+  for(const m of B.matches.filter(m=>m.status==='waiting'))m.hold=true;
+  const finalB=B.matches.find(m=>m.round===1&&!m.bronze);
+  const beforeCorrection={winner:koWinner(activeB),advancement:finalB?.a||null};
+  db.selected=B.id;window.prompt=()=>null;
+  correctChallenge(activeB.id);
+  const canceled={winner:koWinner(activeB),sets:activeB.sets.length};
+  const entry=['3-5','2-5','4-5'];window.prompt=()=>entry.shift()??null;
+  correctChallenge(activeB.id);
+  const corrected={winner:koWinner(activeB),score:activeB.score,sets:activeB.sets,
+   advancement:finalB?.a||null,stillDone:activeB.status==='done'};
+  const independent=JSON.stringify(A.matches)===baselineA&&JSON.stringify(root.matches)===baselinePools;
+  save();return {rootId:root.id,AId:A.id,BId:B.id,before,after,beforeCorrection,canceled,corrected,
+   independent,failedToTransfer:false};
+ });
+ assert(!progress.error,'Forfait A/B : '+JSON.stringify(progress));
+ assert.equal(progress.before.A,'playing','Forfait A/B : le match A n utilise pas la table');
+ assert.equal(progress.before.B,'playing','Forfait A/B : table B non synchronisee en début de rencontre');
+ assert.equal(progress.after.forfait,true,'Forfait A/B : drapeau forfait non enregistré');
+ assert.deepEqual(progress.after.score,{a:5,b:3},'Forfait A/B : score administratif incorrect');
+ assert.equal(progress.after.status,'done','Forfait A/B : match non terminé par forfait');
+ assert.equal(progress.after.playingA,0,'Forfait A/B : match A encore en cours après forfait');
+ assert.equal(progress.failedToTransfer,false,'Forfait A/B : table partagée non libérée pour B : '+JSON.stringify(progress.after));
+ assert.equal(progress.after.playingB,1,'Forfait A/B : tableau B non relancé sur table libérée');
+ assert.equal(progress.after.activeBId,progress.before.matchB,'Forfait A/B : mauvaise rencontre B après transfert');
+ assert.equal(progress.canceled.winner,progress.beforeCorrection.winner,'Correction B : Annuler a changé le gagnant');
+ assert.equal(progress.canceled.sets,3,'Correction B : Annuler a changé les manches');
+ assert.deepEqual(progress.corrected.score,{a:0,b:3},'Correction B : résultat inverse non conservé');
+ assert.equal(progress.corrected.stillDone,true,'Correction B : match rouvert par erreur');
+ assert.notEqual(progress.corrected.winner,progress.beforeCorrection.winner,
+  'Correction B : vainqueur non recalculé');
+ assert.notEqual(progress.corrected.advancement,progress.beforeCorrection.advancement,
+  'Correction B : tableau suivant non recalculé');
+ assert(progress.independent,'Correction B : résultats A ou poules altérés');
+ await page.reload({waitUntil:'domcontentloaded'});
+ const persisted=await page.evaluate(ids=>{
+  const root=db.tournaments.find(t=>t.id===ids.rootId),A=db.tournaments.find(t=>t.id===ids.AId),
+   B=db.tournaments.find(t=>t.id===ids.BId);
+  const a=A.matches.find(m=>m.forfait);
+  const b=B.matches.find(m=>m.id===ids.matchB);
+  return {forfaitScore:a?.score,forfaitWinner:a?koWinner(a):null,correctedScore:b?.score,
+   bWinner:b?koWinner(b):null,links:root.finalId===A.id&&root.finalBId===B.id};
+ },{rootId:progress.rootId,AId:progress.AId,BId:progress.BId,matchB:progress.before.matchB});
+ assert.deepEqual(persisted.forfaitScore,{a:5,b:3},'Forfait A/B : sauvegarde du forfait perdue');
+ assert.deepEqual(persisted.correctedScore,{a:0,b:3},'Forfait A/B : sauvegarde de correction perdue');
+ assert(persisted.links,'Forfait A/B : phases liées perdues au rechargement');
+ console.log('OK Chromium : A/B liés, forfait 5-3, libération table partagée, correction et reprise');
+}
+
 async function main(){
  const {server,url}=await serve();let browser;
  try{
@@ -1229,6 +1326,7 @@ async function main(){
   await capManualTableControls(page);
   await classicKnockoutFivePlayers(page);
   await linkedPoolsABLifecycle(page);
+  await linkedABForfeitAndCorrection(page);
   assert.deepEqual(errors,[],'Erreurs navigateur : '+errors.join('; '));
   await context.close();
  }finally{
