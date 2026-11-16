@@ -442,9 +442,9 @@ const relayCases=[
  {name:'aucun relais',targets:[],relays:[],expected:false}
 ];
 for(const tc of relayCases)
- assert.strictEqual(capSimpleCanClose({mode:'cap',cap:{targets:tc.targets,relays:tc.relays},matches:[]}),tc.expected,'Course aux points : '+tc.name);
+ assert.strictEqual(capSimpleCanClose({mode:'cap',cap:{scoreMode:'cumulative',targets:tc.targets,relays:tc.relays},matches:[]}),tc.expected,'Course aux points : '+tc.name);
 let capSimpleAlerts=[],capSimpleSaves=0;
-const capSimpleState={mode:'cap',cap:{targets:[5,10],relays:[{a:5,b:3}]},closed:false};
+const capSimpleState={mode:'cap',cap:{scoreMode:'cumulative',targets:[5,10],relays:[{a:5,b:3}]},closed:false};
 const capSimpleClose=new Function('active','milftCanClose','alert','save','flash',
  extract('capClose')+';return capClose')(
  ()=>capSimpleState,capSimpleCanClose,s=>capSimpleAlerts.push(s),()=>capSimpleSaves++,()=>{}
@@ -471,7 +471,24 @@ const capThresholdCases=[
  {label:'paliers non croissants',cap:{targets:[5,5],relays:[{a:5,b:3},{a:5,b:4}]},allowed:false}
 ];
 for(const tc of capThresholdCases)assert.strictEqual(
- capSimpleCanClose({mode:'cap',cap:tc.cap,matches:[]}),tc.allowed,'CAP : '+tc.label
+ capSimpleCanClose({mode:'cap',cap:{scoreMode:'cumulative',...tc.cap},matches:[]}),tc.allowed,'CAP : '+tc.label
 );
 console.log('OK Course aux points simple : paliers, progression et égalité finale');
 
+
+/* Historique CAP : les anciens JSON portent les points du relais et non les totaux. */
+const capHistoricCases=[
+ {name:'ancienne course complete',scoreMode:undefined,targets:[5,10,15],relays:[{a:5,b:2},{a:5,b:3},{a:5,b:4}],expected:true},
+ {name:'mode legacy explicite',scoreMode:'legacy',targets:[5,10],relays:[{a:5,b:3},{a:5,b:3}],expected:true},
+ {name:'dernier palier manquant',scoreMode:undefined,targets:[5,10],relays:[{a:5,b:3},{a:3,b:3}],expected:false},
+ {name:'ancien relais vide',scoreMode:undefined,targets:[5,10],relays:[{a:5,b:3},{a:0,b:0}],expected:false},
+ {name:'ancien total trop eleve',scoreMode:undefined,targets:[5,10],relays:[{a:5,b:3},{a:6,b:3}],expected:false},
+ {name:'egalite historique autorisee',scoreMode:undefined,targets:[5,10],relays:[{a:5,b:3},{a:4,b:6}],finish:'draw',expected:true}
+];
+for(const tc of capHistoricCases){
+ const cap={scoreMode:tc.scoreMode,targets:tc.targets,relays:tc.relays,finish:tc.finish};
+ const snapshot=JSON.stringify(cap);
+ assert.strictEqual(capSimpleCanClose({mode:'cap',cap,matches:[]}),tc.expected,'Ancienne sauvegarde CAP : '+tc.name);
+ assert.strictEqual(JSON.stringify(cap),snapshot,'Le contrôle de clôture a modifié une sauvegarde historique');
+}
+console.log('OK Course aux points historique : totaux recalculés sans modification des relais');
