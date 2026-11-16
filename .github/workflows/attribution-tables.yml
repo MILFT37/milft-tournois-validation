@@ -9,6 +9,7 @@ on:
       - 'tests/browser-smoke.cjs'
       - 'tests/formats-browser.cjs'
       - 'tests/indexeddb-browser.cjs'
+      - 'tests/backup-linked-collision.cjs'
       - '.github/workflows/attribution-tables.yml'
   workflow_dispatch:
 jobs:
@@ -32,6 +33,7 @@ jobs:
           node tests/browser-smoke.cjs
           node tests/formats-browser.cjs
           node tests/indexeddb-browser.cjs
+          node tests/backup-linked-collision.cjs
       - name: Captures de recette automatique
         if: always()
         uses: actions/upload-artifact@v4
