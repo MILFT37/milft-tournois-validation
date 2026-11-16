@@ -5,6 +5,11 @@ on:
     paths:
       - 'MILFT_Tournois_V1_1_VALIDATION_HEBERGEMENT_STABLE_2026-11-02.html'
       - 'MILFT_Tournois_V1_1_FUSION_ANNUELLE_2026-11-06.html'
+      - 'index.html'
+      - 'manifest.webmanifest'
+      - 'MILFT_Tournois_192.png'
+      - 'MILFT_Tournois_512.png'
+      - 'MILFT_Tournois_1024.png'
       - '.github/workflows/milft-pages-deploy.yml'
   workflow_dispatch:
 permissions:
@@ -18,19 +23,87 @@ jobs:
   deploy:
     environment:
       name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - name: Prepare public files
+        shell: bash
         run: |
+          set -euo pipefail
           mkdir -p _site
           cp MILFT_Tournois_V1_1_VALIDATION_HEBERGEMENT_STABLE_2026-11-02.html _site/
           cp MILFT_Tournois_V1_1_FUSION_ANNUELLE_2026-11-06.html _site/
-          printf '%s\n' '<meta http-equiv="refresh" content="0;url=MILFT_Tournois_V1_1_FUSION_ANNUELLE_2026-11-06.html">' > _site/index.html
+          cp index.html manifest.webmanifest _site/
+          cp MILFT_Tournois_192.png MILFT_Tournois_512.png MILFT_Tournois_1024.png _site/
+          python3 - <<'PY'
+          import json, pathlib, struct
+          site=pathlib.Path('_site')
+          stable='MILFT_Tournois_V1_1_VALIDATION_HEBERGEMENT_STABLE_2026-11-02.html'
+          index=(site/'index.html').read_text(encoding='utf-8')
+          assert stable in index and 'http-equiv="refresh"' in index, 'Accueil non redirigé vers V1.1 stable'
+          manifest=json.loads((site/'manifest.webmanifest').read_text(encoding='utf-8'))
+          start=manifest['start_url'].lstrip('./')
+          assert start==stable and (site/start).is_file(), 'Point de départ PWA absent'
+          icons=manifest['icons']
+          assert {'192x192','512x512'}.issubset({i['sizes'] for i in icons}), 'Icônes PWA obligatoires manquantes'
+          for icon in icons:
+            image=site/icon['src'].lstrip('./')
+            with image.open('rb') as f:
+              header=f.read(24)
+            assert header[:8]==b'\x89PNG\r\n\x1a\n', f'PNG non reconnu: {image}'
+            w,h=struct.unpack('>II',header[16:24])
+            expected=tuple(map(int,icon['sizes'].split('x')))
+            assert (w,h)==expected, f'Dimensions d’icône incohérentes: {image} {w}x{h}'
+          html=(site/stable).read_text(encoding='utf-8')
+          assert 'manifest.webmanifest' in html and 'MILFT_Tournois_192.png' in html, 'Liens PWA absents du HTML'
+          print('OK artefact Pages : accueil V1.1 stable, manifeste, 192/512 PNG et HTML présents')
+          PY
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
           path: _site
       - id: deployment
         uses: actions/deploy-pages@v4
+
+  verifier_site_public:
+    needs: deploy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Vérifier le site public et les octets de la version candidate
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import hashlib, pathlib, time, urllib.request
+          base='https://milft37.github.io/milft-tournois-validation/'
+          files=[
+            'index.html',
+            'manifest.webmanifest',
+            'MILFT_Tournois_192.png',
+            'MILFT_Tournois_512.png',
+            'MILFT_Tournois_1024.png',
+            'MILFT_Tournois_V1_1_VALIDATION_HEBERGEMENT_STABLE_2026-11-02.html',
+            'MILFT_Tournois_V1_1_FUSION_ANNUELLE_2026-11-06.html',
+          ]
+          for name in files:
+            expected=hashlib.sha256(pathlib.Path(name).read_bytes()).hexdigest()
+            last=''
+            for attempt in range(12):
+              try:
+                url=base+name+'?milft-verify='+str(attempt)+'-'+expected[:10]
+                request=urllib.request.Request(url,headers={'User-Agent':'MILFT-Validation-Deploy-Check/1.0','Cache-Control':'no-cache'})
+                with urllib.request.urlopen(request,timeout=25) as response:
+                  actual=hashlib.sha256(response.read()).hexdigest()
+                  status=response.status
+                if status==200 and actual==expected:
+                  print(f'OK public : {name} (HTTP 200, SHA-256 conforme)')
+                  break
+                last=f'HTTP {status}; sha={actual[:12]} au lieu de {expected[:12]}'
+              except Exception as exc:
+                last=type(exc).__name__+': '+str(exc)
+              if attempt<11:time.sleep(5)
+            else:
+              raise RuntimeError('Page distante non vérifiée '+name+' : '+last)
+          print('OK : GitHub Pages diffuse exactement les fichiers de validation du dépôt')
+          PY
