@@ -1454,9 +1454,14 @@ function milftCanClose(t){
   if(!Array.isArray(c?.targets)||!c.targets.length||!Array.isArray(c.relays)||c.relays.length!==c.targets.length)return false;
   return c.relays.every((r,i)=>{
    const prev=i?c.relays[i-1]:{a:0,b:0},target=Number(c.targets[i]);
-   return !!r&&Number.isSafeInteger(target)&&target>0&&
-    Number.isSafeInteger(r.a)&&Number.isSafeInteger(r.b)&&
-    r.a>=prev.a&&r.b>=prev.b&&r.a>=0&&r.b>=0&&r.a<=target&&r.b<=target;
+   const last=i===c.targets.length-1;
+   if(!r||!Number.isSafeInteger(target)||target<=0||
+    (i&&target<=Number(c.targets[i-1]))||
+    !Number.isSafeInteger(r.a)||!Number.isSafeInteger(r.b)||
+    r.a<prev.a||r.b<prev.b||r.a<0||r.b<0||
+    r.a>target||r.b>target||(r.a===prev.a&&r.b===prev.b))return false;
+   // Même règle qu'à la saisie : un club atteint le palier, sauf l'égalité finale autorisée.
+   return Math.max(r.a,r.b)>=target||(last&&c.finish==='draw'&&r.a===target-1&&r.b===target-1);
   });
  }
  if(t.mode==='cap'&&Array.isArray(t.cap?.matches)){
