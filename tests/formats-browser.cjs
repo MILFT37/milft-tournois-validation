@@ -621,6 +621,123 @@ async function capInteractiveRelayFlow(page){
  console.log('OK Chromium : CAP interclubs saisie DOM, effectifs, composition, relais, correction et persistance');
 }
 
+
+/* Championnat CAP : 42 points, sept relais, composition de six joueurs par club.
+   Scenarios avec uniquement des joueurs fictifs et formulaires reels du navigateur. */
+async function capChampSevenRelays(page){
+ const fixture=Array.from({length:12},(_,i)=>({id:'CAP7-'+(i+1),first:'Fictif'+(i+1),last:'CAP7'}));
+ await page.evaluate(players=>{db.players=players;save();setTab('new');selectCreationMode('cap');},fixture);
+ const form=page.locator('form[onsubmit="capCompCreate(event)"]');
+ await form.locator('[name="name"]').fill('Test Sept Relais CAP');
+ await form.locator('[name="structure"]').selectOption('league');
+ await form.locator('[name="clubs"]').fill('Equipe Nord\nEquipe Sud');
+ await form.locator('[name="preset"]').selectOption('champ');
+ await form.locator('button').last().click();
+ await page.evaluate(()=>render());
+ const refs=await page.evaluate(()=>{
+  const t=db.tournaments.find(x=>x.name==='Test Sept Relais CAP');
+  if(!t)return null;
+  window.__cap7Alerts=[];window.alert=msg=>window.__cap7Alerts.push(String(msg));
+  return {id:t.id,match:t.cap.matches[0].id,clubs:t.cap.clubs.map(x=>x.id),
+   targets:t.cap.targets,types:t.cap.types};
+ });
+ assert(refs&&refs.clubs.length===2,'CAP 7 relais : creation absente');
+ assert.deepEqual(refs.targets,[6,12,18,24,30,36,42],'CAP 7 relais : paliers incorrects');
+ assert.deepEqual(refs.types,['D','D','D','S','D','S','D'],'CAP 7 relais : types incorrects');
+ const teamNames=[fixture.slice(0,6).map(p=>p.first+' '+p.last),fixture.slice(6,12).map(p=>p.first+' '+p.last)];
+ const sizes=await page.evaluate(({refs,players})=>{
+  for(let i=0;i<2;i++)for(const player of players.slice(i*6,i*6+6)){
+   const input=document.querySelector('[data-cap-roster="'+refs.clubs[i]+'"][value="'+player.id+'"]');
+   if(!input)throw Error('CAP : joueur fictif non trouve dans les effectifs');
+   input.checked=true;
+  }
+  capSaveRosters();
+  const t=active(),r=refs.clubs.map(id=>t.cap.rosters?.[id]?.length||0);
+  render();return r;
+ },{refs,players:fixture});
+ assert.deepEqual(sizes,[6,6],'CAP 7 relais : effectifs non conserves');
+ const valid=[[0,1],[2,3],[4,5],[0],[1,2],[3],[4,5]];
+ async function fill(scheme){
+  await page.evaluate(({refs,teamNames,scheme,valid})=>{
+   refs.clubs.forEach((club,team)=>{
+    const relays=team===0?scheme:valid;
+    relays.forEach((members,i)=>members.forEach((index,j)=>{
+     const el=document.getElementById('cap-pick-'+refs.match+'-'+club+'-'+i+'-'+j);
+     if(!el)throw Error('CAP : champ composition non trouve');
+     el.value=teamNames[team][index];
+    }));
+   });
+  },{refs,teamNames,scheme,valid});
+ }
+ async function reject(scheme,warning,label){
+  await fill(scheme);
+  await page.locator('button[onclick^="capSaveComposition("]').click();
+  const result=await page.evaluate(id=>{
+   const m=active().cap.matches.find(x=>x.id===id);
+   return {accepted:!!m.compositionsValidated,alert:window.__cap7Alerts.at(-1)};
+  },refs.match);
+  assert(!result.accepted,label+' : invalide accepte');
+  assert(result.alert&&result.alert.includes(warning),label+' : message inattendu '+JSON.stringify(result));
+ }
+ let bad=valid.map(x=>x.slice());bad[0]=[0,0];
+ await reject(bad,'deux places du même double','Double avec joueur duplique');
+ bad=valid.map(x=>x.slice());bad[2]=[0,5];
+ await reject(bad,'trois premiers doubles','Six joueurs distincts premiers doubles');
+ bad=valid.map(x=>x.slice());bad[6]=[4,0];
+ await reject(bad,'quatre derniers relais','Six joueurs distincts quatre derniers relais');
+ bad=valid.map(x=>x.slice());bad[3]=[4];bad[6]=[0,5];
+ await reject(bad,'deux relais consécutifs','Relais consecutifs');
+ await fill(valid);
+ await page.locator('button[onclick^="capSaveComposition("]').click();
+ const accepted=await page.evaluate(id=>{
+  const t=active(),m=t.cap.matches.find(x=>x.id===id);
+  return {validated:!!m.compositionsValidated,slots:Object.values(m.compositions||{}).map(x=>x.map(y=>y.length))};
+ },refs.match);
+ assert(accepted.validated,'CAP 7 relais : composition legale refusee');
+ assert.deepEqual(accepted.slots,[[2,2,2,1,2,1,2],[2,2,2,1,2,1,2]],
+  'CAP 7 relais : composition memorisee incorrectement');
+ const scores=await page.evaluate(({match,targets})=>{
+  const t=active(),history=[];
+  for(let i=0;i<targets.length;i++){
+   const a=document.getElementById('capca-'+match),b=document.getElementById('capcb-'+match);
+   if(!a||!b)throw Error('CAP 7 relais : champs de saisie absents au palier '+i);
+   a.value=String(targets[i]);b.value=String(targets[i]-2);
+   capCompRecord(match);
+   const m=t.cap.matches.find(x=>x.id===match);
+   history.push({n:m.relays.length,score:capCompScore(m),status:m.status});
+  }
+  window.confirm=()=>true;
+  capCompUndo(match);
+  const m=t.cap.matches.find(x=>x.id===match);
+  const afterUndo={n:m.relays.length,score:capCompScore(m),status:m.status};
+  const a=document.getElementById('capca-'+match),b=document.getElementById('capcb-'+match);
+  if(!a||!b)throw Error('CAP 7 relais : champs correction absents');
+  a.value='42';b.value='39';capCompRecord(match);
+  capCompClose();
+  return {history,afterUndo,closed:t.closed,final:capCompScore(m),
+   status:m.status,validated:m.compositionsValidated};
+ },{match:refs.match,targets:refs.targets});
+ for(let i=0;i<7;i++){
+  assert.equal(scores.history[i].n,i+1,'CAP 7 relais : progression du nombre de relais incorrecte');
+  assert.deepEqual(scores.history[i].score,{a:refs.targets[i],b:refs.targets[i]-2},
+   'CAP 7 relais : score cumule incorrect au relais '+(i+1));
+ }
+ assert.deepEqual(scores.afterUndo,{n:6,score:{a:36,b:34},status:'waiting'},
+  'CAP 7 relais : retrait dernier relais incorrect');
+ assert(scores.closed&&scores.validated&&scores.status==='done','CAP 7 relais : cloture ou composition perdue');
+ assert.deepEqual(scores.final,{a:42,b:39},'CAP 7 relais : correction du score final incorrecte');
+ await page.reload({waitUntil:'domcontentloaded'});
+ const stored=await page.evaluate(id=>{
+  const t=db.tournaments.find(x=>x.name==='Test Sept Relais CAP');
+  const m=t?.cap.matches.find(x=>x.id===id);
+  return {closed:t?.closed,n:m?.relays.length,score:capCompScore(m),
+   compositions:!!m?.compositionsValidated,rosters:t?.cap.clubs.map(x=>t.cap.rosters[x.id].length)};
+ },refs.match);
+ assert.deepEqual(stored,{closed:true,n:7,score:{a:42,b:39},compositions:true,rosters:[6,6]},
+  'CAP 7 relais : reprise apres rechargement incorrecte');
+ console.log('OK Chromium : CAP Championnat 42 points, 7 relais, compositions contraintes et correction');
+}
+
 async function main(){
  const {server,url}=await serve();let browser;
  try{
@@ -640,6 +757,7 @@ async function main(){
   await monsterMiniOddRotation(page);
   await capCompetitionCupFlow(page);
   await capInteractiveRelayFlow(page);
+  await capChampSevenRelays(page);
   assert.deepEqual(errors,[],'Erreurs navigateur : '+errors.join('; '));
   await context.close();
  }finally{
