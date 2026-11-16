@@ -92,6 +92,7 @@ async function main(){
   const dialogs=[];
   second.on('dialog',async d=>{dialogs.push({type:d.type(),text:d.message()});await d.accept();});
   await second.goto(url,{waitUntil:'domcontentloaded'});
+  await second.waitForURL(x=>x.pathname.endsWith('/'+HTML));
   await fixture(second,'UI-AVANT-IMPORT');
   const section=await showBackup(second);
   const fileChooserPromise=second.waitForEvent('filechooser');
