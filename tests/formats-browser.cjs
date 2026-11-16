@@ -166,7 +166,7 @@ async function main(){
   const errors=[];page.on('pageerror',e=>errors.push(e.message));
   await page.goto(url,{waitUntil:'domcontentloaded'});
   // L'application charge aussi un annuaire de référence. Le scénario isole explicitement ses joueurs fictifs.
-  await page.evaluate(fixture=>{db.players=fixture.players;db.tournaments=[];db.selected=null;save();render();},initial);
+  await page.evaluate(fixture=>{db.players=fixture.players;db.tournaments=[];db.selected=null;plan.events=[];plan.progress=[];planSave();save();render();},initial);
   await swissAndDouble(page);
   await monsterAndSimulation(page);
   assert.deepEqual(errors,[],'Erreurs navigateur : '+errors.join('; '));
