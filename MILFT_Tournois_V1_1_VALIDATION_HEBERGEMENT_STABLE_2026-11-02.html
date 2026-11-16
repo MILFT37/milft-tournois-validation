@@ -2237,6 +2237,23 @@ async function milftImportBackup(input){
    const matchIds=t.matches.map(m=>m.id);
    if(matchIds.some(id=>!id)||new Set(matchIds).size!==matchIds.length)throw Error('Identifiants des rencontres invalides ou en double.');
   }
+  // Refuser un JSON incoherent AVANT les confirmations et AVANT toute ecriture.
+  // Les tournois independants possedent chacun leur espace de tables.
+  // Les phases liees d'un MEME evenement (poules/A/B) partagent les tables
+  // physiques : deux rencontres actives ne peuvent occuper le meme numero.
+  const backupOccupiedByEvent=new Map();
+  for(const phase of migrated.tournaments){
+   const eventId=milftBackupEventRootId(phase,migrated.tournaments);
+   for(const match of phase.matches){
+    if(match.status!=='playing'||match.table==null)continue;
+    const key=JSON.stringify([eventId,String(match.table)]);
+    const previous=backupOccupiedByEvent.get(key);
+    if(previous&&previous.phase!==phase.id){
+     throw Error('Table '+String(match.table)+' attribuée simultanément à plusieurs rencontres des phases liées ('+String(previous.letter||'tournoi')+' et '+String(phase.bracketLetter||'tournoi')+'). Sauvegarde non importée.');
+    }
+    backupOccupiedByEvent.set(key,{phase:phase.id,letter:phase.bracketLetter});
+   }
+  }
   const currentCount=db?.tournaments?.length||0;
   const completed=data.tournaments.reduce((n,t)=>n+t.matches.filter(m=>m.status==='done').length,0);
   const ongoing=data.tournaments.reduce((n,t)=>n+t.matches.filter(m=>m.status==='playing').length,0);
