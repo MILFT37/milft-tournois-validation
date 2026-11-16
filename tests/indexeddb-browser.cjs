@@ -124,7 +124,7 @@ async function checkLinkedABBackupRoundTrip(page){
  assert.equal(result.afterValid.correctedSets.length,3,'Backup A/B : manches corrigées perdues');
  assert(result.invalidNoWrite&&result.invalidBlockedEarly,
   'Backup A/B : une archive incohérente a modifié des données');
- assert(result.invalidAlert.includes('Rencontre en cours sans table valide'),
+ assert(result.invalidAlert.includes('Table indiquée occupée sans rencontre en cours dans les phases liées'),
   'Backup A/B : diagnostic erroné pour table inexistante : '+result.invalidAlert);
  await page.reload({waitUntil:'domcontentloaded'});
  const recovered=await page.evaluate(()=>{
