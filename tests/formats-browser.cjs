@@ -156,6 +156,8 @@ async function monsterAndSimulation(page){
  console.log('OK Chromium : Simulation/Avancement, projection 4→8 tables, trois tournois conservés');
 }
 async function oddAndSeason(page){
+ // Après le rechargement précédent, l'annuaire MILFT de référence est réinjecté : isoler les participants fictifs.
+ await page.evaluate(players=>{db.players=players;save();render();},players);
  let form=await creation(page,'poules');
  await form.locator('input[name="name"]').fill('Test Suisse impair');
  await form.locator('input[name="rounds"]').fill('2');
