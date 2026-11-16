@@ -805,6 +805,81 @@ async function capConcurrentTables(page){
  console.log('OK Chromium : CAP quatre clubs, deux tables, exclusivite clubs, exclusion bloquee et reprise');
 }
 
+
+/* Coupe CAP a cinq clubs : trois BYE automatiques, demi-finales et finale,
+   controle des transitions et reprise sur navigateur fictif. */
+async function capByeMultiRound(page){
+ await page.evaluate(()=>{setTab('new');selectCreationMode('cap');});
+ const f=page.locator('form[onsubmit="capCompCreate(event)"]');
+ await f.locator('[name="name"]').fill('Test Coupe cinq clubs BYE');
+ await f.locator('[name="structure"]').selectOption('cup');
+ await f.locator('[name="clubs"]').fill('Club A\nClub B\nClub C\nClub D\nClub E');
+ await f.locator('[name="groups"]').uncheck();
+ await f.locator('[name="bracket"]').check();
+ await f.locator('[name="targets"]').fill('5,10');
+ await f.locator('[name="types"]').fill('S,D');
+ await f.locator('button').last().click();
+ const result=await page.evaluate(()=>{
+  const t=db.tournaments.find(x=>x.name==='Test Coupe cinq clubs BYE');
+  if(!t)return null;
+  const c=t.cap;window.__capByeAlerts=[];window.alert=msg=>window.__capByeAlerts.push(String(msg));
+  const first=c.matches.filter(m=>m.phase==='bracket'&&m.round===1);
+  const byes=first.filter(m=>m.bye);
+  const open=first.filter(m=>!m.bye);
+  capCompNext();
+  const blockedWithoutScore=c.round===1&&c.matches.length===4;
+  for(const m of open){m.status='done';m.relays=[{a:5,b:3},{a:10,b:8}];}
+  const round1Ids=first.map(m=>capCompScore(m).a>capCompScore(m).b?m.a:m.b);
+  capCompNext();
+  const round2=c.matches.filter(m=>m.phase==='bracket'&&m.round===2);
+  const round2Initial={round:c.round,teams:round2.flatMap(m=>[m.a,m.b]),games:round2.length};
+  const beforeUndo=first[0]?.relays?.length||0;
+  if(open[0])capCompUndo(open[0].id);
+  const lateUndoBlocked=open[0]?.relays?.length===2;
+  for(const m of round2){m.status='done';m.relays=[{a:5,b:2},{a:10,b:7}];}
+  capCompNext();
+  const final=c.matches.filter(m=>m.phase==='bracket'&&m.round===3);
+  const round3Initial={round:c.round,games:final.length,clubs:final.flatMap(m=>[m.a,m.b])};
+  capCompClose();
+  const earlyCloseBlocked=!t.closed;
+  for(const m of final){m.status='done';m.relays=[{a:5,b:4},{a:10,b:9}];}
+  capCompClose();
+  const saved={closed:t.closed,score:capCompScore(final[0]),games:c.matches.length,byes:byes.length,
+   byeScores:byes.map(m=>m.score),phase:c.phase,round:c.round,allDone:c.matches.every(m=>m.status==='done')};
+  return {blockedWithoutScore,round1Ids,round2Initial,round3Initial,lateUndoBlocked,
+   earlyCloseBlocked,saved};
+ });
+ assert(result,'CAP BYE : competition non creee');
+ assert(result.blockedWithoutScore,'CAP BYE : passage autorise avant dernier resultat du tour 1');
+ assert.equal(result.saved.byes,3,'CAP BYE : trois exemptions automatiques attendues');
+ assert.deepEqual(result.saved.byeScores,[{a:30,b:20},{a:30,b:20},{a:30,b:20}],
+  'CAP BYE : scores administratifs invalides');
+ assert.equal(new Set(result.round1Ids).size,4,'CAP BYE : quatre qualifiés distincts attendus');
+ assert.equal(result.round2Initial.round,2,'CAP BYE : numero demi-finales incorrect');
+ assert.equal(result.round2Initial.games,2,'CAP BYE : deux demi-finales attendues');
+ assert.equal(new Set(result.round2Initial.teams).size,4,'CAP BYE : quatre clubs uniques dans les demi-finales');
+ assert.deepEqual(new Set(result.round2Initial.teams),new Set(result.round1Ids),
+  'CAP BYE : qualified clubs altered');
+ assert(result.lateUndoBlocked,'CAP BYE : correction du tour precedent autorisee apres progression');
+ assert.deepEqual(result.round3Initial,{round:3,games:1,clubs:result.round3Initial.clubs},
+  'CAP BYE : finale non creee');
+ assert.equal(result.round3Initial.clubs.length,2,'CAP BYE : deux clubs en finale attendus');
+ assert(result.earlyCloseBlocked,'CAP BYE : cloture autorisee avant la finale');
+ assert(result.saved.closed&&result.saved.allDone,'CAP BYE : cloture finale non validee');
+ assert.equal(result.saved.games,7,'CAP BYE : sept rencontres attendues sur trois tours');
+ assert.deepEqual(result.saved.score,{a:10,b:9},'CAP BYE : score final incorrect');
+ await page.reload({waitUntil:'domcontentloaded'});
+ const persisted=await page.evaluate(()=>{
+  const t=db.tournaments.find(x=>x.name==='Test Coupe cinq clubs BYE');
+  return {closed:t?.closed,round:t?.cap?.round,byes:t?.cap?.matches.filter(m=>m.bye).length,
+   games:t?.cap?.matches.length,final:t?.cap?.matches.find(m=>m.round===3)?.relays?.at(-1),
+   otherCap:db.tournaments.some(x=>x.name==='Test Tables CAP')};
+ });
+ assert.deepEqual(persisted,{closed:true,round:3,byes:3,games:7,final:{a:10,b:9},otherCap:true},
+  'CAP BYE : sauvegarde et independance non conservees');
+ console.log('OK Chromium : CAP Coupe cinq clubs, 3 BYE, demi-finales, finale, blocages et reprise');
+}
+
 async function main(){
  const {server,url}=await serve();let browser;
  try{
@@ -826,6 +901,7 @@ async function main(){
   await capInteractiveRelayFlow(page);
   await capChampSevenRelays(page);
   await capConcurrentTables(page);
+  await capByeMultiRound(page);
   assert.deepEqual(errors,[],'Erreurs navigateur : '+errors.join('; '));
   await context.close();
  }finally{
