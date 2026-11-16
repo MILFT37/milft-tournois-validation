@@ -880,6 +880,107 @@ async function capByeMultiRound(page){
  console.log('OK Chromium : CAP Coupe cinq clubs, 3 BYE, demi-finales, finale, blocages et reprise');
 }
 
+
+/* Interclubs : attribution manuelle de deux tables, changement interdit pendant une
+   rencontre, retrait en attente, exclusion/retour d'une table et reprise. */
+async function capManualTableControls(page){
+ await page.evaluate(()=>{setTab('new');selectCreationMode('cap');});
+ const form=page.locator('form[onsubmit="capCompCreate(event)"]');
+ await form.locator('[name="name"]').fill('Test CAP Tables Manuelles');
+ await form.locator('[name="structure"]').selectOption('league');
+ await form.locator('[name="clubs"]').fill('Club A\nClub B\nClub C\nClub D');
+ await form.locator('[name="targets"]').fill('5,10');
+ await form.locator('[name="types"]').fill('S,D');
+ await form.locator('button').last().click();
+ const result=await page.evaluate(()=>{
+  const t=db.tournaments.find(x=>x.name==='Test CAP Tables Manuelles');
+  if(!t)return {error:'Competition non creee'};
+  window.__capManualAlerts=[];
+  window.alert=msg=>window.__capManualAlerts.push(String(msg));
+  window.confirm=()=>true;
+  const clubs=t.cap.clubs.map(c=>c.id);
+  const match=(a,b)=>t.cap.matches.find(m=>[m.a,m.b].includes(clubs[a])&&[m.a,m.b].includes(clubs[b]));
+  const ab=match(0,1),ac=match(0,2),cd=match(2,3);
+  if(!ab||!ac||!cd)throw Error('Rencontres manquantes pour quatre clubs');
+  const count=document.getElementById('cap-table-count');
+  if(!count)throw Error('Reglage du parc des tables absent');
+  count.value='2';capSetTableCount();
+  if(t.tables.length!==2)throw Error('Parc a deux tables non configure');
+  function choose(m,value,inject=false){
+   render();
+   const el=document.getElementById('cap-table-'+m.id);
+   if(!el)throw Error('Selecteur manuel de table absent pour '+m.id);
+   if(inject&&!Array.from(el.options).some(x=>x.value===String(value)))el.add(new Option('Table '+value,String(value)));
+   el.value=String(value);
+   capAssignTable(m.id);
+  }
+  choose(ab,'1');
+  const first=ab.tableId;
+  choose(ac,'2');
+  const sameClubBlocked=ac.tableId==null;
+  const sameClubAlert=window.__capManualAlerts.at(-1)||'';
+  choose(cd,'1',true);
+  const sameTableBlocked=cd.tableId==null;
+  const sameTableAlert=window.__capManualAlerts.at(-1)||'';
+  choose(cd,'2');
+  const separated=cd.tableId===2&&ab.tableId===1;
+  render();
+  const countAgain=document.getElementById('cap-table-count');
+  countAgain.value='1';capSetTableCount();
+  const resizeBlocked=t.tables.length===2;
+  render();
+  const state=document.getElementById('cap-table-state-1');
+  state.value='excluded';capSetTable(1);
+  const excludeOccupiedBlocked=t.tables[0].state==='free';
+  ab.status='playing';
+  choose(ab,'');
+  const removalWhilePlayingBlocked=ab.tableId===1;
+  ab.status='waiting';
+  choose(ab,'');
+  const released=ab.tableId==null;
+  render();
+  document.getElementById('cap-table-state-1').value='excluded';
+  capSetTable(1);
+  const excluded=t.tables[0].state==='excluded';
+  capAutoAssign();
+  const noAssignmentOnExcluded=ab.tableId==null;
+  render();
+  document.getElementById('cap-table-state-1').value='free';
+  capSetTable(1);
+  choose(ab,'1');
+  save();
+  return {id:t.id,first,sameClubBlocked,sameClubAlert,sameTableBlocked,sameTableAlert,
+   separated,resizeBlocked,excludeOccupiedBlocked,removalWhilePlayingBlocked,
+   released,excluded,noAssignmentOnExcluded,
+   final:{ab:ab.tableId,cd:cd.tableId,ac:ac.tableId,tables:t.tables.map(x=>x.state)}};
+ });
+ assert(!result.error,'CAP tables manuelles : '+JSON.stringify(result));
+ assert.equal(result.first,1,'CAP manuel : attribution initiale sur table 1 echouee');
+ assert(result.sameClubBlocked&&/club|équipe/i.test(result.sameClubAlert),
+  'CAP manuel : deux rencontres du meme club acceptees : '+JSON.stringify(result));
+ assert(result.sameTableBlocked&&/table/i.test(result.sameTableAlert),
+  'CAP manuel : meme table affectee deux fois : '+JSON.stringify(result));
+ assert(result.separated,'CAP manuel : deux rencontres disjointes non attribuees');
+ assert(result.resizeBlocked&&result.excludeOccupiedBlocked,
+  'CAP manuel : reduction/exclusion de table occupee acceptee');
+ assert(result.removalWhilePlayingBlocked&&result.released,
+  'CAP manuel : modification en cours ou retrait en attente incorrects');
+ assert(result.excluded&&result.noAssignmentOnExcluded,
+  'CAP manuel : table exclue disponible a tort pour auto-attribution');
+ assert.deepEqual(result.final,{ab:1,cd:2,ac:null,tables:['free','free']},
+  'CAP manuel : etat final des affectations incorrect : '+JSON.stringify(result.final));
+ await page.reload({waitUntil:'domcontentloaded'});
+ const saved=await page.evaluate(id=>{
+  const t=db.tournaments.find(x=>x.id===id);
+  const clubs=t.cap.clubs.map(c=>c.id);
+  const m=(a,b)=>t.cap.matches.find(m=>[m.a,m.b].includes(clubs[a])&&[m.a,m.b].includes(clubs[b]));
+  return {tables:t.tables.map(x=>x.state),ab:m(0,1).tableId,cd:m(2,3).tableId,ac:m(0,2).tableId};
+ },result.id);
+ assert.deepEqual(saved,{tables:['free','free'],ab:1,cd:2,ac:null},
+  'CAP manuel : affectations ou parc non conserves au rechargement');
+ console.log('OK Chromium : CAP tables manuelles, conflits, exclusion, liberation et reprise');
+}
+
 async function main(){
  const {server,url}=await serve();let browser;
  try{
@@ -902,6 +1003,7 @@ async function main(){
   await capChampSevenRelays(page);
   await capConcurrentTables(page);
   await capByeMultiRound(page);
+  await capManualTableControls(page);
   assert.deepEqual(errors,[],'Erreurs navigateur : '+errors.join('; '));
   await context.close();
  }finally{
