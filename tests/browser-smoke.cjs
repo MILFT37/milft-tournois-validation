@@ -199,6 +199,52 @@ async function checkEmptyNavigation(browser,url){
  }finally{await context.close();}
 }
 
+async function checkPwaResources(browser,url){
+ const context=await browser.newContext({viewport:{width:390,height:844}});
+ const page=await context.newPage();
+ try{
+  await page.goto(url,{waitUntil:'domcontentloaded'});
+  const resources=await page.evaluate(async()=>{
+   const href=document.querySelector('link[rel="manifest"]')?.href;
+   const icon=document.querySelector('link[rel="icon"]')?.href;
+   const apple=document.querySelector('link[rel="apple-touch-icon"]')?.href;
+   const manifest=href?await fetch(href):null;
+   const json=manifest?.ok?await manifest.json():null;
+   const fetchIcon=async target=>{
+    const response=await fetch(target);const bytes=new Uint8Array(await response.arrayBuffer());
+    return {status:response.status,contentType:response.headers.get('content-type'),
+     png:bytes.length>24&&bytes[0]===137&&bytes[1]===80&&bytes[2]===78&&bytes[3]===71,
+     width:bytes.length>24?(bytes[16]*16777216+bytes[17]*65536+bytes[18]*256+bytes[19]):null,
+     height:bytes.length>24?(bytes[20]*16777216+bytes[21]*65536+bytes[22]*256+bytes[23]):null};
+   };
+   return {manifestStatus:manifest?.status,json,icons:json?.icons||[],
+    icon:icon?await fetchIcon(icon):null,apple:apple?await fetchIcon(apple):null,
+    serviceWorkerAvailable:'serviceWorker' in navigator,
+    workerControlled:!!navigator.serviceWorker?.controller};
+  });
+  assert.equal(resources.manifestStatus,200,'Manifeste PWA non accessible');
+  assert.equal(resources.json?.display,'standalone','Mode application autonome absent');
+  assert(resources.json?.start_url?.endsWith(HTML),'Manifeste pointe vers une ancienne page');
+  assert.equal(resources.icons.length,2,'Deux tailles d icones attendues');
+  assert.deepEqual(resources.icons.map(x=>x.sizes).sort(),['192x192','512x512'],'Tailles PWA incorrectes');
+  const assets=await page.evaluate(async icons=>Promise.all(icons.map(async icon=>{
+   const r=await fetch(new URL(icon.src,document.baseURI));
+   const bytes=new Uint8Array(await r.arrayBuffer());
+   return {status:r.status,png:bytes[0]===137&&bytes[1]===80&&bytes[2]===78&&bytes[3]===71,
+    width:(bytes[16]*16777216+bytes[17]*65536+bytes[18]*256+bytes[19]),
+    height:(bytes[20]*16777216+bytes[21]*65536+bytes[22]*256+bytes[23])};
+  })),resources.icons);
+  for(let i=0;i<assets.length;i++){
+   const expected=Number(resources.icons[i].sizes.split('x')[0]);
+   assert(assets[i].status===200&&assets[i].png&&assets[i].width===expected&&assets[i].height===expected,
+    'Ressource icone PWA invalide : '+JSON.stringify(assets[i]));
+  }
+  assert(resources.icon?.png&&resources.apple?.png,'Favicon ou icone Apple absents');
+  console.log('OK navigateur : manifeste PWA, page de démarrage, icones 192/512 et icone Apple accessibles');
+  console.log('INFO PWA : aucun service worker requis dans cette recette; installation Safari non attestée');
+ }finally{await context.close();}
+}
+
 async function main(){
  const {server,url}=await serveLocal();let browser;
  try{
@@ -208,6 +254,7 @@ async function main(){
   }
   await checkLiveReload(browser,url);
   await checkEmptyNavigation(browser,url);
+  await checkPwaResources(browser,url);
  }finally{
   if(browser)await browser.close();
   await new Promise(resolve=>server.close(resolve));
