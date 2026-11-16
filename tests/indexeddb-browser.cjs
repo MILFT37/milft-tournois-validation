@@ -1,6 +1,9 @@
 const assert=require('node:assert/strict');
 const fs=require('node:fs'),http=require('node:http'),path=require('node:path');
-const {chromium}=require('playwright');
+const {chromium,webkit}=require('playwright');
+const browserName=process.env.MILFT_BROWSER||'chromium';
+if(!['chromium','webkit'].includes(browserName))throw new Error('Navigateur de test non pris en charge: '+browserName);
+const engine={chromium,webkit}[browserName];
 const HTML='MILFT_Tournois_V1_1_VALIDATION_HEBERGEMENT_STABLE_2026-11-02.html';
 const KEY='milft_iso_20261102_tournois_v01';
 async function serve(){
@@ -139,13 +142,13 @@ async function checkLinkedABBackupRoundTrip(page){
  assert.deepEqual(recovered,{count:3,selected:'PHASE-A-BACKUP',links:true,
   playing:'playing',table:1,forfeit:{a:5,b:3},corrected:{a:0,b:3}},
   'Backup A/B : perte de données après rechargement');
- console.log('OK Chromium : export réel JSON et import A/B liés, forfait, correction, table partagée, rejet et reprise');
+ console.log('OK '+browserName+ : export réel JSON et import A/B liés, forfait, correction, table partagée, rejet et reprise');
 }
 
 async function main(){
  const {server,url}=await serve();let browser;
  try{
-  browser=await chromium.launch({headless:true});
+  browser=await engine.launch({headless:true});
   const context=await browser.newContext({viewport:{width:390,height:844},acceptDownloads:true});
   const page=await context.newPage(),errors=[];
   page.on('pageerror',e=>errors.push(e.message));
@@ -213,7 +216,7 @@ async function main(){
   assert.deepEqual(persisted.score,{a:8,b:6},'Résultat perdu après réouverture');
   await checkLinkedABBackupRoundTrip(page);
   assert.deepEqual(errors,[],'Erreurs Javascript dans le navigateur');
-  console.log('OK Chromium IndexedDB : session locale et archive récupérable protégées, import valide, refus incohérent et reprise');
+  console.log('OK '+browserName+ IndexedDB : session locale et archive récupérable protégées, import valide, refus incohérent et reprise');
   await context.close();
  }finally{
   if(browser)await browser.close();
