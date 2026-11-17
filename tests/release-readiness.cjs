@@ -4,8 +4,9 @@ const fs=require('node:fs'),assert=require('node:assert/strict');
 const path=require('node:path'),crypto=require('node:crypto');
 const from='MILFT_Tournois_V1_1_VALIDATION_HEBERGEMENT_STABLE_2026-11-02.html';
 const to='MILFT_Tournois_V1_1_PRODUCTION_PRETE_2026-11-17.html';
-const base=fs.readFileSync(from,'utf8');
-const release=fs.readFileSync(to,'utf8');
+const normalizeCheckout=text=>text.replace(/\r\n/g,'\n');
+const base=normalizeCheckout(fs.readFileSync(from,'utf8'));
+const release=normalizeCheckout(fs.readFileSync(to,'utf8'));
 const blobSha=text=>crypto.createHash('sha1').update('blob '+Buffer.byteLength(text)+'\0').update(text).digest('hex');
 assert.equal(blobSha(base),'53c54113726796ac2edd0189f7c0d5bf51308bf8',
   'Le code fonctionnel de référence a changé : ne pas dériver de release silencieusement');
