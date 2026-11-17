@@ -16,7 +16,7 @@ for(const elapsed of calculate){
  assert.equal(elapsed({startedAt:now+60000,elapsedMs:120000},now),2,'Future timestamp must never count negative elapsed.');
  assert.equal(elapsed({startedAt:now-5*day,elapsedMs:0},now),0,'Stale timer with no previous elapsed starts at zero for ETA.');
 }
-const pauseSource=html.match(/function pauseMatchClock\\(m\\)\\{[^}]+\\}/)?.[0];
+const pauseSource=html.match(/function pauseMatchClock\(m\)\{[^}]+\}/)?.[0];
 assert(pauseSource,'Official pause/restart mechanism must remain present.');
 const doPause=new Function('m','Date',pauseSource+';pauseMatchClock(m);return m;');
 for(const [stamp,expected] of [
