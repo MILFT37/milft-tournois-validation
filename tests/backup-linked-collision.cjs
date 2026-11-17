@@ -55,7 +55,22 @@ async function main(){
    resumed.status='waiting';resumed.table=null; // Ne toucher a aucune manche
    await milftImportBackup({files:[new File([JSON.stringify(repaired)],'copie-fictive-coherente.json',{type:'application/json'})],value:'copie-fictive-coherente.json'});
    const phaseB=db.tournaments.find(t=>t.id==='COLLISION-B');
-   const valid={confirmations:confirmations.length,reopenedStatus:phaseB?.matches[0].status,
+   // 7 enregistrements techniques, mais 5 événements et 4 actifs.
+   // Les deux championnats homonymes DOIVENT rester deux événements distincts.
+   const fictive=(id,name,closed)=>({
+    id,name,closed,abandoned:false,mode:'challenge',roster:[],tables:[],matches:[]
+   });
+   const grouped=milftBackupPreviewGroups([
+    ...repaired.data.tournaments,
+    fictive('CHAMP-1','Championnat 2026–2027',false),
+    fictive('CHAMP-2','Championnat 2026–2027',false),
+    fictive('MONSTER','Monster juniors',false),
+    fictive('FINISHED','Ancien tournoi',true)
+   ]);
+   const valid={confirmations:confirmations.length,preview:confirmations[0],
+    eventCount:grouped.length,activeEvents:grouped.filter(x=>x.active).length,
+    championships:grouped.filter(x=>x.root.name==='Championnat 2026–2027').length,
+    reopenedStatus:phaseB?.matches[0].status,
     reopenedTable:phaseB?.matches[0].table,storedSet:phaseB?.matches[0].sets,
     protected:localStorage.getItem('milft_iso_20261102_tournois_v01')!==before};
    db.selected='COLLISION-B';assignSpecific('LIVE-B');
@@ -69,6 +84,13 @@ async function main(){
   assert(result.rejected.alerts.some(a=>a.includes('Table 2')&&a.includes('simultanément')),
    'Diagnostic de collision A/B absent : '+result.rejected.alerts.join(' | '));
   assert.equal(result.valid.confirmations,3,'Copie coherente : confirmations de protection absentes');
+  assert.equal(result.valid.eventCount,5,'7 enregistrements doivent representer 5 evenements');
+  assert.equal(result.valid.activeEvents,4,'Quatre evenements doivent rester actifs');
+  assert.equal(result.valid.championships,2,'Deux championnats de meme nom restent distincts');
+  assert.match(result.valid.preview,/1 événement\\(s\\) \\(1 en cours, 0 terminé\\(s\\)\\)/,'L aperçu doit compter un evenement lie actif');
+  assert.match(result.valid.preview,/3 enregistrements internes/,'L aperçu doit expliciter les 3 phases');
+  assert.match(result.valid.preview,/Poules 0 \\+ Tableau A 1 \\+ Tableau B 1/,'L apercu doit presenter les phases A\/B');
+
   assert.equal(result.valid.reopenedStatus,'waiting','Copie coherente : match B non mis en attente');
   assert.equal(result.valid.reopenedTable,null,'Copie coherente : ancienne table B conservee');
   assert.deepEqual(result.valid.storedSet,[{a:5,b:3}],'Copie coherente : manche B perdue');
