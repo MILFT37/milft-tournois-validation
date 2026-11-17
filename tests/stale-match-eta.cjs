@@ -16,5 +16,22 @@ for(const elapsed of calculate){
  assert.equal(elapsed({startedAt:now+60000,elapsedMs:120000},now),2,'Future timestamp must never count negative elapsed.');
  assert.equal(elapsed({startedAt:now-5*day,elapsedMs:0},now),0,'Stale timer with no previous elapsed starts at zero for ETA.');
 }
-assert(html.includes('function pauseMatchClock(m)'),'Official pause/restart mechanism must remain present.');
+const pauseSource=html.match(/function pauseMatchClock\\(m\\)\\{[^}]+\\}/)?.[0];
+assert(pauseSource,'Official pause/restart mechanism must remain present.');
+const doPause=new Function('m','Date',pauseSource+';pauseMatchClock(m);return m;');
+for(const [stamp,expected] of [
+ [now-5*day,120000],
+ [now-5*60000,420000],
+ [now+60000,120000],
+ [null,120000]
+]){
+ const score={a:5,b:3},sets=[{a:5,b:3}];
+ const data={startedAt:stamp,elapsedMs:120000,score,sets};
+ const result=doPause(data,{now:()=>now});
+ assert.equal(result.elapsedMs,expected,'Unexpected accumulated clock after pause: '+String(stamp));
+ assert.equal(result.startedAt,null,'Pausing must clear the running timestamp.');
+ assert.deepEqual(result.sets,[{a:5,b:3}],'Pausing changed match sets.');
+ assert.deepEqual(result.score,{a:5,b:3},'Pausing changed match score.');
+}
+console.log('OK : un match ancien remis en attente ne cumule pas les jours écoulés ; manche 5-3 intacte.');
 console.log('OK : les deux projections excluent les jours inter-seances, sans mutation des horodatages ni des scores.');
