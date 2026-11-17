@@ -681,7 +681,7 @@ button:focus-visible,summary:focus-visible,input:focus-visible,select:focus-visi
     for(const m of [...live,...waiting]){const key=stageKey(m);if(!grouped.has(key))grouped.set(key,{key,waiting:0,duration:pref(prefs,isFinal(t,m)?'bracketMin':'poolMin'),round:m.round??m.leg??0,final:isFinal(t,m),participants:[],matchIds:[]});if(m.status==='waiting'){const g=grouped.get(key);g.waiting++;g.participants.push(matchPlayers(t,m));g.matchIds.push(m.id);}}
     const rounds=Array.from(grouped.values()).sort(stageOrder);
     const running=[];
-    for(const m of live){const ix=rounds.findIndex(x=>x.key===stageKey(m));const duration=pref(prefs,isFinal(t,m)?'bracketMin':'poolMin');const elapsed=Number.isFinite(+m.startedAt)&&+m.startedAt>0?Math.max(0,(now-m.startedAt)/60000)+Math.max(0,Number(m.elapsedMs)||0)/60000:Math.max(0,Number(m.elapsedMs)||0)/60000;
+    for(const m of live){const ix=rounds.findIndex(x=>x.key===stageKey(m));const duration=pref(prefs,isFinal(t,m)?'bracketMin':'poolMin');const start=Number(m.startedAt),oldMs=Math.max(0,Number(m.elapsedMs)||0);const sameSession=Number.isFinite(start)&&start>0&&now>=start&&now-start<=24*60*60*1000;const elapsed=(oldMs+(sameSession?now-start:0))/60000;
       // A match remains on its table until its result is recorded. Overdue matches get a five minute review buffer.
       const remaining=Math.max(0,duration-elapsed)+(elapsed>=duration?5:0);
       running.push({tournamentId:String(t.id),tableId:String(m.table),remaining,stageIndex:Math.max(0,ix),key:stageKey(m),players:matchPlayers(t,m)});
@@ -2366,7 +2366,7 @@ function progressLiveData(t){
  const all=t.matches||[],done=all.filter(m=>m.status==='done'),playing=all.filter(m=>m.status==='playing'),waiting=all.filter(m=>m.status!=='done'&&m.status!=='playing');
  const bye=done.filter(m=>m.bye),forfeit=done.filter(m=>m.forfait);
  const duration=(m)=>{const isFinal=t.mode==='knockout'||t.mode==='challenge'||m.phase==='final'||m.phase==='bracket'||m.bracket||m.stage==='final';return isFinal?45:18};
- const now=Date.now();const busy=playing.map(m=>{const elapsed=m.startedAt?Math.max(0,(now-m.startedAt)/60000)+Math.max(0,Number(m.elapsedMs)||0)/60000:null;return {m,elapsed,remaining:elapsed===null?null:Math.max(0,Math.ceil(duration(m)-elapsed))}});
+ const now=Date.now();const busy=playing.map(m=>{const start=Number(m.startedAt);const sameSession=Number.isFinite(start)&&start>0&&now>=start&&now-start<=24*60*60*1000;const elapsed=(Math.max(0,Number(m.elapsedMs)||0)+(sameSession?now-start:0))/60000;return {m,elapsed,remaining:Math.max(0,Math.ceil(duration(m)-elapsed))}});
  const estimatedWork=waiting.length*18+busy.reduce((sum,x)=>sum+(x.remaining===null?18:x.remaining),0);
  return {done,playing,waiting,bye,forfeit,busy,estimatedWork};
 }
