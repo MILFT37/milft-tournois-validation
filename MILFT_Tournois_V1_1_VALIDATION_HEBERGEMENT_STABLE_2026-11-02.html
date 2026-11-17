@@ -2320,7 +2320,7 @@ async function milftImportBackup(input){
   db=restored;
   if(payload.planning!==undefined)plan=JSON.parse(JSON.stringify(payload.planning));
   if(payload.progressPreferences!==undefined)progressPrefs=JSON.parse(JSON.stringify(payload.progressPreferences));
-  tab='dashboard';notice='Sauvegarde importée : '+restored.players.length+' joueurs et '+restored.tournaments.length+' tournois.';
+  tab='dashboard';notice='Sauvegarde importée : '+restored.players.length+' joueurs et '+incomingGroups.length+' événement'+(incomingGroups.length===1?'':'s')+'.';
   render();window.scrollTo(0,0);window.dispatchEvent(new Event('milft-restauration-confirmee'));
  }catch(err){alert('Importation annulée : '+err.message+'\nLes données existantes sont conservées.')}
 }
