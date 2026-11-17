@@ -35,8 +35,16 @@ expected=expected.slice(0,first)+
 // Keep the exact comment from the corrected release, without exposing any names.
  '// Aucun joueur préchargé dans le code public. Profils existants conservés en stockage local ; import JSON privé possible.\n'+
  expected.slice(last);
+const originalDashboard='function dashboard(){';
+const originalActions='<button class="mutedbtn" onclick="setTab(\'active-tournaments\')">Tournois en cours</button></div></div><div class="card milft-home milft-home-current">';
+const updatedActions='<button class="mutedbtn" onclick="setTab(\'active-tournaments\')">Tournois en cours</button></div>${db.tournaments.length===0?\'<div id="milft-restore-empty-hint" role="status" style="margin-top:12px;padding:12px 14px;border:1px solid #cbdcec;border-radius:10px;background:#edf4fc;color:#113e78"><strong>Aucun tournoi enregistré dans cet espace</strong><p style="margin:6px 0 10px">Pour reprendre un championnat existant, importe sa sauvegarde JSON : les données des autres versions ne sont pas reprises automatiquement.</p><button type="button" onclick="milftOpenRestoreFile()">Restaurer ma sauvegarde JSON</button></div>\':\'\'}</div><div class="card milft-home milft-home-current">';
+assert.equal(expected.split(originalDashboard).length-1,1);
+assert.equal(expected.split(originalActions).length-1,1);
+expected=expected.replace(originalDashboard,
+ 'function milftOpenRestoreFile(){const chooser=document.getElementById(\'milft-backup-file\');if(chooser)chooser.click()}\n'+originalDashboard);
+expected=expected.replace(originalActions,updatedActions);
 assert.equal(release,expected,
- 'Production et validation divergent hors isolation/nom/manifeste et retrait nominatif : revue obligatoire');
+ 'Production et validation divergent hors clés/manifeste, annuaire et notice de restauration : revue obligatoire');
 assert(!release.includes('MILFT_JOUEURS_REFERENCE_20261014'));
 assert(!release.includes('integrateReferencePlayers'));
 assert(!release.includes('milft_excel_20261014_'));
