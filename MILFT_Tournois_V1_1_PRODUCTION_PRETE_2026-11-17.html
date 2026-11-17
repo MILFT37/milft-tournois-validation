@@ -809,19 +809,8 @@ function normalizeFirst(s){return s.trim().replace(/\s+/g,' ').toLocaleLowerCase
 function normalizeLast(s){return s.trim().replace(/\s+/g,' ').toLocaleUpperCase('fr-FR')}
 for(const p of db.players){p.first=normalizeFirst(p.first||'');p.last=normalizeLast(p.last||'')}
 
-const MILFT_JOUEURS_REFERENCE_20261014=[{"first": "Eric", "last": "Auger"}, {"first": "Ethan", "last": "Auger"}, {"first": "Thomas", "last": "Baranger"}, {"first": "Lucie", "last": "Battut"}, {"first": "Nolan", "last": "Berry"}, {"first": "Benoit", "last": "Biard"}, {"first": "Christian", "last": "Bingono"}, {"first": "Anne-Laure", "last": "Boissé"}, {"first": "Cyril", "last": "Bouvier"}, {"first": "Anthony", "last": "Cavard"}, {"first": "Jean-Lilian", "last": "Chaumeret"}, {"first": "Jules", "last": "Chaumeret"}, {"first": "Antoine", "last": "Deconinck"}, {"first": "Stéphane", "last": "Debourg"}, {"first": "Yannick", "last": "Derrien"}, {"first": "Pierre", "last": "Farger"}, {"first": "Grégory", "last": "Ferter"}, {"first": "Noah", "last": "Ferter"}, {"first": "Antoine", "last": "Fiquet"}, {"first": "Camille", "last": "Fiquet"}, {"first": "Cédrik", "last": "Fiquet"}, {"first": "Matthieu", "last": "Fonteneau"}, {"first": "Jean Michel", "last": "Gasnier"}, {"first": "Ayden", "last": "Girault"}, {"first": "Dylan", "last": "Girault"}, {"first": "Luc", "last": "Guilbert"}, {"first": "Corentin", "last": "Jonville"}, {"first": "Ethan", "last": "Jouen"}, {"first": "John", "last": "Jouen"}, {"first": "Naïm", "last": "Kochbati"}, {"first": "Alexis", "last": "Landier"}, {"first": "Patrick", "last": "Landier"}, {"first": "Christophe", "last": "Lopes"}, {"first": "Philippe", "last": "Prazeres Cimenta"}, {"first": "Aurélia", "last": "Raso"}, {"first": "Stéphane", "last": "Renard"}, {"first": "Antonin", "last": "Schott"}, {"first": "Mikael", "last": "Servolle"}, {"first": "Olivier", "last": "Scouppe"}, {"first": "Thierry", "last": "Sigba"}, {"first": "Ruben", "last": "Valero Maraindaz"}, {"first": "Arnaud", "last": "Ziani"}];
-(function integrateReferencePlayers(){
- const existing=new Set(db.players.map(p=>(normalizeFirst(p.first||'')+'|'+normalizeLast(p.last||'')).toLocaleLowerCase('fr-FR')));
- let added=0;
- for(const p of MILFT_JOUEURS_REFERENCE_20261014){
-   const first=normalizeFirst(p.first),last=normalizeLast(p.last);
-   const key=(first+'|'+last).toLocaleLowerCase('fr-FR');
-   if(!first||!last||existing.has(key))continue;
-   db.players.push({id:'milft_excel_20261014_'+added+'_'+first.toLowerCase().replace(/[^a-z0-9]/g,'')+'_'+last.toLowerCase().replace(/[^a-z0-9]/g,''),first,last});
-   existing.add(key);added++;
- }
- if(added){try{localStorage.setItem(KEY,JSON.stringify(db))}catch(e){console.warn('Sauvegarde annuaire impossible',e)}}
-})();
+// Aucun joueur préchargé dans le code public. Profils existants conservés en stockage local ; import JSON privé possible.
+
 
 
 const uid=()=>crypto.randomUUID?crypto.randomUUID():String(Date.now()+Math.random());
