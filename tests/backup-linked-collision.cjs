@@ -87,9 +87,9 @@ async function main(){
   assert.equal(result.valid.eventCount,5,'7 enregistrements doivent representer 5 evenements');
   assert.equal(result.valid.activeEvents,4,'Quatre evenements doivent rester actifs');
   assert.equal(result.valid.championships,2,'Deux championnats de meme nom restent distincts');
-  assert.match(result.valid.preview,/1 événement\\(s\\) \\(1 en cours, 0 terminé\\(s\\)\\)/,'L aperçu doit compter un evenement lie actif');
-  assert.match(result.valid.preview,/3 enregistrements internes/,'L aperçu doit expliciter les 3 phases');
-  assert.match(result.valid.preview,/Poules 0 \\+ Tableau A 1 \\+ Tableau B 1/,'L apercu doit presenter les phases A\/B');
+  assert(result.valid.preview.includes('1 événement(s) (1 en cours, 0 terminé(s))'),'L aperçu doit compter un événement lié actif');
+  assert(result.valid.preview.includes('3 enregistrements internes'),'L aperçu doit expliciter les trois phases');
+  assert(result.valid.preview.includes('Poules 0 + Tableau A 1 + Tableau B 1'),'L aperçu doit détailler Poules/A/B');
 
   assert.equal(result.valid.reopenedStatus,'waiting','Copie coherente : match B non mis en attente');
   assert.equal(result.valid.reopenedTable,null,'Copie coherente : ancienne table B conservee');
