@@ -38,6 +38,9 @@ jobs:
           python3 - <<'PY'
           import json, pathlib, struct
           site=pathlib.Path('_site')
+          # Ne jamais republier l'annuaire nominatif codé en dur.
+          for source in pathlib.Path('.').glob('MILFT_*.html'):
+            assert 'MILFT_JOUEURS_REFERENCE_20261014' not in source.read_text(encoding='utf-8'), 'Annuaire public détecté : '+source.name
           stable='MILFT_Tournois_V1_1_VALIDATION_HEBERGEMENT_STABLE_2026-11-02.html'
           index=(site/'index.html').read_text(encoding='utf-8')
           assert stable in index and 'http-equiv="refresh"' in index, 'Accueil non redirigé vers V1.1 stable'
