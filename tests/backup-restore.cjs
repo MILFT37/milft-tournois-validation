@@ -9,6 +9,9 @@ const extract=name=>{
 const start=html.indexOf('async function milftImportBackup(');
 const end=html.indexOf('\n// V0.46 - paramètres indépendants',start);
 assert(start>=0&&end>start,'Import JSON absent');
+const previewStart=html.indexOf('function milftBackupPreviewGroups(');
+assert(previewStart>=0&&previewStart<start,'Fonction de regroupement sauvegarde absente');
+const previewHelper=html.slice(previewStart,start);
 const source=html.slice(start,end);
 const boot=[
  "const KEY='test:db',PLAN_KEY='test:plan',MILFT_PROGRESS_PREFS='test:prefs';",
@@ -30,7 +33,7 @@ const boot=[
  "async function milftPreserverAvantRestauration(){return {source:'simule',previousCount:1,recoveredCount:null};}"
 ].join('\n');
 const result="return {run:milftImportBackup,setWriteFailure:failure=>writeFail=failure,current:()=>JSON.parse(JSON.stringify(db)),stored:()=>Object.fromEntries(stored),alerts,confirmations};";
-const factory=new Function(boot+'\n'+extract('milftBackupEventRootId')+'\n'+extract('milftBackupLinkedTableOccupied')+'\n'+source+'\n'+result);
+const factory=new Function(boot+'\n'+extract('milftBackupEventRootId')+'\n'+extract('milftBackupLinkedTableOccupied')+'\n'+previewHelper+'\n'+source+'\n'+result);
 const clone=x=>JSON.parse(JSON.stringify(x));
 const players=['P1','P2'].map(id=>({id,first:id,last:'Test'}));
 const roster=players.map(p=>({...p})),table=[{id:1,state:'playing'}];
