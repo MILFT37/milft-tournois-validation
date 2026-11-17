@@ -107,6 +107,14 @@ async function main(){
   }),{valid:KEY_VALID,pre:KEY_PRE,legacy:legacyKey});
   assert.equal(before.tournaments,0,'La préproduction a chargé les tournois de validation');
   if(isRelease)assert.equal(before.players,0,'La future production injecte encore des joueurs nominatifs dans un profil vierge');
+  if(isRelease){
+   const emptyHint=preprod.locator('#milft-restore-empty-hint');
+   await emptyHint.waitFor({state:'visible'});
+   assert.match(await emptyHint.innerText(),/Aucun tournoi enregistré/);
+   const launchRestore=preprod.waitForEvent('filechooser');
+   await emptyHint.locator('button').click();
+   await launchRestore; // Un seul clic ouvre le sélecteur sans toucher aux données.
+  }
   assert.equal(before.valid,first.stored,'La préproduction a altéré le profil de validation');
   assert.equal(before.legacy,'DO-NOT-TOUCH','Une ancienne clé de production a été modifiée');
   assert.equal(before.hasManifest,isRelease,'Manifeste PWA non conforme à la variante');
@@ -140,6 +148,10 @@ async function main(){
    legacy:localStorage.getItem(legacy)
   }),{valid:KEY_VALID,pre:KEY_PRE,legacy:legacyKey});
   assert.deepEqual(after.tournaments,['VALIDATION-KEEP']);
+  if(isRelease){
+   assert.equal(await preprod.locator('#milft-restore-empty-hint').count(),0,
+     'L invitation à restaurer ne disparaît pas après import');
+  }
   assert.deepEqual(after.scores,{a:5,b:3});
   assert.deepEqual(after.sets,[{a:5,b:3}]);
   assert.equal(after.valid,first.stored,'La préproduction a écrasé la sauvegarde de validation');
