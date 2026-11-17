@@ -1,0 +1,29 @@
+name: Preproduction V1.1 - Chrome Windows stockage isole
+on:
+  push:
+    branches:
+      - prep-v1.1-production-isolated-2026-11-17
+    paths:
+      - 'MILFT_Tournois_V1_1_PREPRODUCTION_STOCKAGE_ISOLE_2026-11-17.html'
+      - 'tests/preprod-storage-isolation.cjs'
+      - '.github/workflows/preprod-chrome-windows.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  chrome-windows:
+    runs-on: windows-2022
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Installer Playwright sans changer le code V1.1
+        run: npm install --no-save playwright@1.56.1
+      - name: Installer Chrome stable pour le test de bureau
+        run: npx playwright install chrome
+      - name: Tester Chrome sur Windows et l'isolation de deux versions
+        env:
+          MILFT_BROWSER_CHANNEL: chrome
+        run: node tests/preprod-storage-isolation.cjs
