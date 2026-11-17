@@ -1,0 +1,29 @@
+name: Preproduction V1.1 - WebKit mobile stockage isole
+on:
+  push:
+    branches:
+      - prep-v1.1-production-isolated-2026-11-17
+    paths:
+      - 'MILFT_Tournois_V1_1_PREPRODUCTION_STOCKAGE_ISOLE_2026-11-17.html'
+      - 'tests/preprod-storage-isolation.cjs'
+      - '.github/workflows/preprod-webkit-mobile.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  webkit-mobile:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Installer Playwright WebKit
+        run: |
+          npm install --no-save playwright@1.56.1
+          npx playwright install --with-deps webkit
+      - name: Tester WebKit mobile et l'isolation des sauvegardes
+        env:
+          MILFT_ENGINE: webkit
+        run: node tests/preprod-storage-isolation.cjs
