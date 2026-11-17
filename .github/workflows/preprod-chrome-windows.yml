@@ -3,6 +3,7 @@ on:
   push:
     branches:
       - prep-v1.1-production-isolated-2026-11-17
+      - prep-v1.1-sans-annuaire-public-2026-11-17
     paths:
       - 'MILFT_Tournois_V1_1_PREPRODUCTION_STOCKAGE_ISOLE_2026-11-17.html'
       - 'MILFT_Tournois_V1_1_PRODUCTION_PRETE_2026-11-17.html'
