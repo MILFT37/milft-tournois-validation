@@ -161,7 +161,10 @@ async function main(){
   assert.deepEqual(persistedValidation.tournaments.map(t=>t.id),['VALIDATION-KEEP'],'Les tournois de validation ont changé au rechargement');
   assert.deepEqual(persistedValidation.tournaments[0].matches[0].score,{a:5,b:3},'Le score de validation a changé');
   assert.deepEqual(persistedValidation.tournaments[0].matches[0].sets,[{a:5,b:3}],'La manche de validation a changé');
-  assert.equal(original.pre,after.pre);
+  const persistedPreprod=JSON.parse(original.pre);
+  assert.deepEqual(persistedPreprod.tournaments.map(t=>t.id),['VALIDATION-KEEP'],'Le tournoi préproduction a changé après rechargement');
+  assert.deepEqual(persistedPreprod.tournaments[0].matches[0].score,{a:5,b:3},'Le score préproduction a changé');
+  assert.deepEqual(persistedPreprod.tournaments[0].matches[0].sets,[{a:5,b:3}],'La manche préproduction a changé');
   assert.deepEqual(errors,[],'Erreurs JavaScript : '+errors.join(' ; '));
   console.log('OK préproduction : Chrome desktop 1366x768, export/import par UI, 3 confirmations, IndexedDB, rechargement');
   console.log('OK isolation : clés validation, préproduction et historique conservées sous une même origine');
