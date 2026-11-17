@@ -32,7 +32,7 @@ const boot=[
  "function milftMigrateLegacyBackup(data){return JSON.parse(JSON.stringify(data));}",
  "async function milftPreserverAvantRestauration(){return {source:'simule',previousCount:1,recoveredCount:null};}"
 ].join('\n');
-const result="return {run:milftImportBackup,setWriteFailure:failure=>writeFail=failure,current:()=>JSON.parse(JSON.stringify(db)),stored:()=>Object.fromEntries(stored),alerts,confirmations};";
+const result="return {run:milftImportBackup,setWriteFailure:failure=>writeFail=failure,current:()=>JSON.parse(JSON.stringify(db)),stored:()=>Object.fromEntries(stored),notice:()=>notice,alerts,confirmations};";
 const factory=new Function(boot+'\n'+extract('milftBackupEventRootId')+'\n'+extract('milftBackupLinkedTableOccupied')+'\n'+previewHelper+'\n'+source+'\n'+result);
 const clone=x=>JSON.parse(JSON.stringify(x));
 const players=['P1','P2'].map(id=>({id,first:id,last:'Test'}));
@@ -52,6 +52,7 @@ async function main(){
   assert.strictEqual(h.current().tournaments[1].matches[0].sets[0].a,5,'Manches alterees');
   assert.strictEqual(JSON.parse(h.stored()['test:db']).tournaments.length,3,'Persistance incomplete');
   assert.strictEqual(h.confirmations.length,3,'Confirmations inattendues');
+  assert.strictEqual(h.notice(),'Sauvegarde importée : 2 joueurs et 1 événement.','Le message doit afficher les événements métier et non les phases internes');
   console.log('OK JSON : restauration A/B et manches conservees');
  }
  {
