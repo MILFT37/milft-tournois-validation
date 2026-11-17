@@ -25,8 +25,21 @@ for(const [oldValue,newValue,num] of values){
  expected=expected.split(oldValue).join(newValue);
  assert.equal(release.split(newValue).length-1,num,'Occurrences release '+newValue);
 }
+// La seule différence fonctionnelle autorisée : suppression de l'amorçage nominatif.
+const first=expected.indexOf('const MILFT_JOUEURS_REFERENCE_20261014=');
+const last=expected.indexOf('})();',first)+5;
+assert(first>=0&&last>first,'Amorçage nominatif de référence introuvable');
+const oldSeed=expected.slice(first,last);
+assert(oldSeed.includes('db.players.push(')&&oldSeed.includes('localStorage.setItem(KEY'), 'Bloc nominatif inattendu');
+expected=expected.slice(0,first)+
+// Keep the exact comment from the corrected release, without exposing any names.
+ '// Aucun joueur préchargé dans le code public. Profils existants conservés en stockage local ; import JSON privé possible.\n'+
+ expected.slice(last);
 assert.equal(release,expected,
- 'Production et validation divergent hors isolation/nom/manifeste : revue de diff obligatoire');
+ 'Production et validation divergent hors isolation/nom/manifeste et retrait nominatif : revue obligatoire');
+assert(!release.includes('MILFT_JOUEURS_REFERENCE_20261014'));
+assert(!release.includes('integrateReferencePlayers'));
+assert(!release.includes('milft_excel_20261014_'));
 assert(!release.includes('milft_iso_20261102_'),'Anciennes clés locales encore référencées');
 assert(!release.includes('MILFT_ISO_20261102_SECOURS'),'Ancien stockage IndexedDB encore référencé');
 assert(release.includes('function milftBackupPreviewGroups('),'Aperçu métier absent');
@@ -50,7 +63,7 @@ assert(index.includes('http-equiv="refresh"'),'La page d’entrée production do
 assert(index.includes('./'+to),'La page d’entrée pointe vers un fichier différent de la release');
 assert(!index.includes('VALIDATION_HEBERGEMENT'),'La page d’entrée pointe vers la validation');
 
-console.log('OK release : identité fonctionnelle totale hors 5 clés, titre et manifeste');
+console.log('OK release : identité fonctionnelle hors 5 clés, titre, manifeste et suppression de l amorçage nominatif');
 console.log('OK release : clés de production distinctes, manifest PWA et icônes vérifiés');
 console.log('Blob release : '+blobSha(release));
 console.log('LIMITE : cette validation ne transfère aucun JSON réel et ne déploie pas la production');
