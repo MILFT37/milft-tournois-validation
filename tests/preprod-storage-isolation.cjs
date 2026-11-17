@@ -100,11 +100,13 @@ async function main(){
   await preprod.goto(origin+'/'+PRE,{waitUntil:'domcontentloaded'});
   const before=await preprod.evaluate(({valid,pre,legacy})=>({
    tournaments:db.tournaments.length,
+   players:db.players.length,
    valid:localStorage.getItem(valid),pre:localStorage.getItem(pre),
    legacy:localStorage.getItem(legacy),
    title:document.title,hasManifest:!!document.querySelector('link[rel="manifest"]')
   }),{valid:KEY_VALID,pre:KEY_PRE,legacy:legacyKey});
   assert.equal(before.tournaments,0,'La préproduction a chargé les tournois de validation');
+  if(isRelease)assert.equal(before.players,0,'La future production injecte encore des joueurs nominatifs dans un profil vierge');
   assert.equal(before.valid,first.stored,'La préproduction a altéré le profil de validation');
   assert.equal(before.legacy,'DO-NOT-TOUCH','Une ancienne clé de production a été modifiée');
   assert.equal(before.hasManifest,isRelease,'Manifeste PWA non conforme à la variante');
