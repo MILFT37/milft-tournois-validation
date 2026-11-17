@@ -157,7 +157,10 @@ async function main(){
    pre:localStorage.getItem(pre)
   }),{valid:KEY_VALID,pre:KEY_PRE});
   assert.equal(original.id,'VALIDATION-KEEP');
-  assert.equal(original.stored,first.stored);
+  const persistedValidation=JSON.parse(original.stored);
+  assert.deepEqual(persistedValidation.tournaments.map(t=>t.id),['VALIDATION-KEEP'],'Les tournois de validation ont changé au rechargement');
+  assert.deepEqual(persistedValidation.tournaments[0].matches[0].score,{a:5,b:3},'Le score de validation a changé');
+  assert.deepEqual(persistedValidation.tournaments[0].matches[0].sets,[{a:5,b:3}],'La manche de validation a changé');
   assert.equal(original.pre,after.pre);
   assert.deepEqual(errors,[],'Erreurs JavaScript : '+errors.join(' ; '));
   console.log('OK préproduction : Chrome desktop 1366x768, export/import par UI, 3 confirmations, IndexedDB, rechargement');
