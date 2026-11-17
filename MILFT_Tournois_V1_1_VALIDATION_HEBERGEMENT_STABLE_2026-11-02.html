@@ -2142,6 +2142,20 @@ function milftBackupLinkedTableOccupied(t,tableId,tournaments){
  return tournaments.some(phase=>phase.id!==t.id&&!phase.closed&&!phase.abandoned&&milftBackupEventRootId(phase,tournaments)===root&&
   (phase.matches||[]).some(m=>m.status==='playing'&&m.table!=null&&String(m.table)===String(tableId)));
 }
+function milftBackupPreviewGroups(tournaments){
+ const groups=new Map();
+ for(const t of tournaments){
+  const rootId=milftBackupEventRootId(t,tournaments);
+  if(!groups.has(rootId))groups.set(rootId,[]);
+  groups.get(rootId).push(t);
+ }
+ return [...groups.entries()].map(([rootId,phases])=>({
+  root:tournaments.find(x=>x.id===rootId)||phases[0],
+  phases,
+  matches:phases.reduce((sum,t)=>sum+(t.matches||[]).length,0),
+  active:phases.some(t=>!t.closed&&!t.abandoned)
+ }));
+}
 async function milftImportBackup(input){
  const file=input.files&&input.files[0];input.value='';if(!file)return;
  try{
@@ -2254,11 +2268,18 @@ async function milftImportBackup(input){
     backupOccupiedByEvent.set(key,{phase:phase.id,letter:phase.bracketLetter});
    }
   }
-  const currentCount=db?.tournaments?.length||0;
+  // Aperçu métier : une poule et ses tableaux A/B forment UN événement.
+  // Le nombre d'enregistrements internes reste visible pour la transparence.
+  const incomingGroups=milftBackupPreviewGroups(migrated.tournaments);
+  const currentGroups=milftBackupPreviewGroups(db?.tournaments||[]);
+  const activeEvents=incomingGroups.filter(x=>x.active).length;
   const completed=data.tournaments.reduce((n,t)=>n+t.matches.filter(m=>m.status==='done').length,0);
   const ongoing=data.tournaments.reduce((n,t)=>n+t.matches.filter(m=>m.status==='playing').length,0);
-  const summary=data.tournaments.map(t=>'• '+String(t.name||'Sans nom')+' — '+t.matches.length+' rencontres').join('\n');
-  const msg='APERÇU DE LA SAUVEGARDE\n\n'+data.players.length+' joueurs, '+data.tournaments.length+' tournoi(s)\n'+completed+' rencontres terminées, '+ongoing+' en cours\n\n'+summary+'\n\nDONNÉES ACTUELLES : '+currentCount+' tournoi(s).\n\nATTENTION : la restauration REMPLACE toutes les données locales de cette application.\n\nAnnuler = aucune modification. Continuer = étape de protection.';
+  const summary=incomingGroups.map(g=>{
+   const parts=g.phases.length>1?' ('+g.phases.map(t=>(t.bracketLetter==='A'||t.bracketLetter==='B'?'Tableau '+t.bracketLetter:t.mode==='poules'?'Poules':'Phase')+' '+t.matches.length).join(' + ')+')':'';
+   return '• '+String(g.root.name||'Sans nom')+' — '+g.matches+' rencontres'+parts+' · '+(g.active?'en cours':'terminé');
+  }).join('\n');
+  const msg='APERÇU DE LA SAUVEGARDE\n\n'+data.players.length+' joueurs, '+incomingGroups.length+' événement(s) ('+activeEvents+' en cours, '+(incomingGroups.length-activeEvents)+' terminé(s))\n'+data.tournaments.length+' enregistrements internes (phases A/B incluses)\n'+completed+' rencontres terminées, '+ongoing+' en cours\n\n'+summary+'\n\nDONNÉES ACTUELLES : '+currentGroups.length+' événement(s) ('+(db?.tournaments?.length||0)+' enregistrements).\n\nATTENTION : la restauration REMPLACE toutes les données locales de cette application.\n\nAnnuler = aucune modification. Continuer = étape de protection.';
   if(!confirm(msg))return;
   // Sauvegarde de secours téléchargée avant d'autoriser le remplacement.
   // L'utilisateur doit confirmer qu'il a bien conservé le fichier.
