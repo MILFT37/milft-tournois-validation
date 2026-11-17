@@ -11,10 +11,11 @@ const engineName=process.env.MILFT_ENGINE||'chromium';
 assert(['chromium','webkit'].includes(engineName),'Navigateur non pris en charge');
 const ROOT=process.cwd();
 const VALID='MILFT_Tournois_V1_1_VALIDATION_HEBERGEMENT_STABLE_2026-11-02.html';
-const PRE='MILFT_Tournois_V1_1_PREPRODUCTION_STOCKAGE_ISOLE_2026-11-17.html';
+const isRelease=process.env.MILFT_VARIANT==='release';
+const PRE=isRelease?'MILFT_Tournois_V1_1_PRODUCTION_PRETE_2026-11-17.html':'MILFT_Tournois_V1_1_PREPRODUCTION_STOCKAGE_ISOLE_2026-11-17.html';
 const KEY_VALID='milft_iso_20261102_tournois_v01';
-const KEY_PRE='milft_preprod_v11_20261117_tournois_v01';
-const ARCHIVE_PRE='MILFT_PREPROD_V11_20261117_SECOURS';
+const KEY_PRE=isRelease?'milft_prod_v11_20261117_tournois_v01':'milft_preprod_v11_20261117_tournois_v01';
+const ARCHIVE_PRE=isRelease?'MILFT_PROD_V11_20261117_SECOURS':'MILFT_PREPROD_V11_20261117_SECOURS';
 const legacyKey='milft_tournois_v01';
 const fixturePlayers=[{id:'P-ALICE',first:'Alice',last:'TEST'},{id:'P-BOB',first:'Bob',last:'TEST'}];
 const fixture=(id)=>({
@@ -106,8 +107,8 @@ async function main(){
   assert.equal(before.tournaments,0,'La préproduction a chargé les tournois de validation');
   assert.equal(before.valid,first.stored,'La préproduction a altéré le profil de validation');
   assert.equal(before.legacy,'DO-NOT-TOUCH','Une ancienne clé de production a été modifiée');
-  assert.equal(before.hasManifest,false,'La copie de laboratoire conserve un manifeste PWA');
-  assert.match(before.title,/PRÉPRODUCTION ISOLÉE/);
+  assert.equal(before.hasManifest,isRelease,'Manifeste PWA non conforme à la variante');
+  assert.match(before.title,isRelease?/MILFT Tournois — V1\.1$/:/PRÉPRODUCTION ISOLÉE/);
 
   await preprod.evaluate(({people,t})=>{
    db.players=people;db.tournaments=[t];db.selected=null;save();
@@ -168,7 +169,7 @@ async function main(){
   assert.deepEqual(persistedPreprod.tournaments[0].matches[0].score,{a:5,b:3},'Le score préproduction a changé');
   assert.deepEqual(persistedPreprod.tournaments[0].matches[0].sets,[{a:5,b:3}],'La manche préproduction a changé');
   assert.deepEqual(errors,[],'Erreurs JavaScript : '+errors.join(' ; '));
-  console.log('OK préproduction : '+(engineName==='webkit'?'WebKit tactile 390x844':'Chrome desktop 1366x768')+', export/import par UI, 3 confirmations, IndexedDB, rechargement');
+  console.log('OK '+(isRelease?'candidate production':'préproduction')+' : '+(engineName==='webkit'?'WebKit tactile 390x844':'Chrome desktop 1366x768')+', export/import par UI, 3 confirmations, IndexedDB, rechargement');
   console.log('OK isolation : clés validation, préproduction et historique conservées sous une même origine');
   console.log('LIMITE : tests automatisés non équivalents à Chrome Windows 11 ou Safari iPhone physiques');
  }finally{
