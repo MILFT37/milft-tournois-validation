@@ -10,6 +10,7 @@ on:
       - 'tests/formats-browser.cjs'
       - 'tests/indexeddb-browser.cjs'
       - 'tests/backup-linked-collision.cjs'
+      - 'tests/stale-match-eta.cjs'
       - '.github/workflows/attribution-tables.yml'
   workflow_dispatch:
 jobs:
@@ -24,6 +25,7 @@ jobs:
         run: |
           node tests/attribution-tables.cjs
           node tests/backup-restore.cjs
+          node tests/stale-match-eta.cjs
       - name: Installer Chromium pour la recette visuelle isolée
         run: |
           npm install --no-save playwright@1.56.1
