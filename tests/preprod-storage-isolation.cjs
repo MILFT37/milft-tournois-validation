@@ -6,7 +6,9 @@ const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const path=require('node:path');
 const http=require('node:http');
-const {chromium}=require('playwright');
+const {chromium,webkit}=require('playwright');
+const engineName=process.env.MILFT_ENGINE||'chromium';
+assert(['chromium','webkit'].includes(engineName),'Navigateur non pris en charge');
 const ROOT=process.cwd();
 const VALID='MILFT_Tournois_V1_1_VALIDATION_HEBERGEMENT_STABLE_2026-11-02.html';
 const PRE='MILFT_Tournois_V1_1_PREPRODUCTION_STOCKAGE_ISOLE_2026-11-17.html';
@@ -79,11 +81,11 @@ async function main(){
  const {server,origin}=await serve();let browser,context;
  try{
   const opts={headless:true};
-  if(process.env.MILFT_BROWSER_CHANNEL)opts.channel=process.env.MILFT_BROWSER_CHANNEL;
-  browser=await chromium.launch(opts);
-  context=await browser.newContext({
-   viewport:{width:1366,height:768},deviceScaleFactor:1,acceptDownloads:true
-  });
+  if(engineName==='chromium'&&process.env.MILFT_BROWSER_CHANNEL)opts.channel=process.env.MILFT_BROWSER_CHANNEL;
+  browser=await ({chromium,webkit}[engineName]).launch(opts);
+  context=await browser.newContext(engineName==='webkit'?{
+   viewport:{width:390,height:844},deviceScaleFactor:2,isMobile:true,hasTouch:true,acceptDownloads:true
+  }:{viewport:{width:1366,height:768},deviceScaleFactor:1,acceptDownloads:true});
   const validation=await context.newPage();
   const errors=[];
   validation.on('pageerror',e=>errors.push('validation: '+e.message));
@@ -166,9 +168,9 @@ async function main(){
   assert.deepEqual(persistedPreprod.tournaments[0].matches[0].score,{a:5,b:3},'Le score préproduction a changé');
   assert.deepEqual(persistedPreprod.tournaments[0].matches[0].sets,[{a:5,b:3}],'La manche préproduction a changé');
   assert.deepEqual(errors,[],'Erreurs JavaScript : '+errors.join(' ; '));
-  console.log('OK préproduction : Chrome desktop 1366x768, export/import par UI, 3 confirmations, IndexedDB, rechargement');
+  console.log('OK préproduction : '+(engineName==='webkit'?'WebKit tactile 390x844':'Chrome desktop 1366x768')+', export/import par UI, 3 confirmations, IndexedDB, rechargement');
   console.log('OK isolation : clés validation, préproduction et historique conservées sous une même origine');
-  console.log('LIMITE : runner Windows n est pas un poste Windows 11 physique');
+  console.log('LIMITE : tests automatisés non équivalents à Chrome Windows 11 ou Safari iPhone physiques');
  }finally{
   if(context)await context.close();
   if(browser)await browser.close();
