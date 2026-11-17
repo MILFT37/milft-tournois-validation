@@ -45,6 +45,11 @@ for(const icon of manifest.icons){
  assert.deepEqual([width,height],[expected,expected],file+' dimensions invalides');
 }
 assert(release.includes('<link rel="apple-touch-icon"'),'Icône Apple absente');
+const index=fs.readFileSync('index.production.html','utf8');
+assert(index.includes('http-equiv="refresh"'),'La page d’entrée production doit rediriger');
+assert(index.includes('./'+to),'La page d’entrée pointe vers un fichier différent de la release');
+assert(!index.includes('VALIDATION_HEBERGEMENT'),'La page d’entrée pointe vers la validation');
+
 console.log('OK release : identité fonctionnelle totale hors 5 clés, titre et manifeste');
 console.log('OK release : clés de production distinctes, manifest PWA et icônes vérifiés');
 console.log('Blob release : '+blobSha(release));
