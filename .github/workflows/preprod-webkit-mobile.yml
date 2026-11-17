@@ -5,6 +5,8 @@ on:
       - prep-v1.1-production-isolated-2026-11-17
     paths:
       - 'MILFT_Tournois_V1_1_PREPRODUCTION_STOCKAGE_ISOLE_2026-11-17.html'
+      - 'MILFT_Tournois_V1_1_PRODUCTION_PRETE_2026-11-17.html'
+      - 'manifest.production.webmanifest'
       - 'tests/preprod-storage-isolation.cjs'
       - '.github/workflows/preprod-webkit-mobile.yml'
   workflow_dispatch:
@@ -26,4 +28,9 @@ jobs:
       - name: Tester WebKit mobile et l'isolation des sauvegardes
         env:
           MILFT_ENGINE: webkit
+        run: node tests/preprod-storage-isolation.cjs
+      - name: Tester aussi la candidate de production non déployée
+        env:
+          MILFT_ENGINE: webkit
+          MILFT_VARIANT: release
         run: node tests/preprod-storage-isolation.cjs
