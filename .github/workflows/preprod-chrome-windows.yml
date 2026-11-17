@@ -5,6 +5,8 @@ on:
       - prep-v1.1-production-isolated-2026-11-17
     paths:
       - 'MILFT_Tournois_V1_1_PREPRODUCTION_STOCKAGE_ISOLE_2026-11-17.html'
+      - 'MILFT_Tournois_V1_1_PRODUCTION_PRETE_2026-11-17.html'
+      - 'manifest.production.webmanifest'
       - 'tests/preprod-storage-isolation.cjs'
       - '.github/workflows/preprod-chrome-windows.yml'
   workflow_dispatch:
@@ -26,4 +28,9 @@ jobs:
       - name: Tester Chrome sur Windows et l'isolation de deux versions
         env:
           MILFT_BROWSER_CHANNEL: chrome
+        run: node tests/preprod-storage-isolation.cjs
+      - name: Tester aussi la candidate de production non déployée
+        env:
+          MILFT_BROWSER_CHANNEL: chrome
+          MILFT_VARIANT: release
         run: node tests/preprod-storage-isolation.cjs
