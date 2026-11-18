@@ -1,0 +1,24 @@
+name: MILFT V1.1 - retouches UI ciblees
+on:
+  push:
+    branches:
+      - dev-v1.1-retouches-resultats-replis-parametres-2026-11-18
+    paths:
+      - MILFT_Tournois_V1_1_VALIDATION_HEBERGEMENT_STABLE_2026-11-02.html
+      - tests/ui-retouches-20261118.cjs
+      - .github/workflows/ui-retouches-20261118.yml
+permissions:
+  contents: read
+jobs:
+  browser:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-save playwright@1.56.1
+      - run: npx playwright install --with-deps chromium
+      - name: Verifier triage CSS, icones, replis et resultat desktop/mobile
+        run: node tests/ui-retouches-20261118.cjs
