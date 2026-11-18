@@ -44,6 +44,7 @@ const context={
  window:{confirm:()=>true,crypto:{randomUUID:()=>String(++actionCount)+'-fictional-id'}},
  google:{accounts:{oauth2:{initTokenClient:({callback})=>({requestAccessToken:()=>callback({access_token:'fictive-test-token',expires_in:3600,scope:'https://www.googleapis.com/auth/drive.file'})})}}}
 };
+context.window.google=context.google;
 vm.runInNewContext(scripts[0],context);
 (async()=>{
  assert.equal(requests.length,0,'No Drive network call merely by opening the diagnostic');
