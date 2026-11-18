@@ -14,7 +14,8 @@ const context={URL,console,self:{location:{origin:new URL(base).origin},registra
 vm.runInNewContext(sw,context);
 (async()=>{
 let install;handlers.install({waitUntil:p=>install=p});await install;
-assert.equal(stored.size,4);
+assert.equal(stored.size,5);
+assert.ok(stored.has(new URL('./milft-drive-v11-validation.js',base).href),'Drive validation module cached for offline shell');
 let response;const url=new URL(manifest.start_url,base).href;
 handlers.fetch({request:{url,method:'GET',mode:'navigate'},respondWith:p=>response=p});
 assert.equal((await response).cached,true,'offline navigation must return cached app');
