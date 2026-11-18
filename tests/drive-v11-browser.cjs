@@ -86,12 +86,12 @@ async function main(){
   await page.locator('#milft-drive-list-v11').click();
   await page.waitForFunction(()=>document.querySelectorAll('#milft-drive-archives button').length===2);
   assert.equal(await page.locator('#milft-drive-archives button').count(),2,'Download and protected restore offered');
-  await page.locator('#milft-drive-archives button').nth(1).click();
   page.once('dialog',dialog=>dialog.dismiss());
+  await page.locator('#milft-drive-archives button').nth(1).click();
   await page.waitForTimeout(100);
   assert.equal(await page.evaluate(key=>localStorage.getItem(key),KEY),before,'Restore aborted without overwrite');
-  await page.locator('#milft-drive-save-now').click();
   page.once('dialog',dialog=>dialog.accept());
+  await page.locator('#milft-drive-save-now').click();
   await page.waitForFunction(()=>document.querySelector('#milft-google-auth-status')?.textContent?.includes('confirmée'));
   assert.equal(archives.length,2,'Backups are immutable and distinct');
   failUpload=true;
