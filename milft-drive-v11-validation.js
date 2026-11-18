@@ -297,7 +297,7 @@ async function history() {
         root.setTimeout(()=>root.URL.revokeObjectURL(url),60000);
         status('Archive téléchargée — aucune donnée de l’application modifiée');
       }catch(e){status('Téléchargement impossible : '+e.message);}};
-      if(root.__MILFT_DRIVE_FIXTURE__===true)continue;
+      if(root.__MILFT_DRIVE_FIXTURE__===true){target.append(line);continue;}
       const restore=root.document.createElement('button');restore.type='button';restore.className='mutedbtn';restore.textContent='Restaurer (avec confirmations)';
       restore.onclick=async()=>{
         if(!root.confirm('Restaurer cette archive ? La procédure existante vérifiera les données et demandera ses confirmations de sécurité.'))return;
