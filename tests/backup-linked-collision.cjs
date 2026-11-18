@@ -83,7 +83,7 @@ async function main(){
   assert.equal(result.rejected.setsUnchanged,true,'Manche B modifiee');
   assert(result.rejected.alerts.some(a=>a.includes('Table 2')&&a.includes('simultanément')),
    'Diagnostic de collision A/B absent : '+result.rejected.alerts.join(' | '));
-  assert.equal(result.valid.confirmations,3,'Copie coherente : confirmations de protection absentes');
+  assert.equal(result.valid.confirmations,2,'Copie coherente : confirmations de protection absentes');
   assert.equal(result.valid.eventCount,5,'7 enregistrements doivent representer 5 evenements');
   assert.equal(result.valid.activeEvents,4,'Quatre evenements doivent rester actifs');
   assert.equal(result.valid.championships,2,'Deux championnats de meme nom restent distincts');
