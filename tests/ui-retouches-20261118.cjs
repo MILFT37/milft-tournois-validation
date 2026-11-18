@@ -29,6 +29,7 @@ async function check(browser,url,viewport){
  }
  const collapsed=await dir.evaluate(el=>getComputedStyle(el,'::before').transform);
  await dir.click();
+ await page.waitForTimeout(230); // Attendre la fin de l'animation du chevron (160ms).
  const expanded=await dir.evaluate(el=>getComputedStyle(el,'::before').transform);
  assert.notEqual(collapsed,expanded,'Chevron does not rotate');
  await page.locator('#milft-settings-toggle').click();
