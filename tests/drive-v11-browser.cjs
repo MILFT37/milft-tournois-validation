@@ -70,6 +70,7 @@ async function main(){
     return route.fulfill(json(found));
   });
   await page.goto(url,{waitUntil:'domcontentloaded'});
+  await page.evaluate(()=>{for(const d of document.querySelectorAll('details'))d.open=true;});
   assert.equal(await page.locator('#milft-google-connect').count(),1,'Drive panel available');
   assert.equal(await page.locator('#milft-drive-save-now').isDisabled(),true,'No action without Google consent');
   assert.equal(apiCalls.length,0,'No API call before consent');
