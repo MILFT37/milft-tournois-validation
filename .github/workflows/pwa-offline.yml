@@ -1,0 +1,20 @@
+name: Verification PWA hors connexion V1.1
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'sw.validation.js'
+      - 'manifest.webmanifest'
+      - 'MILFT_Tournois_V1_1_VALIDATION_HEBERGEMENT_STABLE_2026-11-02.html'
+      - 'tests/pwa-offline.cjs'
+      - '.github/workflows/pwa-offline.yml'
+  workflow_dispatch:
+jobs:
+  pwa-offline:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node tests/pwa-offline.cjs
