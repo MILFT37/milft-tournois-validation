@@ -2309,12 +2309,10 @@ async function milftImportBackup(input){
   }).join('\n');
   const msg='APERÇU DE LA SAUVEGARDE\n\n'+data.players.length+' joueurs, '+incomingGroups.length+' événement(s) ('+activeEvents+' en cours, '+(incomingGroups.length-activeEvents)+' terminé(s))\n'+data.tournaments.length+' enregistrements internes (phases A/B incluses)\n'+completed+' rencontres terminées, '+ongoing+' en cours\n\n'+summary+'\n\nDONNÉES ACTUELLES : '+currentGroups.length+' événement(s) ('+(db?.tournaments?.length||0)+' enregistrements).\n\nATTENTION : la restauration REMPLACE toutes les données locales de cette application.\n\nAnnuler = aucune modification. Continuer = étape de protection.';
   if(!confirm(msg))return;
-  // Sauvegarde de secours téléchargée avant d'autoriser le remplacement.
-  // L'utilisateur doit confirmer qu'il a bien conservé le fichier.
-  const safetyPayload={format:'MILFT-TOURNOIS-BACKUP',version:1,exportedAt:new Date().toISOString(),data:db,planning:plan,progressPreferences:progressPrefs};
-  const safetyUrl=URL.createObjectURL(new Blob([JSON.stringify(safetyPayload,null,2)],{type:'application/json'}));
-  const safetyLink=document.createElement('a');safetyLink.href=safetyUrl;safetyLink.download='MILFT_AVANT_RESTAURATION_'+new Date().toISOString().replace(/[:.]/g,'-')+'.json';document.body.appendChild(safetyLink);safetyLink.click();safetyLink.remove();setTimeout(()=>URL.revokeObjectURL(safetyUrl),60000);
-  if(!confirm('Une sauvegarde des données ACTUELLES vient d’être proposée au téléchargement.\n\nCette sauvegarde peut contenir 0 tournoi. Une copie distincte de l’archive récupérable sera également protégée dans le stockage du navigateur.\n\nOK : continuer vers la vérification de protection.\nAnnuler : ne rien remplacer.'))return;
+  // Safari iOS peut quitter le contexte de restauration lorsqu'un téléchargement
+  // automatique est déclenché au milieu des confirmations. Préserver d'abord
+  // les données dans IndexedDB, puis proposer un export MANUEL séparé.
+  // Aucun téléchargement forcé n'interrompt désormais le sélecteur iOS.
   // En cas d'échec du stockage de protection, aucune donnée locale n'est remplacée.
   const protection=await milftPreserverAvantRestauration();
   if(!confirm('ARCHIVE PROTÉGÉE ET VÉRIFIÉE\n\nSource : '+protection.source+'\nTournois courants protégés : '+protection.previousCount+(protection.recoveredCount!==null?'\nArchive antérieure protégée : '+protection.recoveredCount+' tournoi(s)':'')+'\n\nCette copie ne sera pas supprimée par la rotation des sauvegardes automatiques.\n\nDERNIÈRE CONFIRMATION : remplacer les données actuellement affichées par celles du fichier importé ?\n\nAnnuler : aucun remplacement.'))return;
