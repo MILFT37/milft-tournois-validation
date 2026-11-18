@@ -349,5 +349,6 @@ function init() {
   status('MODE LOCAL — aucune sauvegarde Drive activée, données du navigateur préservées');
 }
 root.MILFTDriveV11Test={upload,changed,dailyAllowance};
+if(localIsolatedTest)root.MILFTDriveV11Test.simulateOAuthTimeout=oauthReturnNotConfirmed;
 if(root.document.readyState==='loading')root.document.addEventListener('DOMContentLoaded',init);else init();
 })(typeof window!=='undefined'?window:globalThis);
