@@ -13,7 +13,9 @@ function server(){
   if(!full.startsWith(ROOT+path.sep)){res.writeHead(403).end();return;}
   fs.readFile(full,(e,data)=>{
    if(e){res.writeHead(404).end();return;}
-   res.writeHead(200,{'Content-Type':path.extname(full)==='.html'?'text/html':'application/javascript','Cache-Control':'no-store'}).end(data);
+   // Simuler un ancien indicateur de fixture absent/faux : l'URL seule doit protéger les essais.
+   const out=path.basename(full)===HTML?Buffer.from(String(data).replace('window.__MILFT_DRIVE_FIXTURE__=true;','window.__MILFT_DRIVE_FIXTURE__=false;')):data;
+   res.writeHead(200,{'Content-Type':path.extname(full)==='.html'?'text/html':'application/javascript','Cache-Control':'no-store'}).end(out);
   });
  });
  return new Promise(resolve=>svc.listen(0,'127.0.0.1',()=>resolve({svc,url:'http://127.0.0.1:'+svc.address().port+'/'+HTML})));
@@ -62,6 +64,9 @@ function server(){
   });
   await page.goto(url,{waitUntil:'domcontentloaded'});
   await page.locator('#milft-google-connect').waitFor({state:'visible'});
+  assert.equal(await page.evaluate(()=>window.__MILFT_DRIVE_FIXTURE__),false,'Test simulates stale fixture flag');
+  assert.equal(await page.evaluate(()=>window.MILFTDriveV11Test.fixtureMode),true,'Fixture isolation must be derived from path');
+  assert.match(await page.locator('#milft-google-auth').innerText(),/essai isolé \(joueurs fictifs\)/);
   assert.equal(writes.length,0,'No write on page open');
   assert.equal(await page.locator('#milft-drive-auto').isDisabled(),true,'Fixture auto backups off');
   await page.locator('#milft-google-connect').click();
@@ -71,6 +76,7 @@ function server(){
   await page.locator('#milft-drive-save-now').click();
   await page.waitForFunction(()=>document.querySelector('#milft-google-auth-status')?.textContent?.includes('Sauvegarde Drive confirmée'));
   assert.equal(archives.length,1);
+  assert.match(archives[0].name,/^MILFT_TOURNOIS_test-fictif_/,'Archive must be visibly fictitious');
   assert.deepEqual(folders.map(x=>x.name),['MILFT Tournois - Essais','Sauvegardes fictives']);
   await page.locator('#milft-drive-list-v11').click();
   await page.locator('#milft-drive-archives button').waitFor({state:'visible'});
