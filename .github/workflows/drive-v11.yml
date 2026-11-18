@@ -5,6 +5,7 @@ on:
     paths:
       - 'milft-drive-v11-validation.js'
       - 'tests/drive-v11.cjs'
+      - 'tests/drive-v11-browser.cjs'
       - 'MILFT_Tournois_V1_1_VALIDATION_HEBERGEMENT_STABLE_2026-11-02.html'
       - '.github/workflows/drive-v11.yml'
   workflow_dispatch:
@@ -18,6 +19,12 @@ jobs:
           node-version: '22'
       - name: Test Google Drive mock (no real account or writes)
         run: node tests/drive-v11.cjs
+      - name: Installer Chromium de test isolé
+        run: |
+          npm install --no-save playwright@1.56.1
+          npx playwright install --with-deps chromium
+      - name: Tester le panneau Drive en navigateur isolé sans compte réel
+        run: node tests/drive-v11-browser.cjs
       - name: Verify production excluded and module loaded only in validation
         run: |
           node - <<'NODE'
