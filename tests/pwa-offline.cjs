@@ -1,0 +1,23 @@
+const fs=require('node:fs'),assert=require('node:assert/strict'),vm=require('node:vm');
+const sw=fs.readFileSync('sw.validation.js','utf8');
+const html=fs.readFileSync('MILFT_Tournois_V1_1_VALIDATION_HEBERGEMENT_STABLE_2026-11-02.html','utf8');
+const manifest=JSON.parse(fs.readFileSync('manifest.webmanifest','utf8'));
+assert.match(html,/navigator\.serviceWorker\.register\('\.\/sw\.validation\.js'/);
+assert.equal(manifest.display,'standalone');
+assert.equal(manifest.scope,'./');
+assert.ok(manifest.icons.some(x=>x.sizes==='192x192'));
+assert.ok(manifest.icons.some(x=>x.sizes==='512x512'));
+const handlers={};const stored=new Map();
+const base='https://milft37.github.io/milft-tournois-validation/';
+const cache={addAll:async paths=>{for(const p of paths){assert.ok(fs.existsSync(p.replace('./','')),'missing cached file '+p);stored.set(new URL(p,base).href,{cached:true,path:p});}},match:async req=>stored.get(typeof req==='string'?new URL(req,base).href:req.url)};
+const context={URL,console,self:{location:{origin:new URL(base).origin},registration:{scope:base},addEventListener:(name,fn)=>handlers[name]=fn,skipWaiting:()=>{},clients:{claim:()=>{}}},caches:{open:async()=>cache,match:cache.match,keys:async()=>['milft-validation-shell-v1-20261118'],delete:async()=>true},fetch:async()=>{throw Error('offline')}};
+vm.runInNewContext(sw,context);
+(async()=>{
+let install;handlers.install({waitUntil:p=>install=p});await install;
+assert.equal(stored.size,4);
+let response;const url=new URL(manifest.start_url,base).href;
+handlers.fetch({request:{url,method:'GET',mode:'navigate'},respondWith:p=>response=p});
+assert.equal((await response).cached,true,'offline navigation must return cached app');
+let unrelated=false;handlers.fetch({request:{url:'https://example.org/',method:'GET',mode:'navigate'},respondWith:()=>{unrelated=true}});assert.equal(unrelated,false);
+console.log('PWA validation: manifest, assets, offline navigation, origin isolation OK');
+})().catch(e=>{console.error(e);process.exitCode=1});
