@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<title>MILFT Tournois — Validation intégration Google Drive</title>
+<style>
+:root{font-family:system-ui,Arial,sans-serif;background:#f4f6fb;color:#193653}
+*{box-sizing:border-box}
+main{max-width:640px;margin:24px auto;padding:24px;background:#fff;border-radius:16px;box-shadow:0 4px 15px #123b6716}
+h1{font-size:1.35rem;color:#113e78}
+p{line-height:1.55}
+button{display:block;width:100%;padding:13px;margin:10px 0;min-height:48px;border:0;border-radius:10px;background:#1563a6;color:#fff;font-weight:700;font-size:1rem}
+button:disabled{background:#c3cbd5;color:#596574}
+#milft-drive-indicator{padding:14px;border:1px solid #e5c780;background:#fff4dd;border-radius:10px;line-height:1.5}
+#milft-google-auth-status{padding:12px;border-radius:9px;background:#eff4fb;font-weight:650;line-height:1.5}
+#milft-drive-archives{margin-top:16px;overflow-wrap:anywhere}
+#milft-drive-archives .item{padding:9px;border-bottom:1px solid #e2e8f0}
+#milft-drive-archives .item button{background:#e5effb;color:#174b7a}
+small{display:block;line-height:1.5;color:#52657d}
+</style>
+<script>
+/* Cette page ne lit JAMAIS le stockage local de l'application MILFT. */
+window.__MILFT_DRIVE_FIXTURE__=true;
+const db={players:[{id:"P-FICTIF-1",first:"Fictif",last:"Test"},{id:"P-FICTIF-2",first:"Demo",last:"Test"}],
+tournaments:[],selected:null};
+const plan={events:[],progress:[]},progressPrefs={};
+</script>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+</head>
+<body>
+<main>
+<h1>MILFT Tournois — Essai du module de sauvegarde</h1>
+<p>Ce test utilise <strong>le même module Drive que MILFT Tournois</strong>, avec uniquement deux joueurs fictifs et aucun tournoi. Aucune donnée enregistrée dans l'application principale n'est lue ni modifiée.</p>
+<p>Ouvre cette page <strong>directement dans Chrome normal sur Android</strong>, et non en navigation privée. Chaque sauvegarde d'essai crée un nouveau fichier dans un dossier séparé : <strong>MILFT Tournois - Essais / Sauvegardes fictives</strong>.</p>
+<div id="milft-drive-indicator" role="status">Aucune sauvegarde distante activée.</div>
+<div id="milft-google-auth"></div>
+<p><small>Les sauvegardes automatiques et la restauration sont volontairement désactivées sur cette page. Aucun fichier Drive existant n'est supprimé ni écrasé. L'écriture demande ton accord explicite.</small></p>
+</main>
+<script src="./milft-drive-v11-validation.js"></script>
+</body>
+</html>
