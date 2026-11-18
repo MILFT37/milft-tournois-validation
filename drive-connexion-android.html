@@ -130,9 +130,9 @@ write.onclick=async function(){
   const name='MILFT_TEST_FICTIF_'+new Date().toISOString().replace(/[:.]/g,'-')+'.json';
   const metadata={name,mimeType:'application/json',parents:[folder]};
   const boundary='milft_test_'+Math.random().toString(36).slice(2);
-  const multipart='--'+boundary+'\\r\\nContent-Type: application/json; charset=UTF-8\\r\\n\\r\\n'+JSON.stringify(metadata)+
-   '\\r\\n--'+boundary+'\\r\\nContent-Type: application/json; charset=UTF-8\\r\\n\\r\\n'+bodyText+
-   '\\r\\n--'+boundary+'--\\r\\n';
+  const multipart='--'+boundary+'\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n'+JSON.stringify(metadata)+
+   '\r\n--'+boundary+'\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n'+bodyText+
+   '\r\n--'+boundary+'--\r\n';
   const uploaded=await (await request('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name',
     {method:'POST',headers:{'Content-Type':'multipart/related; boundary='+boundary},body:multipart})).json();
   if(!uploaded?.id||uploaded.name!==name)throw Error('Création du fichier non confirmée');
