@@ -593,9 +593,14 @@ button:focus-visible,summary:focus-visible,input:focus-visible,select:focus-visi
  border-radius:0!important;transform:rotate(-45deg);transition:transform .16s;position:relative
 }
 #view details[open]>summary::before,#milft-settings details:not(.settings-panel)[open]>summary::before{transform:rotate(45deg)}
-/* Éviter le décalage du petit triangle de l'annuaire et du formulaire d'ajout. */
-#view .milft-player-directory>summary,#view .milft-player-add>summary{min-height:44px;padding-left:4px!important}
-#view .milft-player-directory>summary::before,#view .milft-player-add>summary::before{margin-left:0!important;margin-right:0!important}
+/* Annuaire : aligner précisément le compteur avec « Ajouter un joueur ». */
+#view .milft-player-directory>summary,#view .milft-player-add>summary{
+ min-height:44px;padding:10px 4px!important;gap:10px!important;
+ display:flex!important;align-items:center!important;justify-content:flex-start!important;
+}
+#view .milft-player-directory>summary::before,#view .milft-player-add>summary::before{margin:0!important;flex:0 0 10px!important}
+#view .milft-player-directory>summary>strong{flex:0 0 auto}
+#view .milft-player-directory>summary>.muted{margin-left:auto}
 /* Panneau Paramètres : palette, buste, disquette en traits homogènes. */
 #milft-settings .settings-panel-icon{display:flex;align-items:center;justify-content:center;width:25px;height:25px;flex:0 0 25px}
 #milft-settings .settings-panel-icon svg{display:block;width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round;color:#16477c}
