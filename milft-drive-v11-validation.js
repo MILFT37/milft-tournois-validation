@@ -122,8 +122,8 @@ function status(message,confirmed=false) {
 }
 function snapshot() {
   return {format:'MILFT-TOURNOIS-BACKUP',version:1,exportedAt:new Date().toISOString(),
-    data:JSON.parse(JSON.stringify(root.db)),planning:JSON.parse(JSON.stringify(root.plan)),
-    progressPreferences:JSON.parse(JSON.stringify(root.progressPrefs))};
+    data:JSON.parse(JSON.stringify(db)),planning:JSON.parse(JSON.stringify(plan)),
+    progressPreferences:JSON.parse(JSON.stringify(progressPrefs))};
 }
 function tokenProvider() {
   if(!accessToken||Date.now()>expiration-60000) {
@@ -135,7 +135,7 @@ function tokenProvider() {
 }
 function dailyAllowance() {
   const day=new Date().toISOString().slice(0,10);
-  const raw=JSON.parse(root.localStorage.getItem('MILFT_DRIVE_VALIDATION_QUOTA')||'{}');
+  let raw={};try{raw=JSON.parse(root.localStorage.getItem('MILFT_DRIVE_VALIDATION_QUOTA')||'{}')||{};}catch{}
   return {day,count:raw.day===day?Math.max(0,Number(raw.count)||0):0};
 }
 function countUpload() {
