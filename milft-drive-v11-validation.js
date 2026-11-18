@@ -111,10 +111,16 @@ if(!root.document || !(liveValidation||localIsolatedTest))return;
 root.MILFTDriveV11Enabled=true;
 
 let client=null, connected=false, auto=false, pending=false, busy=false, blocked=false, revision=0, lastUpload=0;
-let accessToken='', expiration=0, interval=null, oauthPending=false, oauthTimer=null, oauthAttempt=0;
+let accessToken='', expiration=0, interval=null, oauthPending=false, oauthTimer=null, oauthAttempt=0, oauthStartedAt=0, oauthPageHidden=false;
 const $=id=>root.document.getElementById(id);
 function status(message,confirmed=false) {
   root.MILFTDriveStatus=message;
+  // Visible even when the technical section stays folded on Android.
+  const summary=$('milft-settings')?.querySelector('.settings-backup > summary .settings-panel-label small');
+  if(summary){
+    const short=confirmed?'Sauvegarde Drive confirmée':connected?'Google connecté à MILFT':oauthPending?'Connexion Google en cours':'Drive non connecté';
+    summary.textContent='Données complètes — '+short;
+  }
   const p=$('milft-google-auth-status');if(p)p.textContent=message;
   const ind=$('milft-drive-indicator');if(ind) {
     ind.textContent='☁️ '+message;
@@ -182,11 +188,15 @@ function refreshButtons() {
 }
 function finishOAuthAttempt() {
   oauthPending=false;
+  oauthStartedAt=0;
+  oauthPageHidden=false;
   if(oauthTimer){root.clearTimeout(oauthTimer);oauthTimer=null;}
 }
 function oauthReturnNotConfirmed() {
   if(!oauthPending||connected)return;
-  status('Autorisation Google peut-être accordée, mais aucun retour reçu par MILFT. Aucune sauvegarde Drive active. Sur Android, ferme l’onglet Google puis reviens à MILFT ; sinon signale « Retour Google absent ».');
+  finishOAuthAttempt();
+  status('RETOUR GOOGLE ABSENT : Google peut avoir enregistré les droits, mais MILFT n’a reçu aucun jeton. Drive reste déconnecté. Ne relance pas les autorisations en boucle.');
+  refreshButtons();
 }
 function popupError(err) {
   finishOAuthAttempt();
@@ -230,11 +240,11 @@ async function connect() {
       },
       error_callback:(err)=>{if(attempt!==oauthAttempt)return;popupError(err);}
     });
-    oauthPending=true;
+    oauthPending=true;oauthStartedAt=Date.now();oauthPageHidden=false;
     status('Connexion Google en cours : termine l’autorisation puis reviens sur cet écran MILFT. Aucun fichier ne sera envoyé automatiquement.');
     // Sur Android, le consentement peut avoir lieu dans un autre onglet.
     // Si aucun callback n'arrive, ne jamais déclarer la connexion réussie.
-    oauthTimer=root.setTimeout(oauthReturnNotConfirmed,75000);
+    oauthTimer=root.setTimeout(oauthReturnNotConfirmed,30000);
     // L'accès déjà accordé ne nécessite pas de refaire systématiquement le consentement.
     oauth.requestAccessToken({prompt:''});
   }catch(error){
@@ -244,9 +254,15 @@ async function connect() {
     refreshButtons();
   }
 }
+root.document.addEventListener('visibilitychange',()=>{
+  if(root.document.visibilityState==='hidden'&&oauthPending)oauthPageHidden=true;
+  if(root.document.visibilityState==='visible'&&oauthPending&&oauthPageHidden){
+    root.setTimeout(()=>{if(oauthPending&&Date.now()-oauthStartedAt>=3500)oauthReturnNotConfirmed();},3500);
+  }
+});
 root.addEventListener('focus',()=>{
-  if(!oauthPending||connected)return;
-  root.setTimeout(oauthReturnNotConfirmed,1600);
+  if(!oauthPending||connected||!oauthPageHidden)return;
+  root.setTimeout(()=>{if(oauthPending&&Date.now()-oauthStartedAt>=3500)oauthReturnNotConfirmed();},3500);
 });
 async function manual() {
   if(!root.confirm('Sauvegarder maintenant sur le Google Drive du compte sélectionné ? Une nouvelle archive sera créée, sans remplacer les anciennes.'))return;
