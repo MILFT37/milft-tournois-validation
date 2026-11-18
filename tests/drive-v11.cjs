@@ -36,7 +36,7 @@ async function fakeFetch(url,opts={}) {
     const name=m[1],parent=opts.body.match(/"parents":\["([^"]+)"\]/)?.[1];
     assert(parent,'archive requires visible folder parent');
     const id='drivearchive'+(++counter);
-    const data=opts.body.match(/\r\nContent-Type: application\/json; charset=UTF-8\r\n\r\n([\s\S]+)\r\n--milft_[^\r]+--\r\n$/)?.[1];
+    const data=opts.body.split('\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n').at(-1).split('\r\n--milft_')[0];
     assert(data,'archive JSON multipart body');
     JSON.parse(data);
     files.set(id,{id,name,mimeType:'application/json',parent,createdTime:'2026-11-18T17:00:00Z',size:String(data.length),body:data});
