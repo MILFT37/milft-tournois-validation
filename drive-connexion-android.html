@@ -20,13 +20,14 @@ small{display:block;color:#596575;line-height:1.5}
 </head>
 <body><main>
 <h1>MILFT Tournois — diagnostic Google Drive</h1>
-<p>Cette page sert uniquement à vérifier le retour de connexion Google sur Android. Elle <strong>n'ouvre aucun tournoi</strong>, ne lit aucune sauvegarde MILFT et n'écrit aucun fichier sur Drive.</p>
+<p>Cette page sert à vérifier la connexion Google sur Android. Elle <strong>n'ouvre aucun tournoi</strong> et ne lit aucune sauvegarde MILFT. L'étape 3, facultative, crée uniquement un fichier JSON fictif dans un dossier de diagnostic dédié sur Drive.</p>
 <p><strong>Ouvre-la directement dans Chrome normal</strong> (pas en navigation privée). Cela permet de vérifier si la navigation privée bloque le retour Google, tout en évitant d'ouvrir l'application principale.</p>
 <button id="connect" type="button">1. Vérifier la connexion Google</button>
 <button id="read" type="button" disabled>2. Vérifier l'accès Drive (lecture seule)</button>
+<button id="write" type="button" disabled>3. Tester une sauvegarde fictive sur Drive</button>
 <button class="secondary" id="reset" type="button">Réinitialiser ce diagnostic</button>
 <div id="status" role="status" aria-live="polite">Prêt. Aucune connexion effectuée.</div>
-<p><small>Aucun jeton n'est enregistré dans le navigateur, aucun résultat personnel n'est affiché et aucune écriture n'est effectuée. En cas de problème, communique uniquement le texte affiché ici. Ne partage jamais de jeton ou de code d'autorisation.</small></p>
+<p><small>Aucun jeton n'est enregistré dans le navigateur et aucune donnée MILFT n'est lue. L'étape 3 crée, après ton accord, un unique nouveau fichier fictif dans « MILFT Tournois - Diagnostic » ; elle ne modifie ni ne supprime les autres fichiers. Communique seulement le résultat affiché, jamais un jeton ou un code Google.</small></p>
 </main>
 <script>
 (function(){
@@ -37,6 +38,7 @@ const base='https://milft37.github.io/milft-tournois-validation/';
 const enabled=location.href.startsWith(base);
 const connect=document.getElementById('connect');
 const read=document.getElementById('read');
+const write=document.getElementById('write');
 const reset=document.getElementById('reset');
 const output=document.getElementById('status');
 let token='',expires=0,pending=false,timer=null;
@@ -52,7 +54,7 @@ connect.onclick=function(){
  if(!window.google?.accounts?.oauth2){
   show('SERVICE GOOGLE ABSENT : la bibliothèque de connexion n’a pas chargé. Vérifie la connexion Internet.');return;
  }
- token='';read.disabled=true;pending=true;
+ token='';read.disabled=true;write.disabled=true;pending=true;
  show('OUVERTURE GOOGLE : confirme l’autorisation, puis reviens ici. Aucun fichier ne sera enregistré.');
  const client=google.accounts.oauth2.initTokenClient({
   client_id:CLIENT_ID,scope:SCOPE,include_granted_scopes:false,
@@ -62,7 +64,7 @@ connect.onclick=function(){
    if(!response?.access_token){show('RETOUR GOOGLE INCOMPLET : aucun jeton reçu.');return;}
    if(response.scope&&!response.scope.split(' ').includes(SCOPE)){show('DROITS DRIVE INSUFFISANTS : accès non accordé.');return;}
    token=response.access_token;expires=Date.now()+(Number(response.expires_in)||3600)*1000;
-   read.disabled=false;
+   read.disabled=false;write.disabled=false;
    show('VERT — Google a bien renvoyé la connexion à cette page Android. Aucune sauvegarde envoyée.',true);
   },
   error_callback:function(error){
@@ -92,8 +94,59 @@ read.onclick=async function(){
  }catch(e){show('DRIVE NON CONFIRMÉ : erreur réseau ou autorisation bloquée, sans écriture.');}
  finally{read.disabled=false;}
 };
+// Ce test ne lit aucun état de l'application. Il n'envoie qu'un objet fictif.
+write.onclick=async function(){
+ if(!token||Date.now()>expires-60000){write.disabled=true;show('JETON EXPIRÉ : reconnecte Google pour tester la sauvegarde fictive.');return;}
+ const confirmed=window.confirm('Créer un seul fichier JSON de test, sans données de tournoi, dans le dossier « MILFT Tournois - Diagnostic » de ton Drive ? Aucun fichier existant ne sera remplacé ou supprimé.');
+ if(!confirmed){show('TEST ANNULÉ : aucun fichier créé.');return;}
+ write.disabled=true;
+ show('ÉCRITURE TEST EN COURS : création d’un dossier de diagnostic puis contrôle du fichier fictif...');
+ const api='https://www.googleapis.com/drive/v3/files';
+ async function request(url,options={}){
+  const response=await fetch(url,{...options,headers:{...(options.headers||{}),Authorization:'Bearer '+token}});
+  if(!response.ok)throw Error('Drive HTTP '+response.status);
+  return response;
+ }
+ try{
+  // Avec drive.file, seuls les éléments créés ou ouverts avec cette application sont visibles.
+  // Un dossier de diagnostic dédié évite toute confusion avec les sauvegardes réelles.
+  const params=new URLSearchParams({
+   q:"name = 'MILFT Tournois - Diagnostic' and mimeType = 'application/vnd.google-apps.folder' and 'root' in parents and trashed = false",
+   fields:'files(id,name)',spaces:'drive',pageSize:'10'
+  });
+  const listing=await (await request(api+'?'+params)).json();
+  if(!Array.isArray(listing?.files))throw Error('Liste des dossiers invalide');
+  let folder=listing.files.find(f=>f?.name==='MILFT Tournois - Diagnostic'&&f?.id)?.id;
+  if(!folder){
+   const body=JSON.stringify({name:'MILFT Tournois - Diagnostic',mimeType:'application/vnd.google-apps.folder'});
+   const created=await (await request(api+'?fields=id,name',{method:'POST',headers:{'Content-Type':'application/json'},body})).json();
+   if(!created?.id)throw Error('Création du dossier non confirmée');
+   folder=created.id;
+  }
+  const marker=(window.crypto?.randomUUID?.()||String(Date.now()))+'-milft';
+  const payload={format:'MILFT-DRIVE-DIAGNOSTIC',version:1,createdAt:new Date().toISOString(),marker,
+    message:'DONNEES FICTIVES - aucune sauvegarde de tournoi'};
+  const bodyText=JSON.stringify(payload);
+  const name='MILFT_TEST_FICTIF_'+new Date().toISOString().replace(/[:.]/g,'-')+'.json';
+  const metadata={name,mimeType:'application/json',parents:[folder]};
+  const boundary='milft_test_'+Math.random().toString(36).slice(2);
+  const multipart='--'+boundary+'\\r\\nContent-Type: application/json; charset=UTF-8\\r\\n\\r\\n'+JSON.stringify(metadata)+
+   '\\r\\n--'+boundary+'\\r\\nContent-Type: application/json; charset=UTF-8\\r\\n\\r\\n'+bodyText+
+   '\\r\\n--'+boundary+'--\\r\\n';
+  const uploaded=await (await request('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name',
+    {method:'POST',headers:{'Content-Type':'multipart/related; boundary='+boundary},body:multipart})).json();
+  if(!uploaded?.id||uploaded.name!==name)throw Error('Création du fichier non confirmée');
+  const file=await request(api+'/'+encodeURIComponent(uploaded.id)+'?alt=media');
+  const downloaded=await file.json();
+  if(downloaded?.format!==payload.format||downloaded?.marker!==marker||
+     JSON.stringify(downloaded)!==bodyText)throw Error('Contenu relu différent du fichier envoyé');
+  show('VERT — SAUVEGARDE FICTIVE CRÉÉE ET RELUE SUR GOOGLE DRIVE. Aucune donnée de tournoi utilisée, aucune archive existante modifiée.',true);
+ }catch(error){
+  show('ROUGE — TEST D’ÉCRITURE NON CONFIRMÉ : '+String(error?.message||error).slice(0,150)+'. Aucune donnée locale MILFT modifiée.');
+ }finally{write.disabled=!(token&&Date.now()<expires-60000);}
+};
 reset.onclick=()=>{
- stop();token='';expires=0;read.disabled=true;
+ stop();token='';expires=0;read.disabled=true;write.disabled=true;
  show('Diagnostic réinitialisé. Aucune donnée locale ni aucun droit Google supprimé.');
 };
 })();
