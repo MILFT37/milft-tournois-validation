@@ -12,6 +12,7 @@ on:
       - 'MILFT_Tournois_1024.png'
       - 'milft-drive-v11-validation.js'
       - 'drive-connexion-android.html'
+      - 'drive-integration-fictive.html'
       - 'sw.validation.js'
       - '.github/workflows/milft-pages-deploy.yml'
   workflow_dispatch:
@@ -38,6 +39,7 @@ jobs:
           cp MILFT_Tournois_V1_1_FUSION_ANNUELLE_2026-11-06.html _site/
           cp index.html manifest.webmanifest sw.validation.js milft-drive-v11-validation.js _site/
           cp drive-connexion-android.html _site/
+          cp drive-integration-fictive.html _site/
           cp MILFT_Tournois_192.png MILFT_Tournois_512.png MILFT_Tournois_1024.png _site/
           python3 - <<'PY'
           import json, pathlib, struct
@@ -94,6 +96,7 @@ jobs:
             'sw.validation.js',
             'milft-drive-v11-validation.js',
             'drive-connexion-android.html',
+            'drive-integration-fictive.html',
             'MILFT_Tournois_192.png',
             'MILFT_Tournois_512.png',
             'MILFT_Tournois_1024.png',
