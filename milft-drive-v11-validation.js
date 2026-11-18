@@ -104,8 +104,10 @@ function createDriveClient(fetchImpl, tokenProvider) {
 }
 root.MILFTDriveV11Core={createDriveClient,MAX_DAILY_UPLOADS,MIN_AUTO_MS};
 if(typeof module!=='undefined'&&module.exports) module.exports=root.MILFTDriveV11Core;
-if(!root.document || !root.location || root.location.origin!=='https://milft37.github.io' ||
-   !root.location.pathname.startsWith('/milft-tournois-validation/'))return;
+const liveValidation = root.location?.origin==='https://milft37.github.io' &&
+  root.location.pathname.startsWith('/milft-tournois-validation/');
+const localIsolatedTest = root.location?.hostname==='127.0.0.1' && root.__MILFT_DRIVE_BROWSER_TEST__===true;
+if(!root.document || !(liveValidation||localIsolatedTest))return;
 root.MILFTDriveV11Enabled=true;
 
 let client=null, connected=false, auto=false, pending=false, busy=false, blocked=false, revision=0, lastUpload=0;
