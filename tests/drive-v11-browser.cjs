@@ -30,7 +30,7 @@ async function main(){
   await context.addInitScript(({key,state})=>{
     window.__MILFT_DRIVE_BROWSER_TEST__=true;
     localStorage.setItem(key,JSON.stringify(state));
-    window.google={accounts:{oauth2:{initTokenClient:({callback})=>({requestAccessToken:()=>callback({access_token:'fake-token-no-real-google',expires_in:3600,scope:'https://www.googleapis.com/auth/drive.file'})}),revoke:()=>{}}}};
+    window.google={accounts:{oauth2:{initTokenClient:({callback,error_callback})=>({requestAccessToken:()=>{if(window.__MILFT_TEST_OAUTH_POPUP_ERROR__)error_callback({type:'popup_closed'});else if(window.__MILFT_TEST_OAUTH_NO_CALLBACK__)return;else callback({access_token:'fake-token-no-real-google',expires_in:3600,scope:'https://www.googleapis.com/auth/drive.file'});}}),revoke:()=>{}}}};
   },{key:KEY,state:fixture});
   const page=await context.newPage(), errors=[];
   page.on('pageerror',err=>errors.push(err.message));
@@ -78,6 +78,13 @@ async function main(){
   assert.equal(await page.locator('#milft-drive-save-now').isDisabled(),true,'No action without Google consent');
   assert.equal(apiCalls.length,0,'No API call before consent');
   const before=await page.evaluate(key=>localStorage.getItem(key),KEY);
+  // Android regression: a popup can close without sending an OAuth access token.
+  await page.evaluate(()=>{window.__MILFT_TEST_OAUTH_POPUP_ERROR__=true;});
+  await page.locator('#milft-google-connect').click();
+  assert.match(await page.locator('#milft-google-auth-status').innerText(),/fenêtre Google s’est fermée/);
+  assert.equal(await page.locator('#milft-drive-save-now').isDisabled(),true,'No save after popup failure');
+  assert.equal(apiCalls.length,0,'No Drive request after popup failure');
+  await page.evaluate(()=>{window.__MILFT_TEST_OAUTH_POPUP_ERROR__=false;});
   await page.locator('#milft-google-connect').click();
   assert.match(await page.locator('#milft-google-auth-status').innerText(),/Google connecté/);
   assert.equal(apiCalls.length,0,'Connecting alone cannot write Drive');
