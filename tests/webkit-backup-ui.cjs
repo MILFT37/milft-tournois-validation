@@ -100,7 +100,7 @@ async function main(){
   const fileChooser=await fileChooserPromise;
   await fileChooser.setFiles({name:'MILFT-ui-fictif.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(data))});
   await second.waitForFunction(()=>db.tournaments[0]?.id==='UI-EXPORT-TEST',{timeout:15000});
-  assert.equal(dialogs.filter(x=>x.type==='confirm').length,3,'Import UI : trois confirmations attendues');
+  assert.equal(dialogs.filter(x=>x.type==='confirm').length,2,'Import UI : deux confirmations attendues, sans téléchargement forcé');
   const stored=await second.evaluate(()=>({
    id:db.tournaments[0]?.id,score:db.tournaments[0]?.matches[0]?.score,
    selected:db.selected,raw:localStorage.getItem('milft_iso_20261102_tournois_v01')
@@ -116,7 +116,7 @@ async function main(){
   const reload=await second.evaluate(()=>({id:db.tournaments[0]?.id,score:db.tournaments[0]?.matches?.[0]?.score}));
   assert.deepEqual(reload,{id:'UI-EXPORT-TEST',score:{a:8,b:6}},
    'WebKit UI : résultat perdu après rechargement');
-  console.log('OK WebKit UI : import via bouton et filechooser, trois confirmations, protection IndexedDB, reprise');
+  console.log('OK WebKit UI : import via bouton et filechooser, deux confirmations sans téléchargement forcé, protection IndexedDB, reprise');
 
   /* Rejeter un JSON invalide AVANT toute confirmation ou modification locale. */
   const beforeInvalid=await second.evaluate(()=>localStorage.getItem('milft_iso_20261102_tournois_v01'));
