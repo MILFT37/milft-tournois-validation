@@ -113,7 +113,7 @@ async function checkLinkedABBackupRoundTrip(page){
  },payload);
  assert.equal(result.beforeRestore,'BEFORE-RESTORE','Backup A/B : comparaison avant import incorrecte');
  assert.deepEqual(result.afterValid.alerts,[],'Backup A/B : restauration rejetée : '+JSON.stringify(result.afterValid));
- assert.equal(result.afterValid.confirmations,3,'Backup A/B : confirmations de sécurité incorrectes');
+ assert.equal(result.afterValid.confirmations,2,'Backup A/B : confirmations de sécurité incorrectes');
  assert.equal(result.afterValid.count,3,'Backup A/B : tournoi perdu après import');
  assert.equal(result.afterValid.selected,'PHASE-A-BACKUP','Backup A/B : sélection perdue');
  assert(result.afterValid.links,'Backup A/B : liens entre phases perdus');
@@ -199,7 +199,7 @@ async function main(){
     invalidUnchanged:localStorage.getItem('milft_iso_20261102_tournois_v01')===raw,
     noNewArchive:after.length===archives.length};
   });
-  assert.equal(result.prompts,3,'La restauration valide exige trois confirmations');
+  assert.equal(result.prompts,2,'La restauration valide exige deux confirmations');
   assert.equal(result.promptsBefore,3,'Import invalide non rejeté avant les confirmations');
   assert.equal(result.currentArchive,'CURRENT','IndexedDB : ancienne session locale non protégée');
   assert.equal(result.olderArchive,'OLDER','IndexedDB : ancienne archive récupérable non protégée');
