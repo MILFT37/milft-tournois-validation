@@ -17,9 +17,10 @@ async function fakeFetch(url,opts={}) {
   if(u.pathname==='/drive/v3/files'&&method==='GET') {
     const q=u.searchParams.get('q')||'';
     if(q.includes('mimeType =')) {
-      if(q.includes("'root' in parents"))return ok({files:Array.from(files.values()).filter(f=>f.mimeType==='application/vnd.google-apps.folder'&&!f.parent)});
+      const name=q.match(/name = '([^']+)'/)?.[1];
+      if(q.includes("'root' in parents"))return ok({files:Array.from(files.values()).filter(f=>f.mimeType==='application/vnd.google-apps.folder'&&!f.parent&&f.name===name)});
       const parent=q.match(/'([^']+)' in parents/)?.[1];
-      return ok({files:Array.from(files.values()).filter(f=>f.mimeType==='application/vnd.google-apps.folder'&&f.parent===parent)});
+      return ok({files:Array.from(files.values()).filter(f=>f.mimeType==='application/vnd.google-apps.folder'&&f.parent===parent&&f.name===name)});
     }
     const parent=q.match(/'([^']+)' in parents/)?.[1];
     return ok({files:Array.from(files.values()).filter(f=>f.parent===parent&&f.mimeType==='application/json').map(({id,name,createdTime,size})=>({id,name,createdTime,size}))});
@@ -64,9 +65,20 @@ async function fakeFetch(url,opts={}) {
  const recovered=await client.download(first.id);
  assert.equal(JSON.stringify(recovered.data),JSON.stringify(snapshot),'Complete roundtrip');
  assert.equal(files.get(first.id).body,JSON.stringify(snapshot),'First backup untouched by later upload');
+ const fixtureClient=createDriveClient(fakeFetch,()=>'fake-test-token',{testMode:true});
+ const fixture=await fixtureClient.upload(snapshot,'test-fictif');
+ const fixtureFolders=Array.from(files.values()).filter(f=>f.mimeType==='application/vnd.google-apps.folder');
+ assert(fixtureFolders.some(f=>f.name==='MILFT Tournois - Essais'&&!f.parent),'Dedicated fixture root folder missing');
+ const fixtureRoot=fixtureFolders.find(f=>f.name==='MILFT Tournois - Essais');
+ const fixtureChild=fixtureFolders.find(f=>f.name==='Sauvegardes fictives'&&f.parent===fixtureRoot.id);
+ assert(fixtureChild && files.get(fixture.id).parent===fixtureChild.id,'Fixture archive did not use isolated folder');
+ assert.equal((await fixtureClient.list()).length,1,'Fixture should list only isolated archives');
+ assert.equal((await client.list()).length,2,'Fixture upload must not change club backup listing');
+ assert.equal(JSON.stringify((await fixtureClient.download(fixture.id)).data),JSON.stringify(snapshot),'Fixture roundtrip');
  failUpload=true;
  await assert.rejects(client.upload(snapshot,'manuel'),/403/);
  assert.equal((await client.list()).length,2,'Failed upload does not delete archives');
+ assert.equal((await fixtureClient.list()).length,1,'Failed upload also preserves isolated fixture archive');
  assert(calls.every(c=>c.authorization==='Bearer fake-test-token'),'OAuth token only used in Authorization header');
  assert.equal((await client.backupFolder(false)),files.get(first.id).parent);
  console.log('OK Drive V1.1: authorization, visible folders, immutable snapshots, roundtrip, failure non-destructive');
