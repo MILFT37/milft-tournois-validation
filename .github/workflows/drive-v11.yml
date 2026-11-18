@@ -8,6 +8,8 @@ on:
       - 'tests/drive-v11-browser.cjs'
       - 'tests/drive-android-write.cjs'
       - 'drive-connexion-android.html'
+      - 'drive-integration-fictive.html'
+      - 'tests/drive-integration-fictive-browser.cjs'
       - 'MILFT_Tournois_V1_1_VALIDATION_HEBERGEMENT_STABLE_2026-11-02.html'
       - '.github/workflows/drive-v11.yml'
   workflow_dispatch:
@@ -29,6 +31,8 @@ jobs:
           npx playwright install --with-deps chromium
       - name: Tester le panneau Drive en navigateur isolé sans compte réel
         run: node tests/drive-v11-browser.cjs
+      - name: Tester intégration Drive réelle sur données fictives, Chrome isolé
+        run: node tests/drive-integration-fictive-browser.cjs
       - name: Verify production excluded and module loaded only in validation
         run: |
           node - <<'NODE'
