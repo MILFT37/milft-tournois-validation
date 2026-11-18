@@ -86,11 +86,9 @@ async function main(){
   assert.equal(apiCalls.length,0,'No Drive request after popup failure');
   // Google's authorization screen can be dismissed without invoking either callback.
   await page.evaluate(()=>{window.__MILFT_TEST_OAUTH_POPUP_ERROR__=false;window.__MILFT_TEST_OAUTH_NO_CALLBACK__=true;});
-  await page.locator('#milft-google-connect').click();
-  await page.evaluate(()=>MILFTDriveV11Test ? undefined : undefined); // no remote operation
-  await page.evaluate(()=>{document.dispatchEvent(new Event('visibilitychange'));});
   // Advance the OAuth timeout via virtual clock to avoid waiting 30 seconds.
   await page.clock.install();
+  await page.locator('#milft-google-connect').click();
   await page.clock.fastForward(30010);
   assert.match(await page.locator('#milft-google-auth-status').innerText(),/RETOUR GOOGLE ABSENT/);
   assert.equal(await page.locator('#milft-drive-save-now').isDisabled(),true,'No saving on absent callback');
