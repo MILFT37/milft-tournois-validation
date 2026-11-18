@@ -1,0 +1,31 @@
+name: Verification Google Drive V1.1 validation
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'milft-drive-v11-validation.js'
+      - 'tests/drive-v11.cjs'
+      - 'MILFT_Tournois_V1_1_VALIDATION_HEBERGEMENT_STABLE_2026-11-02.html'
+      - '.github/workflows/drive-v11.yml'
+  workflow_dispatch:
+jobs:
+  drive-safety:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Test Google Drive mock (no real account or writes)
+        run: node tests/drive-v11.cjs
+      - name: Verify production excluded and module loaded only in validation
+        run: |
+          node - <<'NODE'
+          const fs=require('node:fs'),assert=require('node:assert/strict');
+          const html=fs.readFileSync('MILFT_Tournois_V1_1_VALIDATION_HEBERGEMENT_STABLE_2026-11-02.html','utf8');
+          assert(html.includes('milft-drive-v11-validation.js'));
+          const module=fs.readFileSync('milft-drive-v11-validation.js','utf8');
+          assert(module.includes("location.pathname.startsWith('/milft-tournois-validation/')"));
+          assert(!html.includes('<script src="https://cdn.')||html.includes('google'));
+          console.log('OK Drive validation module wired; production path excluded');
+          NODE
