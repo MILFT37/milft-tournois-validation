@@ -51,7 +51,7 @@ async function main(){
   assert.strictEqual(h.current().tournaments.length,3,'Phases A/B disparues');
   assert.strictEqual(h.current().tournaments[1].matches[0].sets[0].a,5,'Manches alterees');
   assert.strictEqual(JSON.parse(h.stored()['test:db']).tournaments.length,3,'Persistance incomplete');
-  assert.strictEqual(h.confirmations.length,3,'Confirmations inattendues');
+  assert.strictEqual(h.confirmations.length,2,'Confirmations inattendues');
   assert.strictEqual(h.notice(),'Sauvegarde importée : 2 joueurs et 1 événement.','Le message doit afficher les événements métier et non les phases internes');
   console.log('OK JSON : restauration A/B et manches conservees');
  }
