@@ -19,6 +19,6 @@ jobs:
         with:
           node-version: '22'
       - run: npm install --no-save playwright@1.56.1
-      - run: npx playwright install --with-deps chromium
+      - run: npx playwright install chromium
       - name: Verifier triage CSS, icones, replis et resultat desktop/mobile
         run: node tests/ui-retouches-20261118.cjs
