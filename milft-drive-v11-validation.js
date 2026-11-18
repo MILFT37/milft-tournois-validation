@@ -11,8 +11,10 @@ const MAX_DAILY_UPLOADS = 40;
 const MAX_BYTES = 30 * 1024 * 1024;
 const CLIENT_ID = '974764451814-ojqchmfb9ssca9hvmfhrgrrrirpro8ou.apps.googleusercontent.com';
 
-function createDriveClient(fetchImpl, tokenProvider) {
+function createDriveClient(fetchImpl, tokenProvider, options={}) {
   if(typeof fetchImpl!=='function' || typeof tokenProvider!=='function') throw Error('Configuration Drive incomplète');
+  const rootFolderName=options.testMode===true?'MILFT Tournois - Essais':'MILFT Tournois';
+  const backupFolderName=options.testMode===true?'Sauvegardes fictives':'Sauvegardes';
   let folderId = null;
   async function request(url, options={}, raw=false) {
     const token = await tokenProvider();
@@ -39,12 +41,12 @@ function createDriveClient(fetchImpl, tokenProvider) {
   }
   async function backupFolder(create) {
     if(folderId) return folderId;
-    let rootFolder = await findFolder('MILFT Tournois',null);
+    let rootFolder = await findFolder(rootFolderName,null);
     if(!rootFolder && !create) return null;
-    if(!rootFolder) rootFolder=await createFolder('MILFT Tournois');
-    let child=await findFolder('Sauvegardes',rootFolder);
+    if(!rootFolder) rootFolder=await createFolder(rootFolderName);
+    let child=await findFolder(backupFolderName,rootFolder);
     if(!child && !create) return null;
-    if(!child) child=await createFolder('Sauvegardes',rootFolder);
+    if(!child) child=await createFolder(backupFolderName,rootFolder);
     folderId=child;
     return child;
   }
@@ -183,7 +185,7 @@ function startInterval(){stopInterval();interval=root.setInterval(()=>upload('au
 function refreshButtons() {
   const manual=$('milft-drive-save-now'),automatic=$('milft-drive-auto'),history=$('milft-drive-list-v11');
   if(manual)manual.disabled=!connected;
-  if(automatic){automatic.disabled=!connected;automatic.textContent=auto?'Désactiver la sauvegarde automatique':'Activer la sauvegarde automatique';}
+  if(automatic){automatic.disabled=!connected||root.__MILFT_DRIVE_FIXTURE__===true;automatic.textContent=auto?'Désactiver la sauvegarde automatique':'Activer la sauvegarde automatique';}
   if(history)history.disabled=!connected;
 }
 function finishOAuthAttempt() {
@@ -233,7 +235,7 @@ async function connect() {
         }
         accessToken=response.access_token;
         expiration=Date.now()+(Number(response.expires_in)||3600)*1000;
-        client=createDriveClient(root.fetch.bind(root),tokenProvider);
+        client=createDriveClient(root.fetch.bind(root),tokenProvider,root.__MILFT_DRIVE_FIXTURE__===true?{testMode:true}:{});
         connected=true;blocked=false;auto=false;pending=true;revision++;
         refreshButtons();
         status('Google connecté à MILFT (autorisation reçue). Aucun fichier n’a encore été envoyé.');
@@ -266,9 +268,10 @@ root.addEventListener('focus',()=>{
 });
 async function manual() {
   if(!root.confirm('Sauvegarder maintenant sur le Google Drive du compte sélectionné ? Une nouvelle archive sera créée, sans remplacer les anciennes.'))return;
-  await upload('manuel',true);
+  await upload(root.__MILFT_DRIVE_FIXTURE__===true?'test-fictif':'manuel',true);
 }
 async function toggleAuto() {
+  if(root.__MILFT_DRIVE_FIXTURE__===true){status('Mode essai : sauvegarde automatique désactivée pour les données fictives.');return;}
   if(auto){auto=false;stopInterval();status('Sauvegardes automatiques désactivées — archives précédentes conservées');refreshButtons();return;}
   if(!root.confirm('Activer la sauvegarde Drive toutes les 15 minutes pendant que l’application est ouverte et connectée ? Aucune sauvegarde garantie lorsque l’application est fermée.'))return;
   auto=true;refreshButtons();startInterval();
@@ -294,6 +297,7 @@ async function history() {
         root.setTimeout(()=>root.URL.revokeObjectURL(url),60000);
         status('Archive téléchargée — aucune donnée de l’application modifiée');
       }catch(e){status('Téléchargement impossible : '+e.message);}};
+      if(root.__MILFT_DRIVE_FIXTURE__===true)continue;
       const restore=root.document.createElement('button');restore.type='button';restore.className='mutedbtn';restore.textContent='Restaurer (avec confirmations)';
       restore.onclick=async()=>{
         if(!root.confirm('Restaurer cette archive ? La procédure existante vérifiera les données et demandera ses confirmations de sécurité.'))return;
@@ -333,7 +337,7 @@ function init() {
   panel.append(row);
   const info=root.document.createElement('p');
   info.style.fontSize='12px';
-  info.textContent='Dossier visible : MILFT Tournois / Sauvegardes. Les archives sont nouvelles et jamais écrasées. Le Drive ne synchronise PAS les tournois entre appareils en temps réel. Connexion et activation volontaires uniquement. Fonctionne pendant que l’application est ouverte.';
+  info.textContent=root.__MILFT_DRIVE_FIXTURE__===true?'Mode de validation isolé : seules des données fictives sont présentes ici. Les sauvegardes vont dans « MILFT Tournois - Essais / Sauvegardes fictives ». Pas de restauration ni de sauvegarde automatique dans ce mode. Aucun tournoi du club n’est lu.':'Dossier visible : MILFT Tournois / Sauvegardes. Les archives sont nouvelles et jamais écrasées. Le Drive ne synchronise PAS les tournois entre appareils en temps réel. Connexion et activation volontaires uniquement. Fonctionne pendant que l’application est ouverte.';
   panel.append(info);
   const list=root.document.createElement('div');list.id='milft-drive-archives';panel.append(list);
   const backupStatus=root.document.createElement('p');backupStatus.id='milft-drive-archives-status';panel.append(backupStatus);
