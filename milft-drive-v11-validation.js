@@ -283,10 +283,19 @@ async function toggleAuto() {
 }
 async function history() {
   const target=$('milft-drive-archives');if(!target)return;
+  target.hidden=false;
   target.replaceChildren();target.textContent='Chargement des archives Drive…';
+  status('Consultation des archives Drive en cours…');
+  target.scrollIntoView?.({block:'nearest'});
   try {
+    if(!connected||!client)throw Error('Google Drive non connecté : reconnecter le compte du club');
     const archives=await client.list();target.replaceChildren();
-    if(!archives.length){target.textContent='Aucune archive dans le dossier MILFT Tournois / Sauvegardes de ce compte.';return;}
+    if(!archives.length){
+      target.textContent='Aucune archive dans '+(fixtureMode?'MILFT Tournois - Essais / Sauvegardes fictives':'MILFT Tournois / Sauvegardes')+' pour ce compte.';
+      status('Archives Drive consultées : aucune archive dans ce dossier.');
+      target.scrollIntoView?.({block:'nearest'});
+      return;
+    }
     for(const file of archives) {
       const line=root.document.createElement('div');line.className='item';
       const label=root.document.createElement('p');
@@ -312,7 +321,14 @@ async function history() {
       };
       line.append(download,restore);target.append(line);
     }
-  }catch(e){target.textContent='Historique indisponible : '+e.message;}
+    status('Archives Drive : '+archives.length+' archive'+(archives.length>1?'s':'')+' disponible'+(archives.length>1?'s':'')+' ci-dessous.');
+    target.scrollIntoView?.({block:'nearest'});
+  }catch(e){
+    const message=String(e?.message||e);
+    target.textContent='Historique Drive indisponible : '+message;
+    status('Archives Drive indisponibles : '+message);
+    target.scrollIntoView?.({block:'nearest'});
+  }
 }
 function disconnect() {
   oauthAttempt++;finishOAuthAttempt();
@@ -337,12 +353,17 @@ function init() {
   for(const [id,label,click] of actions){
     const b=root.document.createElement('button');b.type='button';b.id=id;b.textContent=label;b.onclick=click;row.append(b);
   }
+  // Placer les archives sous leur bouton plutôt qu'après tous les contrôles.
+  const list=root.document.createElement('div');list.id='milft-drive-archives';
+  list.hidden=true;list.style.gridColumn='1 / -1';list.style.minWidth='0';list.style.overflowWrap='anywhere';
+  list.setAttribute('role','region');list.setAttribute('aria-label','Résultat des archives Google Drive');
+  list.setAttribute('aria-live','polite');
+  row.querySelector('#milft-drive-list-v11').after(list);
   panel.append(row);
   const info=root.document.createElement('p');
   info.style.fontSize='12px';
   info.textContent=fixtureMode?'Mode de validation isolé : seules des données fictives sont présentes ici. Les sauvegardes vont dans « MILFT Tournois - Essais / Sauvegardes fictives ». Pas de restauration ni de sauvegarde automatique dans ce mode. Aucun tournoi du club n’est lu.':'Dossier visible : MILFT Tournois / Sauvegardes. Les archives sont nouvelles et jamais écrasées. Le Drive ne synchronise PAS les tournois entre appareils en temps réel. Connexion et activation volontaires uniquement. Fonctionne pendant que l’application est ouverte.';
   panel.append(info);
-  const list=root.document.createElement('div');list.id='milft-drive-archives';panel.append(list);
   const backupStatus=root.document.createElement('p');backupStatus.id='milft-drive-archives-status';panel.append(backupStatus);
   if(typeof root.save==='function') {
     const prior=root.save;root.save=function(...args){const result=prior.apply(this,args);changed();return result;};
