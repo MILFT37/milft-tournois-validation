@@ -19,6 +19,11 @@ jobs:
           const assert=require('node:assert/strict');
           const s=fs.readFileSync('MILFT_Tournois_V1_1_VALIDATION_HEBERGEMENT_STABLE_2026-11-02.html','utf8');
           const checks={
+            'alignement résumé annuaire et ajout':/#view \.milft-player-directory>summary,#view \.milft-player-add>summary\{[\s\S]*?display:flex!important;align-items:center!important;justify-content:flex-start!important;/,
+            'chevrons largeur identique':/#view \.milft-player-directory>summary::before,#view \.milft-player-add>summary::before\{margin:0!important;flex:0 0 10px!important\}/,
+            'compteur joueurs sans étirement':/#view \.milft-player-directory>summary>strong\{flex:0 0 auto\}/,
+            'information secondaire à droite':/#view \.milft-player-directory>summary>\.muted\{margin-left:auto\}/,
+            'icônes paramètres homogènes':/#milft-settings \.settings-panel-icon\{display:flex;align-items:center;justify-content:center;width:25px;height:25px/,
             'grille CAP deux colonnes':/\.cap-command-row\{display:grid!important;grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/,
             'Terminer en seconde ligne':/\.cap-command-row>\.cap-finish-command\{grid-column:1;grid-row:2\}/,
             'Abandonner en seconde ligne':/\.cap-command-row>\.cap-abandon-command\{grid-column:2;grid-row:2\}/,
@@ -31,5 +36,5 @@ jobs:
             'bouton terminer seul pleine largeur':/\.cap-command-row>\.cap-finish-command:last-child\{grid-column:1\/-1\}/,
           };
           for(const [label,re] of Object.entries(checks)){assert.match(s,re,label);console.log('OK '+label)}
-          console.log('10 controles statiques conformes (ne remplace pas un test navigateur)');
+          console.log('15 controles statiques conformes (ne remplace pas un test navigateur)');
           JS
