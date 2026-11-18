@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<meta http-equiv="Cache-Control" content="no-store">
+<title>MILFT Tournois — diagnostic Google Drive Android</title>
+<style>
+:root{font-family:system-ui,Arial,sans-serif;color:#24354a;background:#f3f6fb}
+*{box-sizing:border-box}main{max-width:610px;margin:24px auto;padding:22px;background:white;border-radius:15px;box-shadow:0 3px 18px #133c7815}
+h1{font-size:1.4rem;color:#113e78}p{line-height:1.55}
+button{display:block;width:100%;min-height:49px;margin:10px 0;border:0;border-radius:10px;background:#155c9e;color:white;font-size:1rem;font-weight:700;padding:12px}
+button:disabled{background:#c4ced9;color:#586677}button.secondary{background:#edf2f8;color:#15426d}
+#status{padding:15px;border-radius:10px;background:#fff3d7;border:1px solid #e2bd67;font-weight:650;white-space:pre-wrap;line-height:1.5}
+#status.ok{background:#e5f5e9;border-color:#91c7a0;color:#155c2f}
+small{display:block;color:#596575;line-height:1.5}
+</style>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+</head>
+<body><main>
+<h1>MILFT Tournois — diagnostic Google Drive</h1>
+<p>Cette page sert uniquement à vérifier le retour de connexion Google sur Android. Elle <strong>n'ouvre aucun tournoi</strong>, ne lit aucune sauvegarde MILFT et n'écrit aucun fichier sur Drive.</p>
+<p><strong>Ouvre-la directement dans Chrome normal</strong> (pas en navigation privée). Cela permet de vérifier si la navigation privée bloque le retour Google, tout en évitant d'ouvrir l'application principale.</p>
+<button id="connect" type="button">1. Vérifier la connexion Google</button>
+<button id="read" type="button" disabled>2. Vérifier l'accès Drive (lecture seule)</button>
+<button class="secondary" id="reset" type="button">Réinitialiser ce diagnostic</button>
+<div id="status" role="status" aria-live="polite">Prêt. Aucune connexion effectuée.</div>
+<p><small>Aucun jeton n'est enregistré dans le navigateur, aucun résultat personnel n'est affiché et aucune écriture n'est effectuée. En cas de problème, communique uniquement le texte affiché ici. Ne partage jamais de jeton ou de code d'autorisation.</small></p>
+</main>
+<script>
+(function(){
+'use strict';
+const CLIENT_ID='974764451814-ojqchmfb9ssca9hvmfhrgrrrirpro8ou.apps.googleusercontent.com';
+const SCOPE='https://www.googleapis.com/auth/drive.file';
+const base='https://milft37.github.io/milft-tournois-validation/';
+const enabled=location.href.startsWith(base);
+const connect=document.getElementById('connect');
+const read=document.getElementById('read');
+const reset=document.getElementById('reset');
+const output=document.getElementById('status');
+let token='',expires=0,pending=false,timer=null;
+function show(message,success=false){
+ output.textContent=message;
+ output.classList.toggle('ok',success);
+}
+function clearTimer(){if(timer)clearTimeout(timer);timer=null;}
+function stop(){clearTimer();pending=false;}
+connect.onclick=function(){
+ if(!enabled){show('DIAGNOSTIC DÉSACTIVÉ : adresse de validation incorrecte.');return;}
+ if(pending){show('Connexion toujours en cours. Reviens sur cette page après Google.');return;}
+ if(!window.google?.accounts?.oauth2){
+  show('SERVICE GOOGLE ABSENT : la bibliothèque de connexion n’a pas chargé. Vérifie la connexion Internet.');return;
+ }
+ token='';read.disabled=true;pending=true;
+ show('OUVERTURE GOOGLE : confirme l’autorisation, puis reviens ici. Aucun fichier ne sera enregistré.');
+ const client=google.accounts.oauth2.initTokenClient({
+  client_id:CLIENT_ID,scope:SCOPE,include_granted_scopes:false,
+  callback:function(response){
+   stop();
+   if(response?.error){show('AUTORISATION REFUSÉE : '+String(response.error).slice(0,70));return;}
+   if(!response?.access_token){show('RETOUR GOOGLE INCOMPLET : aucun jeton reçu.');return;}
+   if(response.scope&&!response.scope.split(' ').includes(SCOPE)){show('DROITS DRIVE INSUFFISANTS : accès non accordé.');return;}
+   token=response.access_token;expires=Date.now()+(Number(response.expires_in)||3600)*1000;
+   read.disabled=false;
+   show('VERT — Google a bien renvoyé la connexion à cette page Android. Aucune sauvegarde envoyée.',true);
+  },
+  error_callback:function(error){
+   stop();
+   const kind=String(error?.type||'inconnue').slice(0,60);
+   show('ÉCHEC DU RETOUR GOOGLE : '+kind+'. Aucune sauvegarde envoyée.');
+  }
+ });
+ timer=setTimeout(()=>{
+  if(!pending)return;
+  stop();
+  show('RETOUR GOOGLE ABSENT : Google peut conserver les droits, mais aucune confirmation n’est arrivée sur cette page. Aucune sauvegarde envoyée.');
+ },30000);
+ try{client.requestAccessToken({prompt:''});}
+ catch(e){stop();show('OUVERTURE GOOGLE IMPOSSIBLE : '+String(e.message||e).slice(0,150));}
+};
+read.onclick=async function(){
+ if(!token||Date.now()>expires-60000){read.disabled=true;show('JETON EXPIRÉ : aucune vérification effectuée.');return;}
+ read.disabled=true;show('Vérification Drive en lecture seule...');
+ try{
+  const url='https://www.googleapis.com/drive/v3/files?fields=nextPageToken,files(id)&pageSize=1';
+  const response=await fetch(url,{method:'GET',headers:{Authorization:'Bearer '+token}});
+  if(!response.ok){show('DRIVE NON CONFIRMÉ : HTTP '+response.status+'. Aucune écriture effectuée.');return;}
+  const value=await response.json();
+  if(!Array.isArray(value?.files)){show('DRIVE NON CONFIRMÉ : réponse Google inattendue.');return;}
+  show('VERT — Connexion Google ET accès en lecture seule à Drive confirmés. Aucun fichier modifié.',true);
+ }catch(e){show('DRIVE NON CONFIRMÉ : erreur réseau ou autorisation bloquée, sans écriture.');}
+ finally{read.disabled=false;}
+};
+reset.onclick=()=>{
+ stop();token='';expires=0;read.disabled=true;
+ show('Diagnostic réinitialisé. Aucune donnée locale ni aucun droit Google supprimé.');
+};
+})();
+</script>
+</body></html>
