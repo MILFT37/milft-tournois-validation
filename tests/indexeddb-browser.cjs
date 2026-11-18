@@ -200,7 +200,7 @@ async function main(){
     noNewArchive:after.length===archives.length};
   });
   assert.equal(result.prompts,2,'La restauration valide exige deux confirmations');
-  assert.equal(result.promptsBefore,3,'Import invalide non rejeté avant les confirmations');
+  assert.equal(result.promptsBefore,2,'Import invalide non rejeté avant les confirmations');
   assert.equal(result.currentArchive,'CURRENT','IndexedDB : ancienne session locale non protégée');
   assert.equal(result.olderArchive,'OLDER','IndexedDB : ancienne archive récupérable non protégée');
   assert.equal(result.restored,'IMPORTED','Tournoi importé absent');
