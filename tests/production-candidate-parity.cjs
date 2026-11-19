@@ -33,4 +33,8 @@ assert(!shared.includes('Google Drive désactivé'),'No obsolete Drive warning i
 assert(!shared.includes('drive.appdata'),'No obsolete appdata text in production candidate UI');
 assert(!shared.includes('MILFT_ISO_20261102_SECOURS'),'Production IndexedDB backup must remain isolated');
 assert(!shared.includes("const KEY='milft_iso_20261102_tournois_v01'"),'Production local state must remain isolated');
+assert(shared.includes('<small>Gestion des tournois de football de table</small>'),'General subtitle must be shown in production');
+assert(shared.includes('<span class="pill">MILFT Tournois V1.1</span>'),'Correct version badge on official app');
+assert(!shared.includes('V1.1 CHAMPIONNAT SIMPLE'),'Old specific badge must be absent');
+assert(!shared.includes('Gestion de tournois • championnat annuel Simple'),'Old specific subtitle must be absent');
 console.log('OK full tournament-engine/visual parity: 3,222 identical lines except 8 approved edits; separate Drive adapters and storage retained');

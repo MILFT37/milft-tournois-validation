@@ -1,5 +1,5 @@
 /* MILFT Tournois V1.1 — cache applicatif de validation uniquement. */
-const CACHE = 'milft-validation-shell-v1-20261119-drive-interval-200-01';
+const CACHE = 'milft-validation-shell-v1-20261119-header-v11-01';
 const SHELL = [
   './MILFT_Tournois_V1_1_VALIDATION_HEBERGEMENT_STABLE_2026-11-02.html',
   './manifest.webmanifest',
