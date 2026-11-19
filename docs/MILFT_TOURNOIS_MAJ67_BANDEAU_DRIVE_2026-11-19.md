@@ -25,3 +25,13 @@ GO utilisateur déjà validé dans la MAJ 66. Correction **limitée à l'interfa
 
 ## Invariants
 Sauvegardes automatiques désactivées par défaut ; réglage 5/10/15/30/60 min, 15 min initial, quota 200 envois automatiques/jour/appareil ; manuelles hors quota. Les modifications de match restent **locales** tant qu'une copie Drive n'est pas confirmée. Aucun état « synchronisé entre appareils ».
+
+## Jalons complémentaires — tests et promotion officielle
+6. **Commit `285cb92c7f0274f62c2e508848e7cc0567c8bdc7`** : ajustement du test candidat pour couvrir la situation normale où la donnée fictive a été modifiée avant OAuth (le bandeau indique alors « modifications locales en attente », pas « copie confirmée »). Candidate production workflow `44552423172` : **SUCCESS** (Chromium et WebKit). Google Drive validation workflow `44552214531` : **SUCCESS** ; Pages validation workflow `44552214522` : **SUCCESS**.
+7. **Promotion officielle**, dépôt `MILFT37/milft-tournois`, branche `main`, commit **`d81c9f03f7e7ca016e517c6df8ae1f458285ee0c`**. Fichiers modifiés **exclusivement** : `MILFT_Tournois_V1_1_PRODUCTION_PRETE_2026-11-17.html`, `milft-drive-v11-production.js`, `sw.production.js` et les deux tests de contrôle `tests/pwa-production.cjs`, `tests/production-release.cjs`. L'ancienne production source était le commit `0ef73bbb85cae5e2aacabd3f219c02b7c2013a7b` ; les trois fichiers de production d'origine étaient identiques au contenu de la candidate de référence. **Aucune donnée ou archive réelle et aucune clé de stockage n'a été modifiée.**
+8. **PWA production** workflow n°8, run `44552729294` : **SUCCESS**. GitHub Pages production workflow n°21, run `44552727377` : publication lancée, verdict à vérifier avant clôture.
+
+## État à la dernière actualisation
+La correction visuelle est poussée sur la production officielle. Une connexion OAuth n'est jamais assimilée à un envoi confirmé. Les archives Drive existantes ne sont pas interrogées ou modifiées pour créer le bandeau. La connexion Google doit éventuellement être refaite lors de la prochaine session : ne pas prétendre l'avoir validée sur le Samsung depuis GitHub.
+
+**Reste à faire :** confirmer la conclusion `success` du run Pages production `44552727377`, puis marquer cette MAJ comme terminée. Aucun nouveau GO ni test manuel sur Samsung nécessaire pour cette correction.
