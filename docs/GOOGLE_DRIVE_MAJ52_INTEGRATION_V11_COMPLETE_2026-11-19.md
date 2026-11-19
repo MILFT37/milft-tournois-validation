@@ -38,3 +38,10 @@ Complément à la feuille de route historique MAJ 47–51. **Aucun changement en
 3. Si tous les contrôles techniques sont verts, déterminer les seuls tests indispensables à la V1.1 **complète** : véritable accès Drive et protection des données réelles. Préférer une vérification sur jeu fictif dans une instance de validation propre avant toute interaction de l'utilisateur.
 4. Documenter les commits/runs sans remplacer la feuille de route. La promotion en production nécessite un GO **distinct et explicite**.
 5. Le Drive fonctionne comme archives JSON ; **aucune synchronisation temps réel entre appareils** n'a été livrée.
+
+
+## Addendum de contrôle MAJ 52 (même journée)
+- Le workflow Drive n°25, run `44496441562`, a fini **FAILURE** : assertion de test trop restrictive (deux confirmations attendues, alors que la procédure réelle demande **trois confirmations** : accord initial sur l'archive Drive, aperçu métier, confirmation finale après protection). Il ne s'agit pas d'une modification de la procédure de restauration.
+- Correction du test uniquement : commit `b1e226582937b89a43b19aebf29adee571dac923`, `tests/drive-v11-browser.cjs`, attente de trois dialogues de confirmation. Les protections de restauration sont conservées.
+- Nouveau workflow Drive n°26, run `44496686078` : encore **IN_PROGRESS** au dernier point de contrôle. Ne pas présenter la restauration synthétique comme validée tant que ce workflow n'est pas vert.
+- Résultats définitifs du commit technique `2947633` : Pages n°231 **SUCCESS**, PWA n°8 **SUCCESS**, Chromium mobile n°254 **SUCCESS**, championnat annuel n°316 **SUCCESS**, Course aux points n°272 **SUCCESS**, ergonomie n°207 **SUCCESS**, attribution tables n°232 **SUCCESS**, WebKit n°23 **SUCCESS**.
