@@ -42,3 +42,8 @@ Selon la documentation officielle consultée le 19/11/2026 :
 
 ## Reprise entre chats
 Commencer par les MAJ 63–65, vérifier le dernier workflow V2, puis avancer dans `v2/` uniquement. Ne pas recommencer les validations V1.1 ni réimporter les archives. Identifier séparément les tests simulés et les fonctionnalités réellement disponibles pour l'utilisateur.
+
+## Clôture du jalon de simulation
+- Workflow « V2.0 — simulation partage appareils (isolée) » **n°1 SUCCESS**, run `44548490947`, sur le commit `5b4363e61236028da827b588d54272a1c1a69993`.
+- Scénarios automatisés passés : saisies Android et PC avec même version, refus d'un écrasement hors ligne, idempotence des événements, refus de modification en lecture seule, séparation des tournois, préservation des brouillons en conflit et relecture après sérialisation.
+- **Limite stricte : simulation logique en mémoire, pas de synchronisation effective, pas de projet Firebase connecté, pas de déploiement de V2.0.**
