@@ -25,3 +25,7 @@ jobs:
         run: npm install --no-save playwright@1.56.1
       - name: Simulation candidate production en navigateur isolé
         run: node tests/production-candidate-browser.cjs
+      - name: Simulation candidate production dans Safari WebKit isolé
+        env:
+          MILFT_BROWSER: webkit
+        run: node tests/production-candidate-browser.cjs

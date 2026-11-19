@@ -3,7 +3,7 @@ const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const http=require('node:http');
 const path=require('node:path');
-const {chromium}=require('playwright');
+const {chromium,webkit}=require('playwright');
 const candidate=path.resolve('candidate-production-v11');
 const app='MILFT_Tournois_V1_1_PRODUCTION_PRETE_2026-11-17.html';
 async function main(){
@@ -19,7 +19,8 @@ async function main(){
   });
   await new Promise(resolve=>serve.listen(0,'127.0.0.1',resolve));
   const port=serve.address().port;
-  const browser=await chromium.launch({headless:true});
+  const engine=process.env.MILFT_BROWSER==='webkit'?webkit:chromium;
+  const browser=await engine.launch({headless:true});
   try{
     const context=await browser.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true});
     const page=await context.newPage(),errors=[];
