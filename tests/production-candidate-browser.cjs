@@ -97,8 +97,26 @@ async function main(){
     await page.locator('#milft-drive-list-v11').click();
     await page.getByText(/MILFT_TOURNOIS_manuel_/).first().waitFor();
     assert.equal(await page.locator('#milft-drive-archives .item').count(),1,'Remote synthetic archive readable');
+    // Restauration locale contrôlée dans le navigateur fictif : aucun compte réel.
+    await page.evaluate(()=>{
+      db.players=[];db.tournaments=[];db.selected=null;save();
+    });
+    assert.equal(await page.evaluate(key=>JSON.parse(localStorage.getItem(key)).players.length,state.key),0,'Fictional local state cleared before restore');
+    const confirms=[];
+    const onDialog=async dialog=>{confirms.push(dialog.type());await dialog.accept();};
+    page.on('dialog',onDialog);
+    await page.locator('#milft-drive-archives .item').getByRole('button',{name:/Restaurer/}).click();
+    await page.waitForFunction(key=>{
+      try{return JSON.parse(localStorage.getItem(key)).players.length===2;}catch{return false;}
+    },state.key,{timeout:12000});
+    page.off('dialog',onDialog);
+    assert(confirms.length>=2&&confirms.every(x=>x==='confirm'),'Restoration must require multiple confirmations');
+    assert.equal(await page.evaluate(key=>JSON.parse(localStorage.getItem(key)).tournaments.length,state.key),1,'Tournament restored from synthetic Drive archive');
+    await page.reload({waitUntil:'domcontentloaded'});
+    assert.equal(await page.evaluate(key=>JSON.parse(localStorage.getItem(key)).players.length,state.key),2,'Synthetic restored players survive reload');
+    assert.equal(await page.evaluate(key=>JSON.parse(localStorage.getItem(key)).tournaments.length,state.key),1,'Synthetic restored tournament survives reload');
     assert.deepEqual(errors,[],'No browser script exceptions');
-    console.log('OK candidate production: isolated storage, OAuth, consent, synthetic backup and archive reading; no real Drive accessed');
+    console.log('OK candidate production: isolated storage, OAuth, consent, synthetic backup, listing, protected restore and reload; no real Drive accessed');
   }finally{await browser.close();await new Promise(resolve=>serve.close(resolve));}
 }
 main().catch(e=>{console.error(e);process.exitCode=1});
