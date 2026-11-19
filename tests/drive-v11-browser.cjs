@@ -141,6 +141,36 @@ async function main(){
   await page.locator('#milft-drive-auto').click();
   assert.equal(await page.locator('#milft-drive-auto').innerText(),'Activer la sauvegarde automatique','Automatic can be disabled');
   assert.equal(await page.evaluate(key=>localStorage.getItem(key),KEY),before,'Automatic activation never mutates local tournament data');
+  const freq=page.locator('#milft-drive-auto-interval');
+  assert.equal(await freq.inputValue(),'15','Default fifteen-minute interval');
+  assert.deepEqual(await freq.locator('option').evaluateAll(nodes=>nodes.map(n=>Number(n.value))),[5,10,15,30,60]);
+  await freq.selectOption('5');
+  assert.equal(await page.evaluate(()=>window.MILFTDriveV11Test.autoIntervalMs()),300000,'Five-minute scheduler');
+  await page.reload({waitUntil:'domcontentloaded'});
+  await page.locator('#milft-settings-toggle').click();
+  await page.locator('.settings-backup > summary').click();
+  await page.locator('.milft-technical-details > summary').click();
+  assert.equal(await page.locator('#milft-drive-auto-interval').inputValue(),'5','Frequency persists across reload');
+  await page.locator('#milft-google-connect').click();
+  await page.waitForFunction(()=>document.querySelector('#milft-google-auth-status')?.textContent?.includes('Google connecté'));
+  const quotaKey='MILFT_DRIVE_AUTO_QUOTA_V2';
+  const quotaDay=await page.evaluate(()=>{const d=new Date();return [d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-');});
+  await page.evaluate(({key,day})=>localStorage.setItem(key,JSON.stringify({day,count:199})),{key:quotaKey,day:quotaDay});
+  page.once('dialog',dialog=>dialog.accept());
+  await page.locator('#milft-drive-auto').click();
+  await page.waitForFunction(()=>document.querySelector('#milft-google-auth-status')?.textContent?.includes('plafond')||document.querySelector('#milft-google-auth-status')?.textContent?.includes('limite'));
+  assert.equal(await page.locator('#milft-drive-auto').innerText(),'Activer la sauvegarde automatique','Automatic stops at 200');
+  assert.equal(archives.length,4,'One final automatic backup');
+  assert.equal(await page.evaluate(key=>JSON.parse(localStorage.getItem(key)).count,quotaKey),200,'Daily auto quota reaches 200');
+  await page.locator('#milft-drive-auto').click();
+  assert.match(await page.locator('#milft-google-auth-status').innerText(),/Plafond de 200/);
+  assert.equal(archives.length,4,'No automatic upload beyond daily ceiling');
+  page.once('dialog',dialog=>dialog.accept());
+  await page.locator('#milft-drive-save-now').click();
+  await page.waitForFunction(()=>document.querySelector('#milft-google-auth-status')?.textContent?.includes('Sauvegarde Drive confirmée'));
+  assert.equal(archives.length,5,'Manual backup works beyond automatic cap');
+  assert.equal(await page.evaluate(key=>JSON.parse(localStorage.getItem(key)).count,quotaKey),200,'Manual backup does not affect automatic quota');
+  assert.equal(await page.evaluate(key=>localStorage.getItem(key),KEY),before,'No change to tournament storage');
   // L'archive du 18/11 envoyée par erreur au dossier du club reste consultable,
   // mais sa restauration est neutralisée ; aucune suppression distante.
   const knownTest='MILFT_TOURNOIS_manuel_2026-11-18T21-22-47-261Z_10c31de2-81b.json';
