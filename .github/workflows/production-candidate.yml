@@ -1,0 +1,27 @@
+name: Candidate production MILFT V1.1 — contrôle isolé
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'candidate-production-v11/**'
+      - 'tests/production-candidate-*.cjs'
+      - '.github/workflows/production-candidate.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  candidate:
+    runs-on: ubuntu-24.04
+    container:
+      image: mcr.microsoft.com/playwright:v1.56.1-noble
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node tests/production-candidate-static.cjs
+      - name: Installer Playwright avec Chromium préinstallé
+        run: npm install --no-save playwright@1.56.1
+      - name: Simulation candidate production en navigateur isolé
+        run: node tests/production-candidate-browser.cjs
