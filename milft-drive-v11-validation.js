@@ -6,8 +6,12 @@
 const SCOPE = 'https://www.googleapis.com/auth/drive.file';
 const BASE = 'https://www.googleapis.com/drive/v3/files';
 const FOLDER_MIME = 'application/vnd.google-apps.folder';
-const MIN_AUTO_MS = 15 * 60 * 1000;
-const MAX_DAILY_UPLOADS = 40;
+const MIN_AUTO_MS = 5 * 60 * 1000;
+const DEFAULT_AUTO_MINUTES = 15;
+const AUTO_INTERVAL_CHOICES = [5,10,15,30,60];
+const AUTO_INTERVAL_KEY = 'MILFT_DRIVE_AUTO_INTERVAL_MINUTES';
+const AUTO_QUOTA_KEY = 'MILFT_DRIVE_AUTO_QUOTA_V2';
+const MAX_DAILY_UPLOADS = 200;
 const MAX_BYTES = 30 * 1024 * 1024;
 const CLIENT_ID = '974764451814-ojqchmfb9ssca9hvmfhrgrrrirpro8ou.apps.googleusercontent.com';
 
@@ -120,7 +124,7 @@ function createDriveClient(fetchImpl, tokenProvider, options={}) {
   }
   return {upload,list,download,backupFolder};
 }
-root.MILFTDriveV11Core={createDriveClient,MAX_DAILY_UPLOADS,MIN_AUTO_MS};
+root.MILFTDriveV11Core={createDriveClient,MAX_DAILY_UPLOADS,MIN_AUTO_MS,DEFAULT_AUTO_MINUTES,AUTO_INTERVAL_CHOICES};
 if(typeof module!=='undefined'&&module.exports) module.exports=root.MILFTDriveV11Core;
 const liveValidation = root.location?.origin==='https://milft37.github.io' &&
   root.location.pathname.startsWith('/milft-tournois-validation/');
@@ -141,6 +145,19 @@ root.MILFTDriveV11Enabled=true;
 let client=null, connected=false, auto=false, pending=false, busy=false, blocked=false, revision=0, lastUpload=0;
 let accessToken='', expiration=0, interval=null, oauthPending=false, oauthTimer=null, oauthAttempt=0, oauthStartedAt=0, oauthPageHidden=false;
 const $=id=>root.document.getElementById(id);
+function readAutoInterval() {
+  try {
+    const val=Number(root.localStorage.getItem(AUTO_INTERVAL_KEY));
+    return AUTO_INTERVAL_CHOICES.includes(val)?val:DEFAULT_AUTO_MINUTES;
+  }catch{return DEFAULT_AUTO_MINUTES;}
+}
+let autoIntervalMinutes=readAutoInterval();
+function autoIntervalMs(){return autoIntervalMinutes*60*1000;}
+function isAutoKind(kind){return kind!=='manuel'&&kind!=='test-fictif';}
+function localDay() {
+  const date=new Date();
+  return [date.getFullYear(),String(date.getMonth()+1).padStart(2,'0'),String(date.getDate()).padStart(2,'0')].join('-');
+}
 function status(message,confirmed=false) {
   root.MILFTDriveStatus=message;
   // Visible even when the technical section stays folded on Android.
@@ -178,13 +195,16 @@ function tokenProvider() {
   return accessToken;
 }
 function dailyAllowance() {
-  const day=new Date().toISOString().slice(0,10);
-  let raw={};try{raw=JSON.parse(root.localStorage.getItem('MILFT_DRIVE_VALIDATION_QUOTA')||'{}')||{};}catch{}
-  return {day,count:raw.day===day?Math.max(0,Number(raw.count)||0):0};
+  const day=localDay();
+  let raw={};try{raw=JSON.parse(root.localStorage.getItem(AUTO_QUOTA_KEY)||'{}')||{};}catch{}
+  const count=raw.day===day?Math.max(0,Math.floor(Number(raw.count)||0)):0;
+  return {day,count};
 }
-function countUpload() {
+function countUpload(kind) {
+  if(!isAutoKind(kind))return true;
   const q=dailyAllowance();
-  root.localStorage.setItem('MILFT_DRIVE_VALIDATION_QUOTA',JSON.stringify({day:q.day,count:q.count+1}));
+  try{root.localStorage.setItem(AUTO_QUOTA_KEY,JSON.stringify({day:q.day,count:q.count+1}));return true;}
+  catch {auto=false;stopInterval();return false;}
 }
 function changed() {
   pending=true;revision++;
@@ -192,10 +212,10 @@ function changed() {
 }
 async function upload(kind,force=false,prepared=null) {
   if(busy||!client||!connected||blocked||!root.navigator.onLine)return false;
-  if(!force && (!auto||!pending||Date.now()-lastUpload<MIN_AUTO_MS))return false;
-  if(dailyAllowance().count>=MAX_DAILY_UPLOADS) {
-    blocked=true;auto=false;stopInterval();
-    status('Limite de sécurité Drive (40 envois/jour/appareil) atteinte : sauvegardes locales conservées');
+  if(!force && (!auto||!pending||Date.now()-lastUpload<autoIntervalMs()))return false;
+  if(isAutoKind(kind)&&dailyAllowance().count>=MAX_DAILY_UPLOADS) {
+    auto=false;stopInterval();refreshButtons();
+    status('Plafond de '+MAX_DAILY_UPLOADS+' sauvegardes automatiques/jour atteint : automatique arrêtée, sauvegarde manuelle disponible et données locales conservées');
     return false;
   }
   const current=revision;
@@ -203,9 +223,14 @@ async function upload(kind,force=false,prepared=null) {
   status('Envoi Drive en cours — aucune sauvegarde confirmée');
   try {
     const result=await client.upload(prepared||snapshot(),kind);
-    countUpload();lastUpload=Date.now();
+    const quotaSaved=countUpload(kind);
+    lastUpload=Date.now();
     if(current===revision)pending=false;
-    status('Sauvegarde Drive confirmée ('+result.name+') — '+new Date(lastUpload).toLocaleString('fr-FR'),!pending);
+    const quotaReached=isAutoKind(kind)&&dailyAllowance().count>=MAX_DAILY_UPLOADS;
+    if(quotaReached){auto=false;stopInterval();}
+    const suffix=!quotaSaved?' — automatique arrêtée : suivi du quota indisponible':
+      quotaReached?' — plafond automatique journalier atteint, sauvegarde manuelle disponible':'';
+    status('Sauvegarde Drive confirmée ('+result.name+') — '+new Date(lastUpload).toLocaleString('fr-FR')+suffix,!pending);
     return true;
   }catch(e) {
     const msg=String(e.message||e);
@@ -215,7 +240,7 @@ async function upload(kind,force=false,prepared=null) {
   }finally{busy=false;refreshButtons();}
 }
 function stopInterval(){if(interval){root.clearInterval(interval);interval=null;}}
-function startInterval(){stopInterval();interval=root.setInterval(()=>upload('automatique'),MIN_AUTO_MS);}
+function startInterval(){stopInterval();interval=root.setInterval(()=>upload('automatique'),autoIntervalMs());}
 function refreshButtons() {
   const manual=$('milft-drive-save-now'),automatic=$('milft-drive-auto'),history=$('milft-drive-list-v11');
   if(manual)manual.disabled=!connected||busy;
@@ -311,14 +336,21 @@ async function toggleAuto() {
   if(fixtureMode){status('Mode essai : sauvegarde automatique désactivée pour les données fictives.');return;}
   if(auto){auto=false;stopInterval();status('Sauvegardes automatiques désactivées — archives précédentes conservées');refreshButtons();return;}
   if(busy){status('Un envoi Drive est déjà en cours.');return;}
+  if(dailyAllowance().count>=MAX_DAILY_UPLOADS){
+    status('Plafond de '+MAX_DAILY_UPLOADS+' sauvegardes automatiques déjà atteint aujourd’hui. La sauvegarde manuelle reste disponible.');return;
+  }
   const prepared=snapshot();
   if(!root.confirm('SAUVEGARDE DRIVE AUTOMATIQUE\n\n'+backupSummary(prepared)+
-    '\n\nCréer une première archive maintenant, puis sauvegarder les modifications toutes les 15 minutes pendant que MILFT est ouvert et connecté ? Pas de sauvegarde garantie application fermée.'))return;
+    '\n\nCréer une première archive maintenant, puis sauvegarder les modifications toutes les '+autoIntervalMinutes+' minutes pendant que MILFT est ouvert et connecté ? Limite de '+MAX_DAILY_UPLOADS+' sauvegardes automatiques par jour et par appareil. Pas de sauvegarde garantie application fermée.'))return;
   // Aucun mode automatique tant que le premier dépôt n'a pas été confirmé.
   const ok=await upload('activation',true,prepared);
   if(!ok){auto=false;stopInterval();refreshButtons();status('Sauvegarde automatique NON activée : premier envoi non confirmé. Les données locales et archives précédentes sont conservées.');return;}
+  if(dailyAllowance().count>=MAX_DAILY_UPLOADS){
+    auto=false;stopInterval();refreshButtons();
+    status('Sauvegarde Drive confirmée, mais limite de '+MAX_DAILY_UPLOADS+' archives automatiques atteinte : automatique non activée.');return;
+  }
   auto=true;startInterval();refreshButtons();
-  status(root.MILFTDriveStatus+' — automatique activée (application ouverte uniquement)',true);
+  status(root.MILFTDriveStatus+' — automatique activée toutes les '+autoIntervalMinutes+' minutes (application ouverte uniquement)',true);
 }
 async function history() {
   const target=$('milft-drive-archives');if(!target)return;
@@ -385,6 +417,34 @@ function init() {
   const heading=root.document.createElement('strong');heading.textContent=fixtureMode?'☁️ Google Drive — essai isolé (joueurs fictifs)':'☁️ Google Drive — validation V1.1 (sauvegardes du club)';
   const p=root.document.createElement('p');p.id='milft-google-auth-status';p.setAttribute('role','status');
   panel.append(heading,p);
+  if(!fixtureMode) {
+    const intervalRow=root.document.createElement('div');
+    intervalRow.style.cssText='display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:10px 0';
+    const label=root.document.createElement('label');
+    label.htmlFor='milft-drive-auto-interval';
+    label.textContent='Sauvegarde automatique toutes les';
+    const select=root.document.createElement('select');
+    select.id='milft-drive-auto-interval';
+    select.style.cssText='min-height:42px;max-width:100%;padding:8px;border-radius:8px';
+    for(const minutes of AUTO_INTERVAL_CHOICES) {
+      const option=root.document.createElement('option');
+      option.value=String(minutes);option.textContent=minutes+' min';
+      select.append(option);
+    }
+    select.value=String(autoIntervalMinutes);
+    select.onchange=()=>{
+      const minutes=Number(select.value);
+      if(!AUTO_INTERVAL_CHOICES.includes(minutes))return;
+      autoIntervalMinutes=minutes;
+      try{root.localStorage.setItem(AUTO_INTERVAL_KEY,String(minutes));}
+      catch{status('Préférence non conservée sur cet appareil ; réglage temporaire : '+minutes+' minutes');}
+      if(auto)startInterval();
+      status('Fréquence réglée sur '+minutes+' minutes'+(auto?' (automatique actif)':' (automatique désactivé)')+
+        '. Plafond : '+MAX_DAILY_UPLOADS+' sauvegardes automatiques/jour/appareil ; saisie locale inchangée.');
+    };
+    intervalRow.append(label,select);
+    panel.append(intervalRow);
+  }
   const row=root.document.createElement('div');row.className='milft-drive-actions';
   const actions=[
     ['milft-google-connect','Se connecter au Drive du club',connect],
@@ -419,7 +479,7 @@ function init() {
   refreshButtons();
   status('MODE LOCAL — aucune sauvegarde Drive activée, données du navigateur préservées');
 }
-root.MILFTDriveV11Test={upload,changed,dailyAllowance,fixtureMode};
+root.MILFTDriveV11Test={upload,changed,dailyAllowance,fixtureMode,autoIntervalMs};
 if(localIsolatedTest)root.MILFTDriveV11Test.simulateOAuthTimeout=oauthReturnNotConfirmed;
 if(root.document.readyState==='loading')root.document.addEventListener('DOMContentLoaded',init);else init();
 })(typeof window!=='undefined'?window:globalThis);
