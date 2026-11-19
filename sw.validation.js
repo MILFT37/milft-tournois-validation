@@ -3,7 +3,7 @@ const CACHE = 'milft-validation-shell-v1-20261119-header-v11-01';
 const SHELL = [
   './MILFT_Tournois_V1_1_VALIDATION_HEBERGEMENT_STABLE_2026-11-02.html',
   './manifest.webmanifest',
-  './milft-drive-v11-validation.js?v=20261119-drive-interval-200-01',
+  './milft-drive-v11-validation.js?v=20261119-drive-status-67-01',
   './MILFT_Tournois_192.png',
   './MILFT_Tournois_512.png'
 ];

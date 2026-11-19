@@ -28,7 +28,9 @@ for(let i=0;i<3222;i++){
 }
 assert.equal(approved,8,'Only storage keys, page title and manifest may differ');
 const shared=b.slice(0,3222).join('\n');
-assert(shared.includes('SAUVEGARDE LOCALE ACTIVE • Google Drive facultatif'),'Correct non-misleading banner');
+assert(shared.includes('id="milft-drive-brief"'),'Dynamic compact Drive indicator must exist');
+assert(shared.includes('id="milft-local-brief"')&&shared.includes('id="milft-auto-brief"'),'Local and auto labels must exist');
+assert(!shared.includes('SAUVEGARDE LOCALE ACTIVE • Google Drive facultatif'),'Oversized yellow static banner removed');
 assert(!shared.includes('Google Drive désactivé'),'No obsolete Drive warning in production candidate UI');
 assert(!shared.includes('drive.appdata'),'No obsolete appdata text in production candidate UI');
 assert(!shared.includes('MILFT_ISO_20261102_SECOURS'),'Production IndexedDB backup must remain isolated');

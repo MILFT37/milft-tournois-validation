@@ -143,6 +143,7 @@ if(!root.document || !(liveValidation||localIsolatedTest))return;
 root.MILFTDriveV11Enabled=true;
 
 let client=null, connected=false, auto=false, pending=false, busy=false, blocked=false, revision=0, lastUpload=0;
+let localEdited=false,driveProblem='',autoStopReason='';
 let accessToken='', expiration=0, interval=null, oauthPending=false, oauthTimer=null, oauthAttempt=0, oauthStartedAt=0, oauthPageHidden=false;
 const $=id=>root.document.getElementById(id);
 function readAutoInterval() {
@@ -158,20 +159,51 @@ function localDay() {
   const date=new Date();
   return [date.getFullYear(),String(date.getMonth()+1).padStart(2,'0'),String(date.getDate()).padStart(2,'0')].join('-');
 }
+// MAJ 67 : état affiché uniquement à partir des signaux connus de cette session.
+// OAuth ne vaut jamais confirmation d'un envoi Drive.
+function renderDriveStatus() {
+  const online=root.navigator?.onLine!==false;
+  const expired=connected&&Date.now()>expiration-60000;
+  const quotaReached=dailyAllowance().count>=MAX_DAILY_UPLOADS;
+  let driveLabel;
+  if(!online)driveLabel='☁️ Hors connexion — envoi Drive indisponible';
+  else if(oauthPending)driveLabel='☁️ Connexion Google en cours';
+  else if(expired)driveLabel='☁️ Autorisation Drive expirée — reconnexion nécessaire';
+  else if(!connected)driveLabel='☁️ Drive non connecté';
+  else if(blocked)driveLabel='☁️ Drive connecté — envois suspendus (erreur)';
+  else if(busy)driveLabel='☁️ Envoi Drive en cours — non confirmé';
+  else if(pending&&localEdited)driveLabel='☁️ Drive connecté — modifications locales en attente';
+  else if(pending)driveLabel='☁️ Drive connecté — copie actuelle non confirmée';
+  else if(lastUpload)driveLabel='☁️ Copie Drive confirmée à '+new Date(lastUpload).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
+  else driveLabel='☁️ Drive connecté — aucun envoi confirmé ici';
+  const autoLabel=blocked?'Auto : arrêtée (erreur Drive)':
+    quotaReached&&!auto?'Auto : limite de 200/jour atteinte':
+    auto&&!online?'Auto : en pause hors connexion':
+    auto&&connected&&!expired?'Auto : active / '+autoIntervalMinutes+' min (app ouverte)':
+    autoStopReason?'Auto : arrêtée ('+autoStopReason+')':
+    'Auto : désactivée ('+autoIntervalMinutes+' min)';
+  const localLabel=localEdited&&pending?'💾 Données locales — changements à sauvegarder':'💾 Données locales conservées';
+  const local=$('milft-local-brief'),drive=$('milft-drive-brief'),automatic=$('milft-auto-brief');
+  if(local)local.textContent=localLabel;
+  if(drive)drive.textContent=driveLabel;
+  if(automatic)automatic.textContent=autoLabel;
+  const summary=$('milft-settings')?.querySelector('.settings-backup > summary .settings-panel-label small');
+  if(summary)summary.textContent='Données locales — '+(oauthPending?'connexion en cours':expired?'autorisation expirée':connected?'Google connecté à MILFT':'Drive non connecté')+' · '+(auto?'auto '+autoIntervalMinutes+' min':'auto désactivée');
+  const last=lastUpload?'Dernière sauvegarde Drive confirmée dans cette session : '+new Date(lastUpload).toLocaleString('fr-FR')+'.':
+    'Aucun envoi Drive confirmé depuis cette ouverture ; état des anciennes archives inconnu.';
+  const note=pending?(localEdited?' Modifications locales en attente de copie.':' Copie actuelle non confirmée sur Drive.'):'';
+  const indicator=$('milft-drive-indicator');
+  if(indicator){
+    indicator.textContent=localLabel+'. '+driveLabel+'. '+last+note+' '+autoLabel+(driveProblem?' · Dernière erreur : '+driveProblem:'')+'. Pas de synchronisation entre appareils.';
+    const safe=connected&&!expired&&online&&!blocked&&lastUpload&&!pending;
+    indicator.style.background=safe?'#e6f6eb':'#edf4fa';
+    indicator.style.color=safe?'#18582c':'#24465d';
+  }
+}
 function status(message,confirmed=false) {
   root.MILFTDriveStatus=message;
-  // Visible even when the technical section stays folded on Android.
-  const summary=$('milft-settings')?.querySelector('.settings-backup > summary .settings-panel-label small');
-  if(summary){
-    const short=confirmed?'Sauvegarde Drive confirmée':connected?'Google connecté à MILFT':oauthPending?'Connexion Google en cours':'Drive non connecté';
-    summary.textContent='Données complètes — '+short;
-  }
   const p=$('milft-google-auth-status');if(p)p.textContent=message;
-  const ind=$('milft-drive-indicator');if(ind) {
-    ind.textContent='☁️ '+message;
-    ind.style.background=confirmed?'#e6f6eb':'#fff4dd';
-    ind.style.color=confirmed?'#18582c':'#684500';
-  }
+  renderDriveStatus();
 }
 function snapshot() {
   return {format:'MILFT-TOURNOIS-BACKUP',version:1,exportedAt:new Date().toISOString(),
@@ -188,7 +220,7 @@ function backupSummary(data) {
 }
 function tokenProvider() {
   if(!accessToken||Date.now()>expiration-60000) {
-    connected=false;auto=false;stopInterval();refreshButtons();
+    connected=false;auto=false;autoStopReason='autorisation expirée';stopInterval();refreshButtons();
     status('Google déconnecté ou autorisation expirée — sauvegarde automatique arrêtée, données locales conservées');
     return null;
   }
@@ -207,14 +239,14 @@ function countUpload(kind) {
   catch {auto=false;stopInterval();return false;}
 }
 function changed() {
-  pending=true;revision++;
-  if(connected)status('Modifications locales en attente de sauvegarde Drive');
+  pending=true;localEdited=true;revision++;
+  status('Modifications locales en attente de sauvegarde Drive');
 }
 async function upload(kind,force=false,prepared=null) {
   if(busy||!client||!connected||blocked||!root.navigator.onLine)return false;
   if(!force && (!auto||!pending||Date.now()-lastUpload<autoIntervalMs()))return false;
   if(isAutoKind(kind)&&dailyAllowance().count>=MAX_DAILY_UPLOADS) {
-    auto=false;stopInterval();refreshButtons();
+    auto=false;autoStopReason='plafond 200/jour';stopInterval();refreshButtons();
     status('Plafond de '+MAX_DAILY_UPLOADS+' sauvegardes automatiques/jour atteint : automatique arrêtée, sauvegarde manuelle disponible et données locales conservées');
     return false;
   }
@@ -225,16 +257,18 @@ async function upload(kind,force=false,prepared=null) {
     const result=await client.upload(prepared||snapshot(),kind);
     const quotaSaved=countUpload(kind);
     lastUpload=Date.now();
-    if(current===revision)pending=false;
+    if(current===revision){pending=false;localEdited=false;}
+    driveProblem='';
     const quotaReached=isAutoKind(kind)&&dailyAllowance().count>=MAX_DAILY_UPLOADS;
-    if(quotaReached){auto=false;stopInterval();}
+    if(quotaReached){auto=false;autoStopReason='plafond 200/jour';stopInterval();}
     const suffix=!quotaSaved?' — automatique arrêtée : suivi du quota indisponible':
       quotaReached?' — plafond automatique journalier atteint, sauvegarde manuelle disponible':'';
     status('Sauvegarde Drive confirmée ('+result.name+') — '+new Date(lastUpload).toLocaleString('fr-FR')+suffix,!pending);
     return true;
   }catch(e) {
     const msg=String(e.message||e);
-    if(/quota|rate limit|HTTP 403|HTTP 429/i.test(msg)){blocked=true;auto=false;stopInterval();}
+    driveProblem=msg.slice(0,120);
+    if(/quota|rate limit|HTTP 403|HTTP 429/i.test(msg)){blocked=true;auto=false;autoStopReason='erreur Drive';stopInterval();}
     status('Drive non sauvegardé : '+msg+' ; JSON local conservé');
     return false;
   }finally{busy=false;refreshButtons();}
@@ -296,6 +330,7 @@ async function connect() {
         expiration=Date.now()+(Number(response.expires_in)||3600)*1000;
         client=createDriveClient(root.fetch.bind(root),tokenProvider,fixtureMode?{testMode:true}:{});
         connected=true;blocked=false;auto=false;pending=true;revision++;
+        driveProblem='';autoStopReason='';
         refreshButtons();
         status('Google connecté à MILFT (autorisation reçue). Aucun fichier n’a encore été envoyé.');
       },
@@ -334,9 +369,10 @@ async function manual() {
 }
 async function toggleAuto() {
   if(fixtureMode){status('Mode essai : sauvegarde automatique désactivée pour les données fictives.');return;}
-  if(auto){auto=false;stopInterval();status('Sauvegardes automatiques désactivées — archives précédentes conservées');refreshButtons();return;}
+  if(auto){auto=false;autoStopReason='';stopInterval();status('Sauvegardes automatiques désactivées — archives précédentes conservées');refreshButtons();return;}
   if(busy){status('Un envoi Drive est déjà en cours.');return;}
   if(dailyAllowance().count>=MAX_DAILY_UPLOADS){
+    autoStopReason='plafond 200/jour';
     status('Plafond de '+MAX_DAILY_UPLOADS+' sauvegardes automatiques déjà atteint aujourd’hui. La sauvegarde manuelle reste disponible.');return;
   }
   const prepared=snapshot();
@@ -349,7 +385,7 @@ async function toggleAuto() {
     auto=false;stopInterval();refreshButtons();
     status('Sauvegarde Drive confirmée, mais limite de '+MAX_DAILY_UPLOADS+' archives automatiques atteinte : automatique non activée.');return;
   }
-  auto=true;startInterval();refreshButtons();
+  auto=true;autoStopReason='';startInterval();refreshButtons();
   status(root.MILFTDriveStatus+' — automatique activée toutes les '+autoIntervalMinutes+' minutes (application ouverte uniquement)',true);
 }
 async function history() {
@@ -407,7 +443,7 @@ async function history() {
 }
 function disconnect() {
   oauthAttempt++;finishOAuthAttempt();
-  const token=accessToken;accessToken='';expiration=0;connected=false;auto=false;client=null;stopInterval();
+  const token=accessToken;accessToken='';expiration=0;connected=false;auto=false;client=null;driveProblem='';autoStopReason='';stopInterval();
   if(token&&root.google?.accounts?.oauth2)root.google.accounts.oauth2.revoke(token,()=>{});
   refreshButtons();status('Drive déconnecté — données locales intactes');
 }
@@ -474,8 +510,9 @@ function init() {
   if(typeof root.planSave==='function') {
     const prior=root.planSave;root.planSave=function(...args){const result=prior.apply(this,args);changed();return result;};
   }
-  root.addEventListener('online',()=>{if(auto&&pending)upload('reconnexion');});
-  root.document.addEventListener('visibilitychange',()=>{if(root.document.visibilityState==='visible'&&auto&&pending)upload('reprise');});
+  root.addEventListener('online',()=>{renderDriveStatus();if(auto&&pending)upload('reconnexion');});
+  root.addEventListener('offline',renderDriveStatus);
+  root.document.addEventListener('visibilitychange',()=>{if(root.document.visibilityState==='visible'){renderDriveStatus();if(auto&&pending)upload('reprise');}});
   refreshButtons();
   status('MODE LOCAL — aucune sauvegarde Drive activée, données du navigateur préservées');
 }
