@@ -19,3 +19,4 @@ jobs:
         with:
           node-version: '22'
       - run: node tests/v2-sync-simulated.cjs
+      - run: node tests/v2-operations-simulated.cjs
