@@ -24,3 +24,10 @@ Date : 19 novembre 2026. Complément de reprise au suivi MAJ 47–52, sans rempl
 2. Si ce test est vert, considérer les contrôles automatiques de la V1.1 de validation réussis, mais pas la production validée pour les données du club sans vérification ciblée du parcours réel complet.
 3. Conserver la feuille de route et ne demander une manipulation Samsung que lorsque celle-ci est absolument indispensable. Les sauvegardes Drive sont des archives JSON, **pas une synchronisation temps réel**.
 4. Toute promotion de la version de validation en production nécessite un **GO distinct, explicite** ; le GO de reprise du présent échange ne l'autorise pas.
+
+## Addendum MAJ 53 — reprise des tests du navigateur
+- Le workflow Drive n°27 `44497651182` a terminé l'installation du navigateur (problème d'installation levé) mais a échoué sur le contrôle de persistance après rechargement du navigateur fictif.
+- Cause identifiée par les lignes de test : l'initialisation de Playwright plaçait systématiquement `state` dans `localStorage` **à chaque chargement** de la page, effaçant ainsi les données fictives restaurées avant l'assertion. Ce défaut appartient au test, pas au stockage normal de l'application.
+- Commit `b851de908697d58c6d7c1ca1e9d1509ff019e90d` : le jeu de données fictives n'est injecté dans le stockage que lorsque la clé est absente ; le rechargement conserve donc les données restaurées.
+- Nouveau workflow Drive n°28 `44497863087` : **IN_PROGRESS** à la rédaction, ne pas déclarer de réussite anticipée.
+- Aucun code métier, aucune archive réelle, aucun déploiement de production modifiés par ce correctif.
