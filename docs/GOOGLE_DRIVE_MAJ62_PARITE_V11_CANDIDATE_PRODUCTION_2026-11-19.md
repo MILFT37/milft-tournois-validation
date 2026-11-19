@@ -17,7 +17,7 @@ L'utilisateur a demandé « Go » après l'annonce d'une comparaison finale de l
 - `tests/production-candidate-parity.cjs` compare strictement les **3 222 premières lignes métier et visuelles** après normalisation des **huit substitutions autorisées** (titre/manifeste et six stockages propres à chaque origine). Tout autre écart futur échoue explicitement.
 - Le script refuse le retour de messages trompeurs « Google Drive désactivé » et la présence de `drive.appdata` dans le noyau de la candidate.
 - Workflow `.github/workflows/production-candidate.yml` : nouveau contrôle de parité exécuté **avant** les contrôles statiques, Chromium et WebKit. Commit `5e263cdd9dca34788690ef1c2ce6261c890cf94a`.
-- À la rédaction, run candidate **n°16** `44541655749` en cours (et n°15 en cours). Ne pas marquer cet ajout validé tant que le résultat officiel n'est pas vert.
+- **Workflow candidate de production n°16 SUCCESS** — run `44541655749`, SHA `5e263cdd9dca34788690ef1c2ce6261c890cf94a`. Le nouveau test de parité stricte, le test statique, le test Chromium et le test WebKit/Safari ont **tous réussi**, sans compte Google réel.
 - Contrôles précédents sur l'harmonisation de bannière : Drive n°40, Chromium mobile n°259, Pages n°239, PWA n°15 et championnat annuel n°321 : **SUCCESS**.
 - La production officielle était toujours au commit `76a19f14a0af8a0ef2bf2154e7918004545d9214` à la comparaison initiale.
 
@@ -27,3 +27,8 @@ L'utilisateur a demandé « Go » après l'annonce d'une comparaison finale de l
 3. La comparaison garantie par le nouveau test porte sur le noyau commun de la candidate et le jeu de différences autorisées, et non sur l'état initial des sauvegardes locales de l'utilisateur en production.
 4. **Un GO distinct et explicite de mise en production est encore requis.** L'archive réelle du 19/11/2026 de 42 joueurs / 7 enregistrements ne doit pas être restaurée automatiquement, ni remplacée par des essais.
 5. Le projet multi-appareils partageant simultanément les scores reste reporté à V2.0.
+
+## Clôture vérifiée
+- Run candidate n°16 : **SUCCESS** (statut completed).
+- Dépôt de production officiel : **main 76a19f14a0af8a0ef2bf2154e7918004545d9214**, inchangé depuis la revue précédente.
+- **Parité validée ; aucune promotion production ni restauration réelle effectuée par ce jalon.**
