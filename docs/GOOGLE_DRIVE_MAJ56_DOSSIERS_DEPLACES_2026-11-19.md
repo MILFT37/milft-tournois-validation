@@ -42,3 +42,11 @@ Au déclenchement : résultats définitifs **non tous connus**. Lire les statuts
 
 ## Suite autonome
 Contrôler les workflows, corriger uniquement les erreurs démontrées. La prochaine manipulation utilisateur éventuelle doit être **une consultation en lecture seule** de l'historique après le déplacement, sans nouvelle écriture ni restauration. Pas de nouveaux tests PC, iPhone ou Samsung déjà validés.
+
+## Clôture des contrôles (19 novembre 2026)
+- Le correctif de base est publié : `2dd3861219fc95b7ba7c1f92b66d23f3eea49fc0`.
+- Les tests nouvellement ajoutés ont d'abord échoué pour deux erreurs de syntaxe dans le scénario de test (variable redéclarée puis apostrophe non échappée). Les corrections **du test uniquement** sont : `9f01f2dbdafec794aa268448afab622bfe0ead93` puis `2a4ba2a64d72be9049ede2b7e6f89864746ea75e`.
+- Workflow **Google Drive n°32 SUCCESS**, run `44503089735`, commit `2a4ba2a64d72be9049ede2b7e6f89864746ea75e` : vérification des dossiers déplacés, refus des dossiers homonymes, tests du diagnostic Android, restauration synthétique protégée, page fictive isolée et exclusion production.
+- Workflow **GitHub Pages n°233 SUCCESS** (`44502719237`) sur le commit applicatif ; **PWA n°10 SUCCESS**, **Chromium mobile n°256 SUCCESS**, **WebKit n°25 SUCCESS**, **championnat annuel n°318 SUCCESS**, **Course aux points n°274 SUCCESS**, **ergonomie n°209 SUCCESS**. Attribution tables n°234 était encore signalée `IN_PROGRESS` lors du dernier relevé : ne pas déclarer ce point terminé.
+- Les archives existantes n'ont pas été modifiées à distance. Le dossier de diagnostic et les dossiers de sauvegarde ne sont **pas** déplacés par le code : il sait les retrouver à leur nouvel emplacement si l'API `drive.file` les rend visibles.
+- **Reste à confirmer sur le Samsung réel** : que l'application complète retrouve, en lecture seule, l'archive de l'ancien dossier après le déplacement manuel. Aucune sauvegarde ni restauration requise ; ne pas recommencer les tests d'autorisation déjà validés sauf si la session a naturellement expiré.
