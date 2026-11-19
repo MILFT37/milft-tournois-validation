@@ -119,6 +119,19 @@ async function main(){
   await page.waitForFunction(()=>document.querySelector('#milft-google-auth-status')?.textContent?.includes('Drive non sauvegardé'));
   assert.equal(archives.length,2,'Denied upload preserved prior backups');
   assert.equal(await page.evaluate(key=>localStorage.getItem(key),KEY),before,'Failure cannot erase local data');
+  // L'archive du 18/11 envoyée par erreur au dossier du club reste consultable,
+  // mais sa restauration est neutralisée ; aucune suppression distante.
+  const knownTest='MILFT_TOURNOIS_manuel_2026-11-18T21-22-47-261Z_10c31de2-81b.json';
+  archives.push({id:String(nextId++),name:knownTest,parent:folders[1].id,
+    body:JSON.stringify(valid),createdTime:'2026-11-18T21:22:48Z',size:'400'});
+  await page.locator('#milft-drive-list-v11').click();
+  const misroutedRow=page.locator('#milft-drive-archives .item').filter({hasText:knownTest});
+  await misroutedRow.waitFor({state:'visible'});
+  assert.match(await misroutedRow.innerText(),/ARCHIVE D’ESSAI — NE PAS RESTAURER/,'Misrouted test must be explicitly marked');
+  assert.equal(await misroutedRow.getByRole('button').count(),2,'Test archive remains downloadable');
+  assert.equal(await misroutedRow.getByRole('button',{name:'Télécharger JSON'}).isEnabled(),true,'Known test remains downloadable');
+  assert.equal(await misroutedRow.getByRole('button',{name:/restauration désactivée/i}).isDisabled(),true,'Known fixture cannot be restored');
+  assert.equal(await page.evaluate(key=>localStorage.getItem(key),KEY),before,'Protecting a test archive does not alter local data');
   // Validation ciblée du parcours positif de restauration Drive sur données fictives.
   // Jamais d'import de la sauvegarde réelle du club ni d'écriture vers le vrai Google Drive.
   const restoredId='drive-restored-player-1';

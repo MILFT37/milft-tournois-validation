@@ -112,6 +112,13 @@ const localIsolatedTest = root.location?.hostname==='127.0.0.1' && root.__MILFT_
 // Mode fictif reconnu par l'URL : un cache ou un indicateur JS ancien ne doit
 // jamais orienter un essai Android vers les dossiers des sauvegardes du club.
 const fixtureMode = /(?:^|\/)drive-integration-fictive\.html$/.test(root.location?.pathname||'');
+// Cet unique fichier de test a été créé dans le dossier normal du club
+// le 18/11 lors de l'incident d'isolation Android. Ne jamais proposer sa restauration.
+// Aucune suppression ou modification du fichier distant.
+const MISROUTED_FIXTURE_NAME='MILFT_TOURNOIS_manuel_2026-11-18T21-22-47-261Z_10c31de2-81b.json';
+function isTestArchive(name) {
+  return name===MISROUTED_FIXTURE_NAME || /^MILFT_TOURNOIS_test-fictif_/.test(String(name||''));
+}
 if(!root.document || !(liveValidation||localIsolatedTest))return;
 root.MILFTDriveV11Enabled=true;
 
@@ -299,7 +306,8 @@ async function history() {
     for(const file of archives) {
       const line=root.document.createElement('div');line.className='item';
       const label=root.document.createElement('p');
-      label.textContent=file.name+' — '+(file.createdTime?new Date(file.createdTime).toLocaleString('fr-FR'):'date inconnue');
+      const testArchive=isTestArchive(file.name);
+      label.textContent=(testArchive?'ARCHIVE D’ESSAI — NE PAS RESTAURER — ':'')+file.name+' — '+(file.createdTime?new Date(file.createdTime).toLocaleString('fr-FR'):'date inconnue');
       line.append(label);
       const download=root.document.createElement('button');download.type='button';download.textContent='Télécharger JSON';
       download.onclick=async()=>{try {
@@ -310,8 +318,11 @@ async function history() {
         status('Archive téléchargée — aucune donnée de l’application modifiée');
       }catch(e){status('Téléchargement impossible : '+e.message);}};
       if(fixtureMode){line.append(download);target.append(line);continue;}
-      const restore=root.document.createElement('button');restore.type='button';restore.className='mutedbtn';restore.textContent='Restaurer (avec confirmations)';
+      const restore=root.document.createElement('button');restore.type='button';restore.className='mutedbtn';
+      restore.textContent=testArchive?'Archive d’essai : restauration désactivée':'Restaurer (avec confirmations)';
+      restore.disabled=testArchive;
       restore.onclick=async()=>{
+        if(testArchive){status('Restauration refusée : archive d’essai connue, données locales intactes');return;}
         if(!root.confirm('Restaurer cette archive ? La procédure existante vérifiera les données et demandera ses confirmations de sécurité.'))return;
         try {
           const backup=await client.download(file.id);
