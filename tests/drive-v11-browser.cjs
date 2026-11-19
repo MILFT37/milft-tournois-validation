@@ -137,7 +137,7 @@ async function main(){
     return Array.isArray(data.players)&&data.players.some(p=>p.id===id);
   },{key:KEY,id:restoredId});
   page.off('dialog',acceptRestore);
-  assert.equal(restoreDialogs.length,2,'Restore requires two explicit confirmations after preview and protection');
+  assert.equal(restoreDialogs.length,3,'Drive restore requires initial archive confirmation, data preview and final protected replacement');
   assert(restoreDialogs.every(d=>d.type==='confirm'),'Restore should not produce error alerts');
   assert.equal(await page.evaluate(key=>JSON.parse(localStorage.getItem(key)).players.length,KEY),1,'Synthetic Drive backup replaces only the local test data');
   await page.reload({waitUntil:'domcontentloaded'});
