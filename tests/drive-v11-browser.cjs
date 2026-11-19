@@ -96,7 +96,10 @@ async function main(){
   await page.locator('#milft-google-connect').click();
   assert.match(await page.locator('#milft-google-auth-status').innerText(),/Google connecté/);
   assert.equal(apiCalls.length,0,'Connecting alone cannot write Drive');
-  page.once('dialog',dialog=>dialog.accept());
+  page.once('dialog',async dialog=>{
+    assert.match(dialog.message(),/Données de CE navigateur : 0 joueur\(s\) et 0 enregistrement\(s\)/,'Explicit empty-data preview before uploading');
+    await dialog.accept();
+  });
   await page.locator('#milft-drive-save-now').click();
   await page.waitForFunction(()=>document.querySelector('#milft-google-auth-status')?.textContent?.includes('Sauvegarde Drive confirmée'));
   assert.equal(archives.length,1,'One archive created');
@@ -119,6 +122,21 @@ async function main(){
   await page.waitForFunction(()=>document.querySelector('#milft-google-auth-status')?.textContent?.includes('Drive non sauvegardé'));
   assert.equal(archives.length,2,'Denied upload preserved prior backups');
   assert.equal(await page.evaluate(key=>localStorage.getItem(key),KEY),before,'Failure cannot erase local data');
+  // Un premier envoi en erreur ne doit surtout pas laisser une automatique active.
+  page.once('dialog',dialog=>dialog.accept());
+  await page.locator('#milft-drive-auto').click();
+  await page.waitForFunction(()=>document.querySelector('#milft-google-auth-status')?.textContent?.includes('automatique NON activée'));
+  assert.equal(await page.locator('#milft-drive-auto').innerText(),'Activer la sauvegarde automatique','Automatic not activated after first upload fails');
+  assert.equal(archives.length,2,'Failed activation must not add archives');
+  failUpload=false;
+  page.once('dialog',dialog=>dialog.accept());
+  await page.locator('#milft-drive-auto').click();
+  await page.waitForFunction(()=>document.querySelector('#milft-google-auth-status')?.textContent?.includes('automatique activée'));
+  assert.equal(await page.locator('#milft-drive-auto').innerText(),'Désactiver la sauvegarde automatique','Auto may start only after a confirmed first upload');
+  assert.equal(archives.length,3,'Successful activation creates exactly one new archive');
+  await page.locator('#milft-drive-auto').click();
+  assert.equal(await page.locator('#milft-drive-auto').innerText(),'Activer la sauvegarde automatique','Automatic can be disabled');
+  assert.equal(await page.evaluate(key=>localStorage.getItem(key),KEY),before,'Automatic activation never mutates local tournament data');
   // L'archive du 18/11 envoyée par erreur au dossier du club reste consultable,
   // mais sa restauration est neutralisée ; aucune suppression distante.
   const knownTest='MILFT_TOURNOIS_manuel_2026-11-18T21-22-47-261Z_10c31de2-81b.json';

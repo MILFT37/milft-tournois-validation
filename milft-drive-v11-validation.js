@@ -161,10 +161,18 @@ function snapshot() {
     data:JSON.parse(JSON.stringify(db)),planning:JSON.parse(JSON.stringify(plan)),
     progressPreferences:JSON.parse(JSON.stringify(progressPrefs))};
 }
+function backupSummary(data) {
+  const players=data?.data?.players?.length||0;
+  const records=data?.data?.tournaments?.length||0;
+  return 'Données de CE navigateur : '+players+' joueur(s) et '+records+
+    ' enregistrement(s) de tournoi (poules/tableaux A-B compris).'+
+    (!players&&!records?'\nATTENTION : aucune donnée de tournoi ni aucun joueur dans ce navigateur. Vérifie que tu utilises le bon appareil avant de continuer.':'')+
+    '\nChaque sauvegarde est un nouvel instantané, sans remplacer les archives existantes.';
+}
 function tokenProvider() {
   if(!accessToken||Date.now()>expiration-60000) {
-    connected=false;
-    status('Google déconnecté ou autorisation expirée — modifications conservées localement');
+    connected=false;auto=false;stopInterval();refreshButtons();
+    status('Google déconnecté ou autorisation expirée — sauvegarde automatique arrêtée, données locales conservées');
     return null;
   }
   return accessToken;
@@ -182,7 +190,7 @@ function changed() {
   pending=true;revision++;
   if(connected)status('Modifications locales en attente de sauvegarde Drive');
 }
-async function upload(kind,force=false) {
+async function upload(kind,force=false,prepared=null) {
   if(busy||!client||!connected||blocked||!root.navigator.onLine)return false;
   if(!force && (!auto||!pending||Date.now()-lastUpload<MIN_AUTO_MS))return false;
   if(dailyAllowance().count>=MAX_DAILY_UPLOADS) {
@@ -191,10 +199,10 @@ async function upload(kind,force=false) {
     return false;
   }
   const current=revision;
-  busy=true;
+  busy=true;refreshButtons();
   status('Envoi Drive en cours — aucune sauvegarde confirmée');
   try {
-    const result=await client.upload(snapshot(),kind);
+    const result=await client.upload(prepared||snapshot(),kind);
     countUpload();lastUpload=Date.now();
     if(current===revision)pending=false;
     status('Sauvegarde Drive confirmée ('+result.name+') — '+new Date(lastUpload).toLocaleString('fr-FR'),!pending);
@@ -204,14 +212,14 @@ async function upload(kind,force=false) {
     if(/quota|rate limit|HTTP 403|HTTP 429/i.test(msg)){blocked=true;auto=false;stopInterval();}
     status('Drive non sauvegardé : '+msg+' ; JSON local conservé');
     return false;
-  }finally{busy=false;}
+  }finally{busy=false;refreshButtons();}
 }
 function stopInterval(){if(interval){root.clearInterval(interval);interval=null;}}
 function startInterval(){stopInterval();interval=root.setInterval(()=>upload('automatique'),MIN_AUTO_MS);}
 function refreshButtons() {
   const manual=$('milft-drive-save-now'),automatic=$('milft-drive-auto'),history=$('milft-drive-list-v11');
-  if(manual)manual.disabled=!connected;
-  if(automatic){automatic.disabled=!connected||fixtureMode;automatic.textContent=auto?'Désactiver la sauvegarde automatique':'Activer la sauvegarde automatique';}
+  if(manual)manual.disabled=!connected||busy;
+  if(automatic){automatic.disabled=!connected||fixtureMode||busy;automatic.textContent=auto?'Désactiver la sauvegarde automatique':'Activer la sauvegarde automatique';}
   if(history)history.disabled=!connected;
 }
 function finishOAuthAttempt() {
@@ -293,16 +301,24 @@ root.addEventListener('focus',()=>{
   root.setTimeout(()=>{if(oauthPending&&Date.now()-oauthStartedAt>=3500)oauthReturnNotConfirmed();},3500);
 });
 async function manual() {
-  if(!root.confirm('Sauvegarder maintenant sur le Google Drive du compte sélectionné ? Une nouvelle archive sera créée, sans remplacer les anciennes.'))return;
-  await upload(fixtureMode?'test-fictif':'manuel',true);
+  if(busy){status('Un envoi Drive est déjà en cours.');return;}
+  const prepared=snapshot();
+  if(!root.confirm('SAUVEGARDE DRIVE MANUELLE\n\n'+backupSummary(prepared)+
+    '\n\nEnvoyer maintenant ces données vers le Drive du compte connecté ?'))return;
+  await upload(fixtureMode?'test-fictif':'manuel',true,prepared);
 }
 async function toggleAuto() {
   if(fixtureMode){status('Mode essai : sauvegarde automatique désactivée pour les données fictives.');return;}
   if(auto){auto=false;stopInterval();status('Sauvegardes automatiques désactivées — archives précédentes conservées');refreshButtons();return;}
-  if(!root.confirm('Activer la sauvegarde Drive toutes les 15 minutes pendant que l’application est ouverte et connectée ? Aucune sauvegarde garantie lorsque l’application est fermée.'))return;
-  auto=true;refreshButtons();startInterval();
-  const ok=await upload('activation',true);
-  if(!ok)status('Automatique activée, premier envoi NON confirmé : vérifier la connexion et la limite');
+  if(busy){status('Un envoi Drive est déjà en cours.');return;}
+  const prepared=snapshot();
+  if(!root.confirm('SAUVEGARDE DRIVE AUTOMATIQUE\n\n'+backupSummary(prepared)+
+    '\n\nCréer une première archive maintenant, puis sauvegarder les modifications toutes les 15 minutes pendant que MILFT est ouvert et connecté ? Pas de sauvegarde garantie application fermée.'))return;
+  // Aucun mode automatique tant que le premier dépôt n'a pas été confirmé.
+  const ok=await upload('activation',true,prepared);
+  if(!ok){auto=false;stopInterval();refreshButtons();status('Sauvegarde automatique NON activée : premier envoi non confirmé. Les données locales et archives précédentes sont conservées.');return;}
+  auto=true;startInterval();refreshButtons();
+  status(root.MILFTDriveStatus+' — automatique activée (application ouverte uniquement)',true);
 }
 async function history() {
   const target=$('milft-drive-archives');if(!target)return;

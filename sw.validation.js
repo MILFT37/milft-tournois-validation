@@ -1,9 +1,9 @@
 /* MILFT Tournois V1.1 — cache applicatif de validation uniquement. */
-const CACHE = 'milft-validation-shell-v1-20261119-drive-moved-folders-01';
+const CACHE = 'milft-validation-shell-v1-20261119-drive-consent-01';
 const SHELL = [
   './MILFT_Tournois_V1_1_VALIDATION_HEBERGEMENT_STABLE_2026-11-02.html',
   './manifest.webmanifest',
-  './milft-drive-v11-validation.js?v=20261119-drive-moved-folders-01',
+  './milft-drive-v11-validation.js?v=20261119-drive-consent-01',
   './MILFT_Tournois_192.png',
   './MILFT_Tournois_512.png'
 ];

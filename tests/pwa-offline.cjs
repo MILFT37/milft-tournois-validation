@@ -15,8 +15,8 @@ vm.runInNewContext(sw,context);
 (async()=>{
 let install;handlers.install({waitUntil:p=>install=p});await install;
 assert.equal(stored.size,5);
-assert.ok(stored.has(new URL('./milft-drive-v11-validation.js?v=20261119-drive-moved-folders-01',base).href),'Drive validation module versioned and cached for offline shell');
-assert.match(html,/milft-drive-v11-validation\.js\?v=20261119-drive-moved-folders-01/,'Main app must load cached, updated Drive version');
+assert.ok(stored.has(new URL('./milft-drive-v11-validation.js?v=20261119-drive-consent-01',base).href),'Drive validation module versioned and cached for offline shell');
+assert.match(html,/milft-drive-v11-validation\.js\?v=20261119-drive-consent-01/,'Main app must load cached, updated Drive version');
 let response;const url=new URL(manifest.start_url,base).href;
 handlers.fetch({request:{url,method:'GET',mode:'navigate'},respondWith:p=>response=p});
 assert.equal((await response).cached,true,'offline navigation must return cached app');
