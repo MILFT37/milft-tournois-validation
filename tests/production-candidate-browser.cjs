@@ -8,7 +8,8 @@ const candidate=path.resolve('candidate-production-v11');
 const app='MILFT_Tournois_V1_1_PRODUCTION_PRETE_2026-11-17.html';
 async function main(){
   const serve=http.createServer((req,res)=>{
-    const file=path.resolve(candidate,decodeURIComponent(new URL(req.url,'http://127.0.0.1').pathname).replace(/^\\/,''));
+    const relative=decodeURIComponent(new URL(req.url,'http://127.0.0.1').pathname).slice(1);
+    const file=path.resolve(candidate,relative);
     if(!file.startsWith(candidate+path.sep)){res.writeHead(403).end();return;}
     try{
       const data=fs.readFileSync(file);
