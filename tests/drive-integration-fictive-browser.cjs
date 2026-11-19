@@ -23,7 +23,7 @@ function server(){
 (async()=>{
  const {svc,url}=await server(), browser=await chromium.launch({headless:true});
  try{
-  const context=await browser.newContext();
+  const context=await browser.newContext({acceptDownloads:true});
   await context.addInitScript(()=>{
    window.__MILFT_DRIVE_BROWSER_TEST__=true;
    window.google={accounts:{oauth2:{initTokenClient:({callback})=>({requestAccessToken:()=>callback({access_token:'fake-milft-fixture',expires_in:3600,scope:'https://www.googleapis.com/auth/drive.file'})}),revoke:()=>{}}}};
@@ -82,6 +82,11 @@ function server(){
   await page.locator('#milft-drive-archives button').waitFor({state:'visible'});
   assert.equal(await page.locator('#milft-drive-archives button').count(),1,'Fixture only provides read-only downloads, no restore');
   assert.equal(await page.locator('button').filter({hasText:'Restaurer'}).count(),0,'No destructive restore');
+  const downloadEvent=page.waitForEvent('download');
+  await page.locator('#milft-drive-archives button').click();
+  const download=await downloadEvent;
+  assert.match(download.suggestedFilename(),/^MILFT_TOURNOIS_test-fictif_.*\.json$/,'Fictitious archive downloads as JSON');
+  assert.equal(archives.length,1,'Download does not create, replace or delete archives');
   assert(!errors.length,'Errors: '+errors.join('; '));
   console.log('OK Drive fixture browser: same adapter, fictitious snapshot, isolated folders, no auto or restore, archive list');
  }finally{await browser.close();await new Promise(resolve=>svc.close(resolve));}

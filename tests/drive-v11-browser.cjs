@@ -118,6 +118,30 @@ async function main(){
   await page.waitForFunction(()=>document.querySelector('#milft-google-auth-status')?.textContent?.includes('Drive non sauvegardé'));
   assert.equal(archives.length,2,'Denied upload preserved prior backups');
   assert.equal(await page.evaluate(key=>localStorage.getItem(key),KEY),before,'Failure cannot erase local data');
+  // Validation ciblée du parcours positif de restauration Drive sur données fictives.
+  // Jamais d'import de la sauvegarde réelle du club ni d'écriture vers le vrai Google Drive.
+  const restoredId='drive-restored-player-1';
+  const imported={...valid,data:{players:[{id:restoredId,first:'Drive',last:'Demo'}],tournaments:[],selected:null}};
+  const importedBody=JSON.stringify(imported);
+  archives.push({id:String(nextId++),name:'MILFT_TOURNOIS_import-fictif_2026-11-18T21-50-00-000Z_test.json',
+    parent:folders[1].id,body:importedBody,createdTime:'2026-11-18T21:50:00Z',size:String(importedBody.length)});
+  await page.locator('#milft-drive-list-v11').click();
+  const restoreRow=page.locator('#milft-drive-archives .item').filter({hasText:'MILFT_TOURNOIS_import-fictif_'});
+  await restoreRow.getByRole('button',{name:/Restaurer/}).waitFor({state:'visible'});
+  const restoreDialogs=[];
+  const acceptRestore=async dialog=>{restoreDialogs.push({type:dialog.type(),message:dialog.message()});await dialog.accept();};
+  page.on('dialog',acceptRestore);
+  await restoreRow.getByRole('button',{name:/Restaurer/}).click();
+  await page.waitForFunction(({key,id})=>{
+    const data=JSON.parse(localStorage.getItem(key)||'{}');
+    return Array.isArray(data.players)&&data.players.some(p=>p.id===id);
+  },{key:KEY,id:restoredId});
+  page.off('dialog',acceptRestore);
+  assert.equal(restoreDialogs.length,2,'Restore requires two explicit confirmations after preview and protection');
+  assert(restoreDialogs.every(d=>d.type==='confirm'),'Restore should not produce error alerts');
+  assert.equal(await page.evaluate(key=>JSON.parse(localStorage.getItem(key)).players.length,KEY),1,'Synthetic Drive backup replaces only the local test data');
+  await page.reload({waitUntil:'domcontentloaded'});
+  assert.equal(await page.evaluate(key=>JSON.parse(localStorage.getItem(key)).players[0].id,KEY),restoredId,'Restored data survive page reload');
   assert(!errors.length,'Browser errors: '+errors.join('; '));
   console.log('OK Drive browser isolated: OAuth mock, manual archives, listing, abort restore, failed upload, local data intact');
  }finally{await browser.close();await new Promise(r=>server.close(r));}

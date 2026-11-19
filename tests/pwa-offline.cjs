@@ -9,13 +9,14 @@ assert.ok(manifest.icons.some(x=>x.sizes==='192x192'));
 assert.ok(manifest.icons.some(x=>x.sizes==='512x512'));
 const handlers={};const stored=new Map();
 const base='https://milft37.github.io/milft-tournois-validation/';
-const cache={addAll:async paths=>{for(const p of paths){assert.ok(fs.existsSync(p.replace('./','')),'missing cached file '+p);stored.set(new URL(p,base).href,{cached:true,path:p});}},match:async req=>stored.get(typeof req==='string'?new URL(req,base).href:req.url)};
+const cache={addAll:async paths=>{for(const p of paths){assert.ok(fs.existsSync(p.replace('./','').split('?')[0]),'missing cached file '+p);stored.set(new URL(p,base).href,{cached:true,path:p});}},match:async req=>stored.get(typeof req==='string'?new URL(req,base).href:req.url)};
 const context={URL,console,self:{location:{origin:new URL(base).origin},registration:{scope:base},addEventListener:(name,fn)=>handlers[name]=fn,skipWaiting:()=>{},clients:{claim:()=>{}}},caches:{open:async()=>cache,match:cache.match,keys:async()=>['milft-validation-shell-v1-20261118'],delete:async()=>true},fetch:async()=>{throw Error('offline')}};
 vm.runInNewContext(sw,context);
 (async()=>{
 let install;handlers.install({waitUntil:p=>install=p});await install;
 assert.equal(stored.size,5);
-assert.ok(stored.has(new URL('./milft-drive-v11-validation.js',base).href),'Drive validation module cached for offline shell');
+assert.ok(stored.has(new URL('./milft-drive-v11-validation.js?v=20261118-drive-main-01',base).href),'Drive validation module versioned and cached for offline shell');
+assert.match(html,/milft-drive-v11-validation\.js\?v=20261118-drive-main-01/,'Main app must load cached, updated Drive version');
 let response;const url=new URL(manifest.start_url,base).href;
 handlers.fetch({request:{url,method:'GET',mode:'navigate'},respondWith:p=>response=p});
 assert.equal((await response).cached,true,'offline navigation must return cached app');
