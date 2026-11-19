@@ -17,6 +17,9 @@ assert(!html.includes('MILFTConfigurerDrive'),'Legacy read-only connector absent
 assert.match(driveModule,/startsWith\('\/milft-tournois\/'\)/,'Production-origin guard');
 assert(!driveModule.includes("startsWith('/milft-tournois-validation/')"),'No validation-origin activation in production module');
 assert.match(driveModule,/drive\.file/,'Visible Drive folder scope');
+assert.match(driveModule,/const MAX_DAILY_UPLOADS = 200/,'Automatic quota extended');
+assert.match(driveModule,/AUTO_INTERVAL_CHOICES = \[5,10,15,30,60\]/,'Configurable interval');
+assert.match(driveModule,/milft-drive-auto-interval/,'Interval selector UI');
 assert.match(driveModule,/MILFT_TOURNOIS_manuel_2026-11-18T21-22-47-261Z_10c31de2-81b\.json/,'Misrouted fixture remains quarantined');
 assert.match(sw,/milft-drive-v11-production\.js\?v=20261119-prod-candidate-01/,'Offline Drive script version cached');
 for(const name of ['MILFT_Tournois_192.png','MILFT_Tournois_512.png'])assert(fs.existsSync(base+name),'Missing PWA icon '+name);
