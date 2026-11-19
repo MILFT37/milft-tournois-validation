@@ -94,7 +94,7 @@ async function fakeFetch(url,opts={}) {
  assert.equal((await movedFixture.list()).length,1,'Archives fictives retrouvées après déplacement');
  failUpload=false;
  const third=await movedClub.upload(snapshot,'manuel');
- assert.equal(files.get(third.id).parent,files.get(first.id).parent,'L'archive est ajoutée dans le sous-dossier existant');
+ assert.equal(files.get(third.id).parent,files.get(first.id).parent,"Archive ajoutée dans le sous-dossier existant");
  assert.equal(Array.from(files.values()).filter(f=>f.mimeType==='application/vnd.google-apps.folder').length,beforeFolders,'Aucun nouveau dossier créé à la racine');
  const duplicateId='duplicate-milft-folder';
  files.set(duplicateId,{id:duplicateId,name:'MILFT Tournois',mimeType:'application/vnd.google-apps.folder',parent:'different-parent'});
