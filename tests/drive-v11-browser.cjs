@@ -29,7 +29,8 @@ async function main(){
   const context=await browser.newContext({acceptDownloads:true});
   await context.addInitScript(({key,state})=>{
     window.__MILFT_DRIVE_BROWSER_TEST__=true;
-    localStorage.setItem(key,JSON.stringify(state));
+    // Ne pas écraser les données synthétiques restaurées lors d'un rechargement.
+    if(localStorage.getItem(key)===null)localStorage.setItem(key,JSON.stringify(state));
     window.google={accounts:{oauth2:{initTokenClient:({callback,error_callback})=>({requestAccessToken:()=>{if(window.__MILFT_TEST_OAUTH_POPUP_ERROR__)error_callback({type:'popup_closed'});else if(window.__MILFT_TEST_OAUTH_NO_CALLBACK__)return;else callback({access_token:'fake-token-no-real-google',expires_in:3600,scope:'https://www.googleapis.com/auth/drive.file'});}}),revoke:()=>{}}}};
   },{key:KEY,state:fixture});
   const page=await context.newPage(), errors=[];
