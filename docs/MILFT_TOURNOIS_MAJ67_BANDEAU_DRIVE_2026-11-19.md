@@ -35,3 +35,8 @@ Sauvegardes automatiques désactivées par défaut ; réglage 5/10/15/30/60 min,
 La correction visuelle est poussée sur la production officielle. Une connexion OAuth n'est jamais assimilée à un envoi confirmé. Les archives Drive existantes ne sont pas interrogées ou modifiées pour créer le bandeau. La connexion Google doit éventuellement être refaite lors de la prochaine session : ne pas prétendre l'avoir validée sur le Samsung depuis GitHub.
 
 **Reste à faire :** confirmer la conclusion `success` du run Pages production `44552727377`, puis marquer cette MAJ comme terminée. Aucun nouveau GO ni test manuel sur Samsung nécessaire pour cette correction.
+
+## CLÔTURE — publication confirmée
+**19/11/2026 : MAJ 67 TERMINÉE en production officielle.** GitHub Pages production workflow n°21, run **`44552727377`**, **SUCCESS**, commit `d81c9f03f7e7ca016e517c6df8ae1f458285ee0c`. PWA production workflow n°8, run **`44552729294`**, **SUCCESS**, même commit. Le statut précédent « run Pages à vérifier » est donc levé.
+Lien officiel : https://milft37.github.io/milft-tournois/ .
+Aucune manipulation sur le Samsung ni restauration, écriture Drive réelle, suppression ou modification des archives. Les anciennes validations métier ne sont pas relancées.
