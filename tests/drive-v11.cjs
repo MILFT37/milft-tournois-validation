@@ -83,10 +83,10 @@ async function fakeFetch(url,opts={}) {
  // Cas réel : l'utilisateur a déplacé manuellement les deux dossiers MILFT
  // sous « Appli MILFT / MILFT Tournoi » sans déplacer leurs sous-dossiers.
  const clubRoot=Array.from(files.values()).find(f=>f.name==='MILFT Tournois'&&f.mimeType==='application/vnd.google-apps.folder');
- const fixtureRoot=Array.from(files.values()).find(f=>f.name==='MILFT Tournois - Essais'&&f.mimeType==='application/vnd.google-apps.folder');
- assert(clubRoot&&fixtureRoot);
+ const movedFixtureRoot=Array.from(files.values()).find(f=>f.name==='MILFT Tournois - Essais'&&f.mimeType==='application/vnd.google-apps.folder');
+ assert(clubRoot&&movedFixtureRoot);
  clubRoot.parent='user-selected-parent-folder';
- fixtureRoot.parent='user-selected-parent-folder';
+ movedFixtureRoot.parent='user-selected-parent-folder';
  const beforeFolders=Array.from(files.values()).filter(f=>f.mimeType==='application/vnd.google-apps.folder').length;
  const movedClub=createDriveClient(fakeFetch,()=>'fake-test-token');
  const movedFixture=createDriveClient(fakeFetch,()=>'fake-test-token',{testMode:true});
