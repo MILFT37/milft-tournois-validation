@@ -86,6 +86,11 @@ async function main(){
     await page.locator('.milft-technical-details > summary').click();
     await page.locator('#milft-google-connect').waitFor({state:'visible'});
     assert.equal(await page.locator('#milft-drive-save-now').isDisabled(),true,'No Drive writes before opt-in');
+    const frequency=page.locator('#milft-drive-auto-interval');
+    assert.equal(await frequency.inputValue(),'15','Candidate defaults to fifteen minutes');
+    await frequency.selectOption('10');
+    assert.equal(await frequency.inputValue(),'10','User can select 10 minutes');
+    assert.equal(await page.evaluate(()=>window.MILFTDriveV11Test.autoIntervalMs()),600000);
     await page.locator('#milft-google-connect').click();
     assert.match(await page.locator('#milft-google-auth-status').innerText(),/Google connecté à MILFT/);
     assert.equal(created,0,'OAuth alone does not write an archive');
