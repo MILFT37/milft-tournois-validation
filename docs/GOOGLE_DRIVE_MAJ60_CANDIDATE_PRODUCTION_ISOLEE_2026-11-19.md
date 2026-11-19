@@ -40,3 +40,12 @@ La première sauvegarde réelle depuis le Samsung est déjà confirmée en MAJ 5
 
 ## Protocole de reprise
 Lire les MAJ 57–60, vérifier le HEAD des deux dépôts GitHub et le workflow candidate n°5. Continuer de manière autonome dans le dépôt de validation, ne pas demander un GO toutes les deux minutes. Ne pas confondre données locales, sauvegardes Drive et synchronisation temps réel. Solution 100 % gratuite exigée.
+
+## Clôture MAJ 60 — recette Chromium et Safari validée
+- Le workflow candidate de production **n°7**, run `44528637627`, est définitivement **SUCCESS** sur le commit `335516780c1c98d30ce2de6172602d8473cbbcb3`.
+- Le test statique, la simulation Chromium et la simulation WebKit/Safari sont **tous réussis**, avec OAuth synthétique, API Drive fictive, première sauvegarde manuelle consentie, lecture d'archives, restauration avec confirmations et conservation après rechargement.
+- Historique des itérations : n°5 a révélé un échec WebKit; les diagnostics du n°6 ont montré une réponse Google HTTP 401 à une requête de test ayant échappé à l'interception (jeton **fictif uniquement**). La solution du commit `33551678...` interdit au service worker de contourner l'interception du réseau dans le navigateur de test (`serviceWorkers:'block'`). Cette configuration ne modifie pas le service worker de la candidate ni le mode hors ligne en production.
+- Le commit `59dd6184f54e80a054a2c236d95395877819577b` avait ajouté le scénario WebKit et le commit `26d78c90f2021e33381c9a1253bd002754c5cdb0` le test de restauration fictive.
+- Une inspection ciblée du HTML candidat constate l'absence du marqueur d'annuaire préchargé `MILFT_JOUEURS_REFERENCE_20261014`, de la sauvegarde juniors en dur, et de termes identifiables comme `client_secret` ou `PRIVATE_KEY`. Il ne s'agit pas d'un audit automatique exhaustif de toutes les données historiques du dépôt public.
+- Nouvelle vérification du dépôt de **production** : `MILFT37/milft-tournois` **main demeure au commit `76a19f14a0af8a0ef2bf2154e7918004545d9214`**. Aucune opération d'écriture n'a été faite sur cette branche.
+- **Conclusion technique candidate : prête pour décision de promotion**, sans promettre de synchronisation temps réel. L'archive de référence du 19/11 n'a pas été restaurée ni modifiée. La publication officielle et le transfert volontaire des données restent des étapes distinctes nécessitant le GO explicite de mise en production.
