@@ -8,7 +8,7 @@ const manifest=JSON.parse(fs.readFileSync(base+'manifest.production.webmanifest'
 const index=fs.readFileSync(base+'index.html','utf8');
 assert.match(html,/const KEY='milft_prod_v11_20261117_tournois_v01'/,'Production data keys preserved');
 assert.match(html,/const PLAN_KEY='milft_prod_v11_20261117_planning_v066'/,'Production planning storage preserved');
-assert.match(html,/milft-drive-v11-production\.js\?v=20261119-prod-candidate-200-01/,'Versioned Drive module loaded');
+assert.match(html,/milft-drive-v11-production\.js\?v=20261119-drive-status-67-01/,'Versioned Drive module loaded');
 assert.match(html,/sw\.production\.js/);
 assert.match(index,/MILFT_Tournois_V1_1_PRODUCTION_PRETE_2026-11-17\.html/);
 assert.equal(manifest.start_url,'./MILFT_Tournois_V1_1_PRODUCTION_PRETE_2026-11-17.html');
@@ -21,7 +21,7 @@ assert.match(driveModule,/const MAX_DAILY_UPLOADS = 200/,'Automatic quota extend
 assert.match(driveModule,/AUTO_INTERVAL_CHOICES = \[5,10,15,30,60\]/,'Configurable interval');
 assert.match(driveModule,/milft-drive-auto-interval/,'Interval selector UI');
 assert.match(driveModule,/MILFT_TOURNOIS_manuel_2026-11-18T21-22-47-261Z_10c31de2-81b\.json/,'Misrouted fixture remains quarantined');
-assert.match(sw,/milft-drive-v11-production\.js\?v=20261119-prod-candidate-200-01/,'Offline Drive script version cached');
+assert.match(sw,/milft-drive-v11-production\.js\?v=20261119-drive-status-67-01/,'Offline Drive script version cached');
 for(const name of ['MILFT_Tournois_192.png','MILFT_Tournois_512.png'])assert(fs.existsSync(base+name),'Missing PWA icon '+name);
 for(const [i,script] of [...html.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi)].filter(([,attrs,text])=>!/(?:^|\s)src\s*=/.test(attrs)&&text.trim()).entries())new vm.Script(script[2],{filename:'candidate-inline-'+i+'.js'});
 new vm.Script(driveModule,{filename:'milft-drive-v11-production.js'});
