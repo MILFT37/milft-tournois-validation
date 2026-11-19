@@ -27,3 +27,10 @@ Cette validation **dossiers déplacés / lecture de l'historique / protection ar
 
 ## Protocole de reprise
 Reprendre depuis MAJ 57 sur `MILFT37/milft-tournois-validation`, branche `main`. Lire les résultats GitHub à partir des runs ci-dessus, ne pas faire repasser les tests PC / iPhone / Samsung / JSON / PWA déjà réussis, poursuivre sur le HTML existant pour démonstration immédiate et mettre à jour la feuille de route à chaque jalon. Aucune publication de production sans GO spécifique.
+
+## Vérification complémentaire GitHub — fin des contrôles sur dossiers déplacés
+- Vérifié le 19/11/2026 après la capture Android : **attribution tables n°234 SUCCESS**, run `44502719388` (auparavant marqué en cours).
+- Les autres résultats liés au correctif demeurent **SUCCESS** : Drive n°32 `44503089735`, GitHub Pages n°233 `44502719237`, PWA n°10 `44502719298`, Chromium mobile n°256 `44502719282`, WebKit n°25 `44502719221`, championnat annuel n°318 `44502719583`, Course aux points n°274 `44502719496`, ergonomie n°209 `44502719242`.
+- **Bilan : toutes les vérifications automatiques de cette correction sont terminées et réussies.** La capture Samsung de 11 h 12 atteste aussi la lecture réelle d'une archive après déplacement et la neutralisation de sa restauration.
+- **Aucune manipulation supplémentaire des dossiers Drive n'est demandée à l'utilisateur.** Cette vérification n'autorise pas à conclure qu'une sauvegarde *réelle* nouvelle ni une restauration *réelle* ont été exécutées sur l'application complète ; ces étapes doivent rester distinctes des contrôles fictifs.
+- La production officielle et les données réelles n'ont pas été modifiées pour cette étape. Une promotion en production nécessite toujours un GO explicite distinct.
