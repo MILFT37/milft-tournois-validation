@@ -98,7 +98,7 @@ async function main(){
     await page.locator('#milft-google-connect').click();
     assert.match(await page.locator('#milft-google-auth-status').innerText(),/Google connecté à MILFT/);
     assert.equal(created,0,'OAuth alone does not write an archive');
-     assert.match(await page.locator('#milft-drive-brief').innerText(),/Drive connecté — copie actuelle non confirmée/);
+     assert.match(await page.locator('#milft-drive-brief').innerText(),/Drive connecté — (?:copie actuelle non confirmée|modifications locales en attente)/,'Connecting must not claim a confirmed upload');
     page.once('dialog',async dialog=>{
       assert.match(dialog.message(),/2 joueur\(s\) et 1 enregistrement\(s\)/,'Snapshot summary before upload');
       await dialog.accept();
