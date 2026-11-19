@@ -36,3 +36,9 @@ Date : 19 novembre 2026. Référence : MAJ 47–62 et protocole de reprise auton
 
 ## Reprise
 Ne pas redéployer ou relancer les validations déjà SUCCESS. En cas de problème isolé Android, se concentrer sur le nouveau domaine de stockage et la session Chrome utilisée, sans effacer les données ; conserver le commit de retour arrière `76a19f14...`. Mettre à jour cette feuille de route après toute opération de migration de données.
+
+## Retour utilisateur — recette physique Samsung
+- **19/11/2026, 15 h 38 (heure de Paris)** : l'utilisateur confirme par « V » que le lien officiel V1.1 s'affiche correctement sur son Samsung, en réponse à la vérification ciblée d'ouverture demandée après le déploiement.
+- Cela valide l'**affichage et l'ouverture** sur Samsung ; **cela ne prouve pas** encore que les 42 joueurs / 7 objets techniques sont présents dans le stockage de production, ni qu'une restauration a eu lieu.
+- **Aucun GO pour importer/restaurer la sauvegarde réelle du 19/11** : ne pas l'importer automatiquement. Les archives existantes et le stockage local restent protégés.
+- Étape suivante : constater si le profil de production a déjà des données avant toute proposition de restauration ; demander une confirmation explicite pour un éventuel remplacement, avec aperçu et sauvegarde de secours préalable.
