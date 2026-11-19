@@ -92,7 +92,18 @@ async function main(){
       await dialog.accept();
     });
     await page.locator('#milft-drive-save-now').click();
-    await page.waitForFunction(()=>document.querySelector('#milft-google-auth-status')?.textContent?.includes('Sauvegarde Drive confirmée'));
+    try {
+      await page.waitForFunction(()=>document.querySelector('#milft-google-auth-status')?.textContent?.includes('Sauvegarde Drive confirmée'),null,{timeout:12000});
+    }catch(error){
+      const diagnostics=await page.evaluate(()=>({
+        status:document.querySelector('#milft-google-auth-status')?.textContent,
+        indicator:document.querySelector('#milft-drive-indicator')?.textContent,
+        connected:window.MILFTDriveV11Enabled,
+        autoButton:document.querySelector('#milft-drive-auto')?.textContent
+      }));
+      console.error('UPLOAD DIAGNOSTIC',JSON.stringify({engine:process.env.MILFT_BROWSER||'chromium',diagnostics,created,folders,files:files.map(x=>({id:x.id,name:x.name})),errors}));
+      throw error;
+    }
     assert.equal(created,1,'One fictional backup created only in the mocked Drive');
     assert.equal(await page.evaluate(key=>localStorage.getItem(key),state.key),state.snapshot,'Production storage unchanged by backup');
     await page.locator('#milft-drive-list-v11').click();
