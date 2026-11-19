@@ -16,6 +16,9 @@ on:
 jobs:
   drive-safety:
     runs-on: ubuntu-24.04
+    container:
+      image: mcr.microsoft.com/playwright:v1.56.1-noble
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -25,10 +28,10 @@ jobs:
         run: node tests/drive-v11.cjs
       - name: Tester sauvegarde fictive Android sans compte Google réel
         run: node tests/drive-android-write.cjs
-      - name: Installer Chromium de test isolé
+      - name: Installer Playwright pour Chromium et WebKit préinstallés
         run: |
           npm install --no-save playwright@1.56.1
-          npx playwright install --with-deps chromium
+          node -e "const {chromium}=require('playwright'); console.log('Chromium executable:', chromium.executablePath())"
       - name: Tester le panneau Drive en navigateur isolé sans compte réel
         run: node tests/drive-v11-browser.cjs
       - name: Tester intégration Drive réelle sur données fictives, Chrome isolé
