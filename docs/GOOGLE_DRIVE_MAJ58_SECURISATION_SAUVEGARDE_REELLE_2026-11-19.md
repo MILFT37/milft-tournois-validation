@@ -27,3 +27,10 @@ Date : 19 novembre 2026. Complément des MAJ 47–57. L'utilisateur a donné son
 3. Quand ces contrôles sont verts, proposer la **seule validation réelle encore manquante** : consentement informé et premier dépôt de sauvegarde des données réelles depuis l'application complète, avec confirmation que le bon appareil contient bien le championnat ; vérifier ensuite l'archive sans restauration destructrice. Cette écriture nécessite un accord distinct de l'utilisateur.
 4. La sauvegarde automatique n'est pas garantie lorsque l'application est fermée, le navigateur suspendu ou la connexion Google expirée ; Drive est une archive JSON, **pas une synchronisation temps réel entre Android et PC**. Tout doit rester 100 % gratuit.
 5. Promotion en production seulement sur **GO distinct et explicite**, sans effacer la sauvegarde de référence du championnat ni les données locales.
+
+## Clôture ciblée Google Drive
+- Workflow Google Drive **n°34 SUCCESS**, run `44507451145`, commit de test `1d11336a2203c44a3159082630c86d6761a0e956`.
+- Tests Google Drive fictifs et navigateur Chromium isolé désormais verts : sauvegarde manuelle avec aperçu, refus d'envoi, confirmation obligatoire, blocage automatique après HTTP 403 jusqu'à reconnexion, activation automatique après premier dépôt confirmé, archives et restauration synthétique protégées.
+- Les contrôles généraux liés au commit applicatif sont verts (Pages n°234, PWA n°11, Chromium n°257, WebKit n°26, championnat annuel n°319, Course aux points n°275, ergonomie n°210).
+- Workflow attribution des tables n°235 `44507204211` encore **IN_PROGRESS** lors de la dernière consultation à l'étape d'installation Chromium ; ancien run n°234 est **SUCCESS**. Ne pas inférer le résultat du n°235.
+- **La sauvegarde réelle sur Drive depuis la V1.1 complète n'a pas encore été réalisée** ; la promotion en production n'est pas autorisée par le simple GO de développement. Demander un consentement spécifique avant le premier dépôt réel.
