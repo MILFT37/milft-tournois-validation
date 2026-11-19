@@ -22,7 +22,9 @@ async function main(){
   const engine=process.env.MILFT_BROWSER==='webkit'?webkit:chromium;
   const browser=await engine.launch({headless:true});
   try{
-    const context=await browser.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true});
+    // L'interception Drive doit rester 100 % fictive même avec WebKit :
+    // le service worker est testé séparément, jamais autorisé à contourner les routes mock.
+    const context=await browser.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true,serviceWorkers:'block'});
     const page=await context.newPage(),errors=[];
     page.on('pageerror',err=>errors.push(err.message));
     let created=0,uploaded=null;
