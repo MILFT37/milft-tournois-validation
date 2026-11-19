@@ -20,6 +20,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - name: Vérifier la parité intégrale interface et moteur de tournoi
+        run: node tests/production-candidate-parity.cjs
       - run: node tests/production-candidate-static.cjs
       - name: Installer Playwright avec Chromium préinstallé
         run: npm install --no-save playwright@1.56.1
