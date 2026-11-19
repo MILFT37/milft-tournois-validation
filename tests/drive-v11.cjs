@@ -5,8 +5,12 @@ const assert=require('node:assert/strict');
 const src=fs.readFileSync('milft-drive-v11-validation.js','utf8');
 const ctx={module:{exports:{}},TextEncoder,URLSearchParams,console,Math,Date,JSON};
 ctx.globalThis=ctx;vm.runInNewContext(src,ctx,{filename:'milft-drive-v11-validation.js'});
-const {createDriveClient}=ctx.module.exports;
+const {createDriveClient,MAX_DAILY_UPLOADS,MIN_AUTO_MS,AUTO_INTERVAL_CHOICES,DEFAULT_AUTO_MINUTES}=ctx.module.exports;
 assert.equal(typeof createDriveClient,'function');
+assert.equal(MAX_DAILY_UPLOADS,200);
+assert.equal(MIN_AUTO_MS,300000);
+assert.equal(DEFAULT_AUTO_MINUTES,15);
+assert.equal(Array.from(AUTO_INTERVAL_CHOICES).join(','),'5,10,15,30,60');
 
 const calls=[], files=new Map();
 let counter=0, failUpload=false;
