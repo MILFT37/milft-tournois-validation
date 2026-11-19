@@ -128,7 +128,11 @@ async function main(){
   await page.waitForFunction(()=>document.querySelector('#milft-google-auth-status')?.textContent?.includes('automatique NON activée'));
   assert.equal(await page.locator('#milft-drive-auto').innerText(),'Activer la sauvegarde automatique','Automatic not activated after first upload fails');
   assert.equal(archives.length,2,'Failed activation must not add archives');
+  // Après HTTP 403 l'envoi est volontairement bloqué jusqu'à une nouvelle
+  // connexion Google. Le simple retour du réseau ne doit pas lever le blocage.
   failUpload=false;
+  await page.locator('#milft-google-connect').click();
+  await page.waitForFunction(()=>document.querySelector('#milft-google-auth-status')?.textContent?.includes('Google connecté à MILFT'));
   page.once('dialog',dialog=>dialog.accept());
   await page.locator('#milft-drive-auto').click();
   await page.waitForFunction(()=>document.querySelector('#milft-google-auth-status')?.textContent?.includes('automatique activée'));
