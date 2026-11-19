@@ -1,0 +1,21 @@
+name: V2.0 — simulation partage appareils (isolée)
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'v2/**'
+      - 'tests/v2-sync-simulated.cjs'
+      - '.github/workflows/v2-sync-simulated.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  simulation:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node tests/v2-sync-simulated.cjs
