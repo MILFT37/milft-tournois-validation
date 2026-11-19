@@ -271,7 +271,7 @@ async function upload(kind,force=false,prepared=null) {
     if(/quota|rate limit|HTTP 403|HTTP 429/i.test(msg)){blocked=true;auto=false;autoStopReason='erreur Drive';stopInterval();}
     status('Drive non sauvegardé : '+msg+' ; JSON local conservé');
     return false;
-  }finally{busy=false;refreshButtons();}
+  }finally{busy=false;refreshButtons();renderDriveStatus();}
 }
 function stopInterval(){if(interval){root.clearInterval(interval);interval=null;}}
 function startInterval(){stopInterval();interval=root.setInterval(()=>upload('automatique'),autoIntervalMs());}
