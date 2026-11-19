@@ -71,6 +71,9 @@ async function main(){
     return route.fulfill(json(found));
   });
   await page.goto(url,{waitUntil:'domcontentloaded'});
+   assert.match(await page.locator('#milft-local-brief').innerText(),/Données locales conservées/);
+   assert.match(await page.locator('#milft-drive-brief').innerText(),/Drive non connecté/);
+   assert.match(await page.locator('#milft-auto-brief').innerText(),/Auto : désactivée/);
   await page.locator('#milft-settings-toggle').click();
   await page.locator('.settings-backup > summary').click();
   await page.locator('.milft-technical-details > summary').click();
@@ -96,6 +99,7 @@ async function main(){
   await page.locator('#milft-google-connect').click();
   assert.match(await page.locator('#milft-google-auth-status').innerText(),/Google connecté/);
   assert.equal(apiCalls.length,0,'Connecting alone cannot write Drive');
+   assert.match(await page.locator('#milft-drive-brief').innerText(),/Drive connecté — copie actuelle non confirmée/);
   page.once('dialog',async dialog=>{
     assert.match(dialog.message(),/Données de CE navigateur : 0 joueur\(s\) et 0 enregistrement\(s\)/,'Explicit empty-data preview before uploading');
     await dialog.accept();
@@ -103,6 +107,10 @@ async function main(){
   await page.locator('#milft-drive-save-now').click();
   await page.waitForFunction(()=>document.querySelector('#milft-google-auth-status')?.textContent?.includes('Sauvegarde Drive confirmée'));
   assert.equal(archives.length,1,'One archive created');
+   assert.match(await page.locator('#milft-drive-brief').innerText(),/Copie Drive confirmée à/);
+   await page.evaluate(()=>window.MILFTDriveV11Test.changed());
+   assert.match(await page.locator('#milft-drive-brief').innerText(),/modifications locales en attente/i);
+   assert.equal(archives.length,1,'Status refresh must not upload');
   assert.equal(folders.length,2,'Visible Drive folder tree');
   assert.equal(await page.evaluate(key=>localStorage.getItem(key),KEY),before,'Local state unchanged by backup');
   await page.locator('#milft-drive-list-v11').click();
@@ -121,6 +129,7 @@ async function main(){
   await page.locator('#milft-drive-save-now').click();
   await page.waitForFunction(()=>document.querySelector('#milft-google-auth-status')?.textContent?.includes('Drive non sauvegardé'));
   assert.equal(archives.length,2,'Denied upload preserved prior backups');
+   assert.match(await page.locator('#milft-drive-brief').innerText(),/envois suspendus \(erreur\)/);
   assert.equal(await page.evaluate(key=>localStorage.getItem(key),KEY),before,'Failure cannot erase local data');
   // Un premier envoi en erreur ne doit surtout pas laisser une automatique active.
   page.once('dialog',dialog=>dialog.accept());
@@ -146,11 +155,13 @@ async function main(){
   assert.deepEqual(await freq.locator('option').evaluateAll(nodes=>nodes.map(n=>Number(n.value))),[5,10,15,30,60]);
   await freq.selectOption('5');
   assert.equal(await page.evaluate(()=>window.MILFTDriveV11Test.autoIntervalMs()),300000,'Five-minute scheduler');
+   assert.match(await page.locator('#milft-auto-brief').innerText(),/Auto : désactivée \(5 min\)/);
   await page.reload({waitUntil:'domcontentloaded'});
   await page.locator('#milft-settings-toggle').click();
   await page.locator('.settings-backup > summary').click();
   await page.locator('.milft-technical-details > summary').click();
   assert.equal(await page.locator('#milft-drive-auto-interval').inputValue(),'5','Frequency persists across reload');
+   assert.match(await page.locator('#milft-drive-brief').innerText(),/Drive non connecté/);
   await page.locator('#milft-google-connect').click();
   await page.waitForFunction(()=>document.querySelector('#milft-google-auth-status')?.textContent?.includes('Google connecté'));
   const quotaKey='MILFT_DRIVE_AUTO_QUOTA_V2';
@@ -162,6 +173,7 @@ async function main(){
   assert.equal(await page.locator('#milft-drive-auto').innerText(),'Activer la sauvegarde automatique','Automatic stops at 200');
   assert.equal(archives.length,4,'One final automatic backup');
   assert.equal(await page.evaluate(key=>JSON.parse(localStorage.getItem(key)).count,quotaKey),200,'Daily auto quota reaches 200');
+   assert.match(await page.locator('#milft-auto-brief').innerText(),/Auto : limite de 200\/jour atteinte/);
   await page.locator('#milft-drive-auto').click();
   assert.match(await page.locator('#milft-google-auth-status').innerText(),/Plafond de 200/);
   assert.equal(archives.length,4,'No automatic upload beyond daily ceiling');

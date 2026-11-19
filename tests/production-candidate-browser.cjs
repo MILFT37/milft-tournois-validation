@@ -73,6 +73,10 @@ async function main(){
     });
     await page.goto('http://127.0.0.1:'+port+'/'+app,{waitUntil:'domcontentloaded'});
     assert.equal(await page.evaluate(()=>window.MILFTDriveV11Enabled),true,'Production candidate panel enabled only in isolated test');
+     assert.match(await page.locator('#milft-local-brief').innerText(),/Données locales conservées/);
+     assert.match(await page.locator('#milft-drive-brief').innerText(),/Drive non connecté/);
+     assert.match(await page.locator('#milft-auto-brief').innerText(),/Auto : désactivée/);
+     assert.equal(await page.locator('#milft-iso-warning').evaluate(el=>getComputedStyle(el).fontSize),'12px');
     const state=await page.evaluate(()=>{
       const prodKey='milft_prod_v11_20261117_tournois_v01';
       db.players=[{id:'p1',first:'FICTIF',last:'A'},{id:'p2',first:'FICTIF',last:'B'}];
@@ -94,6 +98,7 @@ async function main(){
     await page.locator('#milft-google-connect').click();
     assert.match(await page.locator('#milft-google-auth-status').innerText(),/Google connecté à MILFT/);
     assert.equal(created,0,'OAuth alone does not write an archive');
+     assert.match(await page.locator('#milft-drive-brief').innerText(),/Drive connecté — copie actuelle non confirmée/);
     page.once('dialog',async dialog=>{
       assert.match(dialog.message(),/2 joueur\(s\) et 1 enregistrement\(s\)/,'Snapshot summary before upload');
       await dialog.accept();
@@ -112,6 +117,11 @@ async function main(){
       throw error;
     }
     assert.equal(created,1,'One fictional backup created only in the mocked Drive');
+     assert.match(await page.locator('#milft-drive-brief').innerText(),/Copie Drive confirmée à/);
+     assert.match(await page.locator('#milft-auto-brief').innerText(),/Auto : désactivée \(10 min\)/);
+     await page.evaluate(()=>window.MILFTDriveV11Test.changed());
+     assert.match(await page.locator('#milft-drive-brief').innerText(),/modifications locales en attente/i);
+     assert.equal(created,1,'Status does not create archive');
     assert.equal(await page.evaluate(key=>localStorage.getItem(key),state.key),state.snapshot,'Production storage unchanged by backup');
     await page.locator('#milft-drive-list-v11').click();
     await page.getByText(/MILFT_TOURNOIS_manuel_/).first().waitFor();
@@ -134,6 +144,7 @@ async function main(){
     await page.reload({waitUntil:'domcontentloaded'});
     assert.equal(await page.evaluate(key=>JSON.parse(localStorage.getItem(key)).players.length,state.key),2,'Synthetic restored players survive reload');
     assert.equal(await page.evaluate(key=>JSON.parse(localStorage.getItem(key)).tournaments.length,state.key),1,'Synthetic restored tournament survives reload');
+     assert.match(await page.locator('#milft-drive-brief').innerText(),/Drive non connecté/);
     assert.deepEqual(errors,[],'No browser script exceptions');
     console.log('OK candidate production: isolated storage, OAuth, consent, synthetic backup, listing, protected restore and reload; no real Drive accessed');
   }finally{await browser.close();await new Promise(resolve=>serve.close(resolve));}
