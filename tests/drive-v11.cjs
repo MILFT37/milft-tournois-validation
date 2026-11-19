@@ -18,9 +18,8 @@ async function fakeFetch(url,opts={}) {
     const q=u.searchParams.get('q')||'';
     if(q.includes('mimeType =')) {
       const name=q.match(/name = '([^']+)'/)?.[1];
-      if(q.includes("'root' in parents"))return ok({files:Array.from(files.values()).filter(f=>f.mimeType==='application/vnd.google-apps.folder'&&!f.parent&&f.name===name)});
       const parent=q.match(/'([^']+)' in parents/)?.[1];
-      return ok({files:Array.from(files.values()).filter(f=>f.mimeType==='application/vnd.google-apps.folder'&&f.parent===parent&&f.name===name)});
+      return ok({files:Array.from(files.values()).filter(f=>f.mimeType==='application/vnd.google-apps.folder'&&f.name===name&&(!parent||f.parent===parent))});
     }
     const parent=q.match(/'([^']+)' in parents/)?.[1];
     return ok({files:Array.from(files.values()).filter(f=>f.parent===parent&&f.mimeType==='application/json').map(({id,name,createdTime,size})=>({id,name,createdTime,size}))});
@@ -81,5 +80,27 @@ async function fakeFetch(url,opts={}) {
  assert.equal((await fixtureClient.list()).length,1,'Failed upload also preserves isolated fixture archive');
  assert(calls.every(c=>c.authorization==='Bearer fake-test-token'),'OAuth token only used in Authorization header');
  assert.equal((await client.backupFolder(false)),files.get(first.id).parent);
- console.log('OK Drive V1.1: authorization, visible folders, immutable snapshots, roundtrip, failure non-destructive');
+ // Cas réel : l'utilisateur a déplacé manuellement les deux dossiers MILFT
+ // sous « Appli MILFT / MILFT Tournoi » sans déplacer leurs sous-dossiers.
+ const clubRoot=Array.from(files.values()).find(f=>f.name==='MILFT Tournois'&&f.mimeType==='application/vnd.google-apps.folder');
+ const fixtureRoot=Array.from(files.values()).find(f=>f.name==='MILFT Tournois - Essais'&&f.mimeType==='application/vnd.google-apps.folder');
+ assert(clubRoot&&fixtureRoot);
+ clubRoot.parent='user-selected-parent-folder';
+ fixtureRoot.parent='user-selected-parent-folder';
+ const beforeFolders=Array.from(files.values()).filter(f=>f.mimeType==='application/vnd.google-apps.folder').length;
+ const movedClub=createDriveClient(fakeFetch,()=>'fake-test-token');
+ const movedFixture=createDriveClient(fakeFetch,()=>'fake-test-token',{testMode:true});
+ assert.equal((await movedClub.list()).length,2,'Archives du club retrouvées après déplacement');
+ assert.equal((await movedFixture.list()).length,1,'Archives fictives retrouvées après déplacement');
+ failUpload=false;
+ const third=await movedClub.upload(snapshot,'manuel');
+ assert.equal(files.get(third.id).parent,files.get(first.id).parent,'L'archive est ajoutée dans le sous-dossier existant');
+ assert.equal(Array.from(files.values()).filter(f=>f.mimeType==='application/vnd.google-apps.folder').length,beforeFolders,'Aucun nouveau dossier créé à la racine');
+ const duplicateId='duplicate-milft-folder';
+ files.set(duplicateId,{id:duplicateId,name:'MILFT Tournois',mimeType:'application/vnd.google-apps.folder',parent:'different-parent'});
+ const sizeBefore=files.size;
+ await assert.rejects(createDriveClient(fakeFetch,()=>'fake-test-token').list(),/Plusieurs dossiers/);
+ assert.equal(files.size,sizeBefore,'Aucune création en cas de doublons ambigus');
+ files.delete(duplicateId);
+ console.log('OK Drive V1.1: archives immuables, dossiers déplacés réutilisés, ambiguïtés refusées');
 })().catch(e=>{console.error(e);process.exitCode=1;});

@@ -111,12 +111,23 @@ write.onclick=async function(){
   // Avec drive.file, seuls les éléments créés ou ouverts avec cette application sont visibles.
   // Un dossier de diagnostic dédié évite toute confusion avec les sauvegardes réelles.
   const params=new URLSearchParams({
-   q:"name = 'MILFT Tournois - Diagnostic' and mimeType = 'application/vnd.google-apps.folder' and 'root' in parents and trashed = false",
-   fields:'files(id,name)',spaces:'drive',pageSize:'10'
+   q:"name = 'MILFT Tournois - Diagnostic' and mimeType = 'application/vnd.google-apps.folder' and trashed = false",
+   fields:'nextPageToken,files(id,name,parents)',spaces:'drive',pageSize:'100'
   });
-  const listing=await (await request(api+'?'+params)).json();
-  if(!Array.isArray(listing?.files))throw Error('Liste des dossiers invalide');
-  let folder=listing.files.find(f=>f?.name==='MILFT Tournois - Diagnostic'&&f?.id)?.id;
+  let folder=null,pageToken='';
+  for(let page=0;page<20;page++){
+   if(pageToken)params.set('pageToken',pageToken);else params.delete('pageToken');
+   const listing=await (await request(api+'?'+params)).json();
+   if(!Array.isArray(listing?.files))throw Error('Liste des dossiers invalide');
+   for(const f of listing.files){
+    if(f?.name!=='MILFT Tournois - Diagnostic'||!f?.id)continue;
+    if(folder&&folder!==f.id)throw Error('Plusieurs dossiers de diagnostic : aucun choix automatique');
+    folder=f.id;
+   }
+   if(!listing.nextPageToken)break;
+   if(listing.nextPageToken===pageToken||page===19)throw Error('Pagination des dossiers incomplète : aucune création');
+   pageToken=listing.nextPageToken;
+  }
   if(!folder){
    const body=JSON.stringify({name:'MILFT Tournois - Diagnostic',mimeType:'application/vnd.google-apps.folder'});
    const created=await (await request(api+'?fields=id,name',{method:'POST',headers:{'Content-Type':'application/json'},body})).json();

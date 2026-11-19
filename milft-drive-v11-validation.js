@@ -27,12 +27,28 @@ function createDriveClient(fetchImpl, tokenProvider, options={}) {
     return raw ? response.text() : response.status === 204 ? null : response.json();
   }
   async function findFolder(name, parent) {
-    const esc = v => String(v).replace(/\\/g,'\\\\').replace(/'/g,"\\'");
-    const q = "name = '"+esc(name)+"' and mimeType = '"+FOLDER_MIME+"' and trashed = false" + (parent ? " and '"+esc(parent)+"' in parents" : " and 'root' in parents");
-    const p = new URLSearchParams({q,fields:'nextPageToken,files(id,name,parents)',pageSize:'100',spaces:'drive'});
-    const results=await request(BASE+'?'+p);
-    if(!Array.isArray(results?.files)) throw Error('Liste des dossiers Drive invalide');
-    return results.files.find(f=>typeof f.id==='string'&&f.name===name)?.id||null;
+    const esc=v=>String(v).replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+    // Les dossiers créés par MILFT restent accessibles via drive.file même
+    // lorsqu'ils sont déplacés sous « Appli MILFT / MILFT Tournoi ».
+    // Ne pas imposer la racine à la recherche du dossier principal.
+    const q="name = '"+esc(name)+"' and mimeType = '"+FOLDER_MIME+"' and trashed = false"+
+      (parent?" and '"+esc(parent)+"' in parents":'');
+    let pageToken='',found=null;
+    for(let page=0;page<20;page++){
+      const p=new URLSearchParams({q,fields:'nextPageToken,files(id,name,parents)',pageSize:'100',spaces:'drive'});
+      if(pageToken)p.set('pageToken',pageToken);
+      const result=await request(BASE+'?'+p);
+      if(!Array.isArray(result?.files))throw Error('Liste des dossiers Drive invalide');
+      for(const f of result.files){
+        if(typeof f?.id!=='string'||f.name!==name)continue;
+        if(found&&found!==f.id)throw Error('Plusieurs dossiers « '+name+' » accessibles : aucun choix ni création automatique');
+        found=f.id;
+      }
+      if(!result.nextPageToken)return found;
+      if(result.nextPageToken===pageToken)throw Error('Pagination des dossiers Drive incohérente');
+      pageToken=result.nextPageToken;
+    }
+    throw Error('Recherche des dossiers Drive incomplète : aucune création automatique');
   }
   async function createFolder(name,parent) {
     const info = await request(BASE+'?fields=id,name',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,mimeType:FOLDER_MIME,parents:parent?[parent]:undefined})});
