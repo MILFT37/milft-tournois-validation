@@ -23,7 +23,7 @@ Date : 19 novembre 2026. Suite directe des MAJ 47–60, sans refaire les validat
 - Test unitaire `tests/drive-v11.cjs` : limites, valeurs possibles et défaut.
 - Scénario Chromium isolé `tests/drive-v11-browser.cjs` : fréquence choisie sauvegardée après rechargement, arrêt au 200e envoi automatique, refus de l'automatique suivant, sauvegarde manuelle toujours possible sans incrémenter le compteur et aucune mutation des données locales.
 - Candidate de production : assertion statique de présence du réglage et simulation du changement de fréquence `15 → 10` minutes, parcours déjà existant de sauvegarde/restauration fictive Chrome/WebKit.
-- Au point de rédaction : Google Drive **n°39 SUCCESS** (`44533460528`), PWA **n°14 SUCCESS** (`44533220122`), GitHub Pages **n°238 SUCCESS** (`44533212539`). Candidate de production **n°13 en cours** (`44533586417`) à vérifier avant de déclarer la candidate verte.
+- Au point de rédaction : Google Drive **n°39 SUCCESS** (`44533460528`), PWA **n°14 SUCCESS** (`44533220122`), GitHub Pages **n°238 SUCCESS** (`44533212539`). Candidate de production **n°13 SUCCESS** (`44533586417`) : statique, Chrome/Chromium et WebKit/Safari simulé, restauration fictive. Tous les contrôles ciblés sont verts.
 
 ## Préservation et reprise
 - Première sauvegarde réelle sur Samsung déjà confirmée en MAJ 59, le 19/11 à 11:55 (42 joueurs, 7 objets techniques) : ne pas la recréer pour les tests ; aucun transfert automatique vers la production.
