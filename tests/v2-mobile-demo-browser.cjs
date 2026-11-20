@@ -20,6 +20,9 @@ async function main(){
   await page.goto(origin+'/v2/mobile-demo.html');
   await page.locator('#status').getByText('Projet Firebase non configuré', {exact:false}).waitFor();
   assert.equal(await page.locator('#signIn').isDisabled(),true);
+  assert.equal(await page.locator('#copyUid').isDisabled(),true);
+  assert.equal(await page.locator('#copyTrial').isDisabled(),true);
+  assert.equal(await page.locator('#copyLink').isDisabled(),true);
   assert.equal(await page.locator('#rooms').isHidden(),true);
   assert.equal(await page.locator('#demo').isHidden(),true);
   assert.equal(await page.locator('#sharing').isHidden(),true);

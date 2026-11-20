@@ -16,8 +16,26 @@ function updateUI(){
   $('send').disabled=state.role==='viewer'||!state.match||!state.outbox||state.sending;
   $('retry').disabled=state.role==='viewer'||!state.outbox||state.sending;
   $('invite').disabled=state.role!=='admin';$('revoke').disabled=state.role!=='admin';
+  $('copyUid').disabled=!state.user;
+  $('copyTrial').disabled=!state.trial;
+  $('copyLink').disabled=!state.trial;
 }
 function newId(){return Array.from(crypto.getRandomValues(new Uint8Array(12)),n=>n.toString(16).padStart(2,'0')).join('');}
+function trialLink(id){
+ const url=new URL('./mobile-demo.html',window.location.href);
+ url.searchParams.set('essai',id);
+ return url.href;
+}
+async function copyText(value,label,field){
+ try{
+  if(!navigator.clipboard?.writeText)throw Error('Presse-papiers indisponible');
+  await navigator.clipboard.writeText(value);
+  status(label+' copié.','good');
+ }catch(e){
+  if(field){field.value=value;field.focus();field.select();}
+  status('Copie automatique indisponible. Le texte est sélectionné : utiliser Copier.','error');
+ }
+}
 function fingerprint(c){return JSON.stringify([c.tournamentId,c.matchId,c.actorId,c.deviceId,c.expectedVersion,c.setIndex,c.goals.a,c.goals.b]);}
 // L'identifiant V2 doit survivre à la fermeture du navigateur : sessionStorage
 // seul rendrait les brouillons IndexedDB inaccessibles à la réouverture.
@@ -164,11 +182,16 @@ async function manageUser(revoke=false){
 async function initialize(){
  try{
   state.deviceId=persistentDeviceId();
+  const linkTrial=new URLSearchParams(location.search).get('essai');
   const savedTrial=localStorage.getItem(LAST_TRIAL_KEY);
-  if(savedTrial&&valid.test(savedTrial))$('trialId').value=savedTrial;
+  if(linkTrial&&/^trial[a-f0-9]{24}$/.test(linkTrial))$('trialId').value=linkTrial;
+  else if(savedTrial&&valid.test(savedTrial))$('trialId').value=savedTrial;
  }catch(e){status('Stockage local V2 indisponible : sauvegarde des scores impossible. '+errorText(e),'error');return;}
  window.addEventListener('online',()=>{if(state.user&&state.scope&&state.role!=='viewer')transmit();});
  for(const id of ['home','away'])$(''+id).addEventListener('input',()=>{if(!state.draftDirty){state.draftDirty=true;state.draftBaseVersion=state.match?.version??null;}});
+ $('copyUid').onclick=()=>{if(state.user)void copyText(state.user.uid,'Identifiant',$('who'));};
+ $('copyTrial').onclick=()=>{if(state.trial)void copyText(state.trial,'Code de salle',$('trialId'));};
+ $('copyLink').onclick=()=>{if(state.trial)void copyText(trialLink(state.trial),'Lien de partage',$('trialId'));};
  $('create').onclick=createRoom;
  $('join').onclick=()=>prepareRoom($('trialId').value.trim());
  $('send').onclick=sendScore;

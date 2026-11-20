@@ -82,6 +82,9 @@ async function main(){
   browser=await chromium.launch({headless:true});
   const androidA=await browser.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true,serviceWorkers:'block'});
   const androidB=await browser.newContext({viewport:{width:412,height:915},isMobile:true,hasTouch:true,serviceWorkers:'block'});
+  await Promise.all([androidA,androidB].map(ctx=>ctx.addInitScript(()=>{
+    Object.defineProperty(navigator,'clipboard',{configurable:true,value:{writeText:async txt=>{window.__milftCopied=txt;}}});
+  })));
   const pageA=await androidA.newPage(),pageB=await androidB.newPage();
   const pageErrors=[];
   for(const p of [pageA,pageB])p.on('pageerror',e=>pageErrors.push(e.message));
@@ -91,10 +94,21 @@ async function main(){
   await Promise.all([pageA.locator('#rooms').waitFor({state:'visible',timeout:20000}),pageB.locator('#rooms').waitFor({state:'visible',timeout:20000})]);
   const uidA=await pageA.locator('#who').inputValue(),uidB=await pageB.locator('#who').inputValue();
   assert(uidA&&uidB&&uidA!==uidB,'Two phones must have separate authenticated identities');
+  await pageB.locator('#copyUid').click();
+  assert.equal(await pageB.evaluate(()=>window.__milftCopied),uidB,'Second Android copies Firebase UID in one tap');
   await pageA.locator('#create').click();
   await pageA.locator('#demo').waitFor({state:'visible',timeout:20000});
   const trial=await pageA.locator('#trialId').inputValue();
   assert.match(trial,/^trial[a-f0-9]{24}$/);
+  await pageA.locator('#copyTrial').click();
+  assert.equal(await pageA.evaluate(()=>window.__milftCopied),trial,'Owner copies trial code');
+  await pageA.locator('#copyLink').click();
+  const shareUrl=await pageA.evaluate(()=>window.__milftCopied);
+  assert.equal(new URL(shareUrl).searchParams.get('essai'),trial,'Share link carries only trial code');
+  assert.equal(new URL(shareUrl).pathname,'/v2/mobile-demo.html');
+  await pageB.goto(shareUrl);
+  await pageB.locator('#rooms').waitFor({state:'visible',timeout:20000});
+  assert.equal(await pageB.locator('#trialId').inputValue(),trial,'Second Android prefilled from share link');
   assert.equal(await pageA.locator('#role').innerText(),'Propriétaire');
   await pageB.locator('#trialId').fill(trial);
   await pageB.locator('#join').click();

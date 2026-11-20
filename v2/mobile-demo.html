@@ -23,12 +23,14 @@ code{overflow-wrap:anywhere}strong{font-weight:750}.score{font-size:1.7rem;font-
 <p class="note">Cette page est un prototype séparé. Les résultats réels, les joueurs MILFT et les sauvegardes Google Drive ne sont jamais importés.</p>
 <div class="row"><button id="signIn" disabled>Connexion Google</button><button id="signOut" class="secondary" hidden>Déconnexion</button></div>
 <div class="field"><label for="who">Compte connecté / Identifiant à partager au propriétaire</label><input id="who" readonly value="Non connecté"></div>
+<button id="copyUid" class="link" disabled>Copier mon identifiant</button>
 </section>
 <section id="rooms" hidden>
 <h2>1. Créer ou rejoindre un essai</h2>
 <div class="row"><button id="create">Créer un match fictif</button><button id="join" class="secondary">Ouvrir le code saisi</button></div>
 <div class="field"><label for="trialId">Code de la salle d'essai</label><input id="trialId" maxlength="80" autocomplete="off" placeholder="trial..."></div>
-<p class="note">Sur l'autre Android : ouvrir cette même page, se connecter, puis saisir le code. L'accès avec un compte différent nécessite d'abord une autorisation du propriétaire.</p>
+<div class="row"><button id="copyTrial" class="link" disabled>Copier le code</button><button id="copyLink" class="link" disabled>Copier le lien</button></div>
+<p class="note">Sur l'autre Android : ouvrir cette même page, se connecter, puis saisir le code. Le lien facilite l'ouverture sur l'autre appareil, mais ne donne pas d'autorisation. Avec un autre compte Google, le propriétaire doit d'abord autoriser l'identifiant du second utilisateur.</p>
 </section>
 <section id="demo" hidden>
 <h2>2. Match de démonstration</h2>
