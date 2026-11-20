@@ -19,3 +19,10 @@ Suite au GO de poursuite après la MAJ76 validée. Prototype V2 uniquement, aucu
 - Récupérer les workflows GitHub Actions pour ce commit, corriger si besoin, vérifier Pages après déploiement.
 - Ne pas déclarer le test réel entre deux appareils validé sans disposer d'un deuxième téléphone/PC et d'un autre compte.
 - Aucune opération n'est à demander au Samsung pour ce jalon ; conserver la production `MILFT37/milft-tournois` et les archives Drive sans modification. Forfait Spark gratuit conservé.
+
+## Clôture MAJ77 — publication et quatre tests SUCCESS
+- Commit V2 initial `c6bb3b72009a2964fc64d787dffcb5a0903e3467`, correction ciblée du test restauré `54c4fe715f9e8e84a9b0452d305d158a6c831ae5`, puis correction des messages de retrait de droits `eb154911efdc0603b16ab3536fb45dd349ed52ff`.
+- Premier test E2E a identifié une différence réelle de séquencement Firebase : à la révocation, le flux match peut recevoir `PERMISSION_DENIED` avant l'écoute `members/UID`. L'écran se masquait correctement, mais le texte indiquait une interruption générique. Correction : message explicite « Accès retiré ou refusé par Firebase » et conservation de la file locale. Aucun changement aux règles serveur.
+- Pour le commit corrigé `eb154911` : simulation partage V2 run `44818181287` **SUCCESS** ; navigateur Chromium/WebKit run `44818181319` **SUCCESS** ; E2E deux Android avec émulateurs Firebase et rôles à chaud run `44818181417` **SUCCESS** ; déploiement GitHub Pages + comparaison des fichiers publics run `44818181324` **SUCCESS**.
+- L'interface du prototype V2 actualisée est publiée ; **le test physique entre deux appareils/identités demeure encore à faire**. La création de salle et le score 5–3 sur Samsung sont déjà validés et ne doivent pas être redemandés.
+- Dernier commit de production `MILFT37/milft-tournois` relevé : `d81c9f03f7e7ca016e517c6df8ae1f458285ee0c` — inchangé par MAJ77. Aucune modification d'archives Drive ni du forfait Firebase Spark.
