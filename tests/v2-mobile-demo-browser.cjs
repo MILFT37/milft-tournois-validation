@@ -6,6 +6,11 @@ const engine={chromium,webkit}[type];
 const server=http.createServer((req,res)=>{
  const route=decodeURIComponent(new URL(req.url,'http://localhost').pathname);
  if(!['/v2/mobile-demo.html','/v2/mobile-demo.mjs','/v2/firebase-config.mjs','/v2/outbox-idb.js'].includes(route)){res.writeHead(404).end('Not found');return;}
+ // Fixture intentionally disabled: browser isolation test must never contact real Firebase.
+ if(route==='/v2/firebase-config.mjs'){
+  res.writeHead(200,{'Content-Type':'text/javascript','Cache-Control':'no-store'}).end('export const firebaseConfig = null;\n');
+  return;
+ }
  const file=path.join(process.cwd(),route);
  fs.readFile(file,(err,data)=>{if(err){res.writeHead(404).end('Missing');return;}res.writeHead(200,{'Content-Type':route.endsWith('.html')?'text/html':route.endsWith('.mjs')?'text/javascript':'application/javascript','Cache-Control':'no-store'}).end(data);});
 });
@@ -69,7 +74,7 @@ async function main(){
     db.close();return items.map(x=>x.command.id);
   }),['evt-test'],'V2 draft persists after closing tab');
   await context.close();
-  console.log('OK MAJ71 mobile UI '+type+': no Firebase configured, no outbound calls, no V1 storage, durable draft after reload');
+  console.log('OK MAJ75 mobile UI '+type+': Firebase disabled by test fixture, no outbound calls, no V1 storage, durable draft after reload');
  }finally{await browser.close();await new Promise(resolve=>server.close(resolve));}
 }
 main().catch(e=>{console.error(e);process.exitCode=1;});

@@ -70,7 +70,10 @@ jobs:
             expected=tuple(map(int,icon['sizes'].split('x')))
             assert (w,h)==expected, f'Dimensions d’icône incohérentes: {image} {w}x{h}'
           assert all((site/filename).is_file() for filename in ['v2/mobile-demo.html','v2/mobile-demo.mjs','v2/firebase-config.mjs','v2/outbox-idb.js']), 'Prototype V2 isolé incomplet'
-          assert 'firebaseConfig = null' in (site/'v2/firebase-config.mjs').read_text(encoding='utf-8'), 'Ne jamais activer Firebase sans configuration explicite'
+          config=(site/'v2/firebase-config.mjs').read_text(encoding='utf-8')
+          assert 'export const firebaseConfig = {' in config and 'firebaseConfig = null' not in config, 'Configuration Firebase V2 non active'
+          assert 'milft-tournois-partage-55e44' in config and 'milft-tournois-partage-55e44-default-rtdb.europe-west1.firebasedatabase.app' in config, 'Projet ou base Firebase non conformes au compte du club'
+          assert "v2Trials/" in (site/'v2/mobile-demo.mjs').read_text(encoding='utf-8'), 'Le prototype doit rester sur les essais fictifs V2 uniquement'
           html=(site/stable).read_text(encoding='utf-8')
           assert 'milft-drive-v11-validation.js' in html, 'Module Drive absent du HTML'
           assert 'sw.validation.js' in html, 'Service worker absent du HTML'
