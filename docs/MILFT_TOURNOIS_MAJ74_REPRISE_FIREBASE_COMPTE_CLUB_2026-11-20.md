@@ -1,0 +1,31 @@
+# MILFT Tournois — MAJ 74 — Reprise : Firebase sous le compte du club
+
+**Date : 20 novembre 2026, fin d'après-midi (heure de Paris).** Cette feuille de reprise complète la MAJ 73, sans refaire les validations historiques.
+
+## Avancement validé avant changement de chat
+1. Le partage V2 reste une **application Web** pour Samsung ↔ autre Android, Android ↔ PC et iPhone, dans l'objectif de gratuité complète et de respect des autorisations.
+2. Prototype isolé déjà publié : https://milft37.github.io/milft-tournois-validation/v2/mobile-demo.html . Le fichier `v2/firebase-config.mjs` contient toujours `firebaseConfig = null`, donc **aucun partage réel encore activé**.
+3. Les quatre workflows MAJ 73 ont réussi : simulation V2 `44775844991`, Chromium/WebKit `44775845347`, E2E deux Android avec SDK Firebase Auth + RTDB sur émulateurs `44775845020`, Pages validation `44775845079`. Ne pas les relancer sans modification du code.
+4. Référence MAJ 73 : `docs/MILFT_TOURNOIS_MAJ73_PARTAGE_PAR_LIEN_2026-11-20.md`. Code de démonstration avec connexion, code/lien à copier, invitation par UID, protections contre conflits, brouillons hors ligne persistants. Les règles de sécurité isolées sont dans `v2/database.rules.json` (sous-arbre `v2Trials`).
+5. Production V1.1 `MILFT37/milft-tournois` à son dernier état précédemment vérifié : commit `d81c9f03f7e7ca016e517c6df8ae1f458285ee0c` ; aucune bascule V2 ni import/restauration.
+
+## Nouveau jalon : console Firebase réelle atteinte sur Samsung
+- L'intégration Firebase **dans ChatGPT** n'a pas pu être installée sur Samsung (« connexion impossible », ou appui sans action). Ne plus renvoyer des suggestions de plugin : cela a déjà été tenté plusieurs fois. L'utilisateur est passé directement par **https://console.firebase.google.com/** dans Chrome.
+- La création initiale s'est déroulée sous le compte Google **personnel** par erreur. Un projet personnel peut donc exister, **ne pas supprimer ni modifier sans demande explicite**.
+- L'utilisateur s'est ensuite connecté avec le **compte Google du club MILFT**. Les captures écran dans le chat confirment l'existence et l'ouverture de **« MILFT Tournois Partage »** dans ce compte, sur la page d'accueil du projet Firebase (« Bonjour milft »).
+- **État exact au dernier écran :** dans la console du projet « MILFT Tournois Partage », bouton `+ Ajouter une application` juste sous le nom. L'utilisateur n'a pas encore enregistré l'application Web, ni fourni la configuration Web publique.
+- **Forfait Spark gratuit pas encore visuellement confirmé**, Auth Google et Realtime Database pas encore configurés, règles serveur pas encore déployées. Ne pas affirmer le contraire.
+- L'utilisateur veut changer de chat avant de poursuivre.
+
+## Reprise opérationnelle immédiate dans le nouveau chat
+1. Reprendre la conversation **à partir du bouton « + Ajouter une application »** actuellement visible sous « MILFT Tournois Partage » dans le compte Google MILFT. Guider **une seule manipulation à la fois sur Samsung**.
+2. Dans la liste de plateformes, choisir l'icône **Web `</>`**, et non Android natif ou iOS. Proposer un nom explicite `MILFT Tournois Partage Web`. Il n'est pas nécessaire d'activer Firebase Hosting pour GitHub Pages.
+3. Vérifier le forfait **Spark** et refuser tout processus demandant une carte bancaire ou Blaze.
+4. Récupérer les **seuls paramètres publics de l'application Web** (apiKey, authDomain, databaseURL, projectId, appId). Faire **vérifier/déployer les règles `v2/database.rules.json` avant tout test d'écriture réel**. Activer Authentication Google et autoriser le domaine `milft37.github.io`, puis configurer Realtime Database dans une région compatible Spark (à vérifier selon options réellement proposées par console).
+5. Ne modifier **que** le prototype de validation et `v2/firebase-config.mjs`, après vérification de l'ID du bon projet et des règles sécurisées, pour le **premier essai fictif** sur deux téléphones. Ne pas publier de clés privées, secrets, jetons, identifiants personnels.
+6. Aucun transfert automatique des joueurs, tournois, classements, archives Drive ou données locales existants. Obtenir un GO distinct avant toute modification de production/migration, et ne pas refaire les vérifications déjà validées.
+
+## Méthode souhaitée
+L'utilisateur travaille depuis un Samsung Android, souhaite intervenir uniquement aux étapes indispensables, **une action claire puis une capture si nécessaire**. L'assistant doit travailler directement sur GitHub dès que possible, vérifier les changements sans demander au client d'être bêta-testeur, puis mettre à jour cette feuille de route à chaque jalon important. Priorité absolue : partage Samsung ↔ autre Android fonctionnel et sécurisé, gratuit, avec tournoi fictif d'abord.
+
+**Phrase de reprise recommandée :** « Reprends MILFT Tournois après la MAJ 74. Lis la feuille de route GitHub. Je suis dans Firebase, compte MILFT, projet MILFT Tournois Partage, devant le bouton + Ajouter une application. Guide-moi depuis mon Samsung une étape à la fois. Ne recommence pas les tests validés et ne touche pas à la production V1.1 ni à mes archives. »
