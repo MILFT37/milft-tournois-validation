@@ -249,8 +249,11 @@ async function main(){
   // MAJ80 : relancer automatiquement un événement resté « sending » après
   // fermeture sans forcer le bail encore actif (plusieurs onglets possibles).
   await pageA.locator('#create').click();
+  await pageA.waitForFunction(previous=>document.getElementById('trialId').value!==previous, nextTrial);
   await pageA.locator('#demo').waitFor({state:'visible'});
+  await pageA.locator('#score').getByText('0 : 0').waitFor();
   const recoveryTrial=await pageA.locator('#trialId').inputValue();
+  assert.notEqual(recoveryTrial,nextTrial,'A new trial must be opened before testing crash recovery');
   const stranded=await pageA.evaluate(async()=>{
     const d=await MILFTV2Outbox.open({indexedDB,dbName:'MILFT_V2_DEMO_OUTBOX_20261120'});
     const scope={tournamentId:document.getElementById('trialId').value,
