@@ -29,3 +29,10 @@
 L'utilisateur travaille depuis un Samsung Android, souhaite intervenir uniquement aux étapes indispensables, **une action claire puis une capture si nécessaire**. L'assistant doit travailler directement sur GitHub dès que possible, vérifier les changements sans demander au client d'être bêta-testeur, puis mettre à jour cette feuille de route à chaque jalon important. Priorité absolue : partage Samsung ↔ autre Android fonctionnel et sécurisé, gratuit, avec tournoi fictif d'abord.
 
 **Phrase de reprise recommandée :** « Reprends MILFT Tournois après la MAJ 74. Lis la feuille de route GitHub. Je suis dans Firebase, compte MILFT, projet MILFT Tournois Partage, devant le bouton + Ajouter une application. Guide-moi depuis mon Samsung une étape à la fois. Ne recommence pas les tests validés et ne touche pas à la production V1.1 ni à mes archives. »
+
+
+## Avancement confirmé le 20/11/2026 à 18 h 21 (Paris) — après reprise du chat
+- Capture Samsung : étape « Enregistrer l'application » terminée (coche bleue) dans l'assistant d'ajout Firebase Web.
+- Configuration publique affichée par la console : `projectId = milft-tournois-partage-55e44`. L'application Web est désormais enregistrée ; nom proposé au jalon précédent : `MILFT Tournois Partage Web` (non relu dans la capture finale).
+- Étape courante : « Ajouter le SDK Firebase » ; l'utilisateur n'a pas à installer npm sur Android, ni à recopier le code de la capture. Prochaine action : terminer l'assistant et revenir à la console du projet.
+- **Non encore confirmé** : forfait Spark, Authentication Google, domaine autorisé, création RTDB et ses règles, valeur `databaseURL`. La configuration GitHub `v2/firebase-config.mjs` reste volontairement désactivée ; aucun échange réel et aucune donnée existante migrée.
