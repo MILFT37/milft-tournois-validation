@@ -43,3 +43,9 @@ Après vérification des nouveaux workflows et de la page publiée : premier ess
 - Capture Samsung de l'utilisateur : page publique `/v2/mobile-demo.html` affiche en vert « Connecté. Créer un match fictif ou saisir un code de salle. » ; bouton « Déconnexion » affiché et UID Firebase attribué au compte connecté. Cela confirme le premier succès **d'authentification Google réelle** depuis le Samsung.
 - La capture ne prouve pas à elle seule l'adresse e-mail du compte effectivement choisi ; ne pas la déduire de l'UID.
 - **Prochaine manipulation utilisateur :** appuyer sur « Créer un match fictif » puis envoyer la capture du résultat ; la permission effective d'écriture dans la RTDB reste à valider. Aucun changement de production ou de données historiques.
+
+## Première création réelle d'un match fictif — capture Samsung 19 h 49
+- Sur le prototype V2 public, sous l'identité Firebase authentifiée, clic sur **Créer un match fictif**. Capture confirme l'apparition d'un code de salle `trial...` (non reproduit dans la feuille de route), du rôle **Propriétaire** et du statut **Écoute Firebase active**.
+- Match initial affiché **0–0**, **version distante 0**, dernier événement `seed`, file locale **0 en attente / 0 en cours / 0 conflit / 0 refusé**. Il s'agit de la première preuve visuelle que la création de salle fictive et sa lecture temps réel sur Firebase fonctionnent depuis le vrai Samsung.
+- Prochaine étape : enregistrer un score de test **5–3**, confirmer la **version distante 1** et l'absence d'erreur ; ensuite tester le partage avec un second Android et une seconde identité autorisée. Ne pas considérer la synchronisation inter-appareils comme validée avant cet essai.
+- Aucun transfert de tournois V1.1, joueurs, championnats ou archives Drive.
