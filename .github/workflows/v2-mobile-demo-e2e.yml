@@ -1,0 +1,36 @@
+name: V2.0 — deux Android en navigateur + Firebase Emulator isolé
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'v2/mobile-demo.mjs'
+      - 'v2/mobile-demo.html'
+      - 'v2/outbox-idb.js'
+      - 'v2/database.rules.json'
+      - 'tests/v2-mobile-demo-e2e.cjs'
+      - 'firebase.v2.browser.emulator.json'
+      - '.github/workflows/v2-mobile-demo-e2e.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  two-androids:
+    runs-on: ubuntu-24.04
+    container:
+      image: mcr.microsoft.com/playwright:v1.56.1-noble
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Dépendances d'émulation Auth + Database + Playwright et bundler
+        run: npm install --no-save firebase-tools@14.17.0 @firebase/rules-unit-testing@5.0.0 firebase@12.6.0 playwright@1.56.1 esbuild@0.25.12
+      - name: Vérifier la syntaxe du test
+        run: node --check tests/v2-mobile-demo-e2e.cjs
+      - name: Test de deux Android sur émulateurs Auth/RTDB avec donnée fictive
+        run: npx firebase --config firebase.v2.browser.emulator.json --project demo-milft-v2-71 emulators:exec --only auth,database "node tests/v2-mobile-demo-e2e.cjs"
