@@ -49,7 +49,7 @@ code{overflow-wrap:anywhere}strong{font-weight:750}.score{font-size:1.7rem;font-
 <div class="field"><label for="invited">Identifiant UID communiqué par l'autre appareil</label><input id="invited" autocomplete="off" placeholder="Identifiant Firebase du second appareil"></div>
 <div class="row"><select id="permission"><option value="editor">Saisie des scores</option><option value="viewer">Lecture seule</option></select><button id="invite">Autoriser</button><button id="revoke" class="danger">Retirer l'accès</button></div>
 <p id="inviteNotice" class="inline-status" role="status" aria-live="polite"></p>
-<p class="note">L'autorisation n'est donnée qu'au compte exact indiqué. Elle ne transfère aucune archive ni donnée de tournoi réel.</p>
+<p class="note">Seul le compte Google invité reçoit l'accès au match fictif. Un passage en lecture seule désactive la saisie sur l'autre appareil ; un retrait d'accès ferme automatiquement sa vue du match. Les archives et tournois réels ne sont pas transférés.</p>
 </section>
 <section><h2>Informations techniques</h2>
 <p class="note">Ce prototype utilise le projet Firebase Spark du club, uniquement pour des matchs fictifs sous v2Trials. Connexion Google via fenêtre contextuelle (autorisations du navigateur requises). Aucune donnée des tournois réels V1.1 ou des archives Drive n'est transférée.</p>

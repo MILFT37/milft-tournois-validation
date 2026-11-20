@@ -169,10 +169,25 @@ async function main(){
   await pageA.locator('#score').getByText('8 : 6').waitFor({timeout:20000});
   await restored.locator('#queue').getByText('0 en attente',{exact:false}).waitFor();
   assert.equal(await pageA.locator('#score').innerText(),'8 : 6');
-  // Revoke editor access. Rules must take effect on reads and writes.
+  // MAJ77 : changement de droits à chaud sans que l'invité actualise la page.
+  await pageA.locator('#permission').selectOption('viewer');
+  await pageA.locator('#invite').click();
+  await pageB.locator('#role').getByText('Lecture seule').waitFor({timeout:15000});
+  assert.equal(await pageB.locator('#send').isDisabled(),true,'Downgrade disables score entry in guest UI');
+  assert.equal(await pageB.locator('#retry').isDisabled(),true,'Downgrade disables queue retry');
+  assert.equal(await pageB.locator('#score').innerText(),'8 : 6','Viewer still sees authorized score');
+  await pageA.locator('#permission').selectOption('editor');
+  await pageA.locator('#invite').click();
+  await pageB.locator('#role').getByText('Autorisé à saisir').waitFor({timeout:15000});
+  assert.equal(await pageB.locator('#send').isEnabled(),true,'Editor permission restored dynamically');
+  // Révocation en direct : plus d'accès à l'écran score sans rafraîchissement.
   await pageA.locator('#revoke').click();
   await pageA.locator('#status.good').getByText('Accès révoqué',{exact:false}).waitFor();
   assert.match(await pageA.locator('#inviteNotice').innerText(),/Accès révoqué/,'Revocation feedback visible next to controls');
+  await pageB.locator('#demo').waitFor({state:'hidden',timeout:15000});
+  assert.match(await pageB.locator('#status.error').innerText(),/Accès retiré/,'Guest sees immediate revocation');
+  assert.equal(await pageB.locator('#copyLink').isDisabled(),true,'Revoked guest has no sharing controls');
+  assert.equal(await pageB.locator('#score').innerText(),'— : —','Revocation redacts old score in DOM');
   let actual;
   await environment.withSecurityRulesDisabled(async ctx=>{
     actual=(await ctx.database('https://'+projectId+'-default-rtdb.firebaseio.com').ref('v2Trials/'+trial+'/matches/demo').once('value')).val();

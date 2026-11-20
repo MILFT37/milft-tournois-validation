@@ -3,11 +3,11 @@ import {firebaseConfig} from './firebase-config.mjs';
 const $=id=>document.getElementById(id);
 const valid=/^[A-Za-z0-9][A-Za-z0-9_-]{0,79}$/;
 const uidValid=/^[A-Za-z0-9_-]{1,128}$/;
-const state={api:null,auth:null,db:null,user:null,outbox:null,scope:null,trial:null,role:null,match:null,unsubscribe:null,deviceId:null,sending:false,draftDirty:false,draftBaseVersion:null};
+const state={api:null,auth:null,db:null,user:null,outbox:null,scope:null,trial:null,role:null,match:null,unsubscribe:null,unsubscribeMember:null,deviceId:null,sending:false,draftDirty:false,draftBaseVersion:null};
 function status(msg,tone=''){const e=$('status');e.textContent=msg;e.className=tone;}
 function log(s){const e=$('log');e.textContent=(new Date().toLocaleTimeString('fr-FR')+' · '+s+'\n'+e.textContent).slice(0,3000)}
 function errorText(e){return String(e?.code||e?.message||e||'Erreur').slice(0,200)}
-function resetRoom(){state.unsubscribe?.();state.unsubscribe=null;state.trial=null;state.match=null;state.role=null;state.scope=null;state.outbox?.close();state.outbox=null;state.draftDirty=false;state.draftBaseVersion=null;$('demo').hidden=true;$('sharing').hidden=true;$('roomNotice').textContent='';$('inviteNotice').textContent='';}
+function resetRoom(){state.unsubscribe?.();state.unsubscribe=null;state.unsubscribeMember?.();state.unsubscribeMember=null;state.trial=null;state.match=null;state.role=null;state.scope=null;state.outbox?.close();state.outbox=null;state.draftDirty=false;state.draftBaseVersion=null;$('score').textContent='— : —';$('version').textContent='Version distante inconnue';$('home').value=0;$('away').value=0;$('demo').hidden=true;$('sharing').hidden=true;$('roomNotice').textContent='';$('inviteNotice').textContent='';}
 function updateUI(){
   $('rooms').hidden=!state.user;
   $('signIn').hidden=!!state.user;$('signOut').hidden=!state.user;
@@ -87,8 +87,34 @@ async function prepareRoom(trialId){
    $('demo').hidden=false;$('sharing').hidden=role!=='admin';updateUI();
    localStorage.setItem(LAST_TRIAL_KEY,trialId);
    state.unsubscribe=api.onValue(api.ref(db,base+'/matches/demo'),snapshot=>{
+      if(state.trial!==trialId||state.user?.uid!==uid)return;
       state.match=snapshot.val();syncScore();$('net').textContent='Écoute Firebase active';updateUI();
-   },e=>{state.match=null;$('net').textContent='Écoute indisponible';updateUI();status('Lecture du match refusée : '+errorText(e),'error');});
+   },e=>{
+      if(state.trial!==trialId||state.user?.uid!==uid)return;
+      resetRoom();updateUI();
+      status('Lecture du match interrompue : '+errorText(e)+'. La file locale reste conservée.','error');
+   });
+   // L'écoute du score seule ne suffit pas pour retirer immédiatement le contenu
+   // lorsqu'un propriétaire modifie les droits : suivre l'UID autorisé lui-même.
+   if(role!=='admin'){
+     state.unsubscribeMember=api.onValue(api.ref(db,base+'/members/'+uid),snapshot=>{
+       if(state.trial!==trialId||state.user?.uid!==uid)return;
+       const fresh=snapshot.val();
+       if(fresh!=='editor'&&fresh!=='viewer'){
+         resetRoom();updateUI();
+         status('Accès retiré par le propriétaire. Les opérations en file locale sont conservées.','error');
+         return;
+       }
+       if(fresh!==state.role){
+         state.role=fresh;updateUI();
+         status(fresh==='viewer'?'Accès passé en lecture seule. Saisie désactivée.':'Autorisation de saisie rétablie.','good');
+       }
+     },e=>{
+       if(state.trial!==trialId||state.user?.uid!==uid)return;
+       resetRoom();updateUI();
+       status('Contrôle des autorisations indisponible : '+errorText(e)+'. La file locale reste conservée.','error');
+     });
+   }
    await refreshQueue();
    if(navigator.onLine&&role!=='viewer')void transmit();
    status('Essai '+trialId+' ouvert · '+(role==='viewer'?'lecture seule':role==='admin'?'propriétaire':'saisie autorisée'),'good');
