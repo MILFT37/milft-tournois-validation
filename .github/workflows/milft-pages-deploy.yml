@@ -14,6 +14,10 @@ on:
       - 'drive-connexion-android.html'
       - 'drive-integration-fictive.html'
       - 'sw.validation.js'
+      - 'v2/mobile-demo.html'
+      - 'v2/mobile-demo.mjs'
+      - 'v2/firebase-config.mjs'
+      - 'v2/outbox-idb.js'
       - '.github/workflows/milft-pages-deploy.yml'
   workflow_dispatch:
 permissions:
@@ -40,6 +44,8 @@ jobs:
           cp index.html manifest.webmanifest sw.validation.js milft-drive-v11-validation.js _site/
           cp drive-connexion-android.html _site/
           cp drive-integration-fictive.html _site/
+          mkdir -p _site/v2
+          cp v2/mobile-demo.html v2/mobile-demo.mjs v2/firebase-config.mjs v2/outbox-idb.js _site/v2/
           cp MILFT_Tournois_192.png MILFT_Tournois_512.png MILFT_Tournois_1024.png _site/
           python3 - <<'PY'
           import json, pathlib, struct
@@ -63,6 +69,8 @@ jobs:
             w,h=struct.unpack('>II',header[16:24])
             expected=tuple(map(int,icon['sizes'].split('x')))
             assert (w,h)==expected, f'Dimensions d’icône incohérentes: {image} {w}x{h}'
+          assert all((site/filename).is_file() for filename in ['v2/mobile-demo.html','v2/mobile-demo.mjs','v2/firebase-config.mjs','v2/outbox-idb.js']), 'Prototype V2 isolé incomplet'
+          assert 'firebaseConfig = null' in (site/'v2/firebase-config.mjs').read_text(encoding='utf-8'), 'Ne jamais activer Firebase sans configuration explicite'
           html=(site/stable).read_text(encoding='utf-8')
           assert 'milft-drive-v11-validation.js' in html, 'Module Drive absent du HTML'
           assert 'sw.validation.js' in html, 'Service worker absent du HTML'
@@ -97,6 +105,10 @@ jobs:
             'milft-drive-v11-validation.js',
             'drive-connexion-android.html',
             'drive-integration-fictive.html',
+            'v2/mobile-demo.html',
+            'v2/mobile-demo.mjs',
+            'v2/firebase-config.mjs',
+            'v2/outbox-idb.js',
             'MILFT_Tournois_192.png',
             'MILFT_Tournois_512.png',
             'MILFT_Tournois_1024.png',
