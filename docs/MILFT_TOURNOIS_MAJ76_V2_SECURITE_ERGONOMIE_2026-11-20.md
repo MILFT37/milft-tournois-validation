@@ -23,3 +23,14 @@
 ## Interdictions permanentes
 - Ne pas changer `MILFT37/milft-tournois` (production), ne pas restaurer/importer/transférer des données V1.1 ou archives Drive.
 - Ne pas augmenter le forfait Firebase Spark, ne pas demander de carte bancaire, ne pas modifier les règles dans la console sans motif et accord.
+
+## Clôture des contrôles MAJ76
+- Commit fonctionnel : `505769ecc5c2dfa1595a3ecde8e177e3eef6ac38`.
+- Workflow simulation partage V2 `44806065006` : **SUCCESS**.
+- Workflow interface navigateur Android Chromium/Safari WebKit `44806064909` : **SUCCESS**.
+- Workflow complet deux Android + SDK Firebase sur émulateurs + règles **compactes** `44806064980` : **SUCCESS**. Aucun accès au Firebase réel pendant les tests.
+- Premier déploiement GitHub Pages `44806065004` : **FAILURE de récupération d'artefact GitHub** ; le packaging et l'upload avaient réussi, mais deploy-pages ne retrouvait pas l'artefact immédiatement. Relance du même run en tentative 2 : GitHub voyait deux artefacts de nom identique. **Échec lié au workflow d'artefact, pas au code métier.**
+- Correction de publication dans `.github/workflows/milft-pages-deploy.yml`, commit `ace9bd0813d671ec7f4f24935466556f56fe0ceb` : attendre que l'API de GitHub expose exactement un artefact Pages avant l'appel de déploiement.
+- **Nouveau run propre** GitHub Pages `44806300946` : **SUCCESS**. Diagnostic de publication `44806300947` : **SUCCESS**. La nouvelle MAJ76 est donc **publiée et validée côté workflows**.
+- **Pas encore validé physiquement entre deux appareils** : inviter une deuxième identité distincte puis vérifier score en direct et révocation quand un autre Android ou PC sera disponible. Ne pas refaire la connexion/écriture Firebase Samsung déjà acquises.
+- Production V1.1 officielle et archives Google Drive : aucune modification. Aucun changement du forfait Spark ni des règles déjà publiées dans la console Firebase.
