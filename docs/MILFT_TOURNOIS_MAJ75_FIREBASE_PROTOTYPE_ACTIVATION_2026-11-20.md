@@ -31,3 +31,5 @@ Après vérification des nouveaux workflows et de la page publiée : premier ess
 - Tests interface Chromium/WebKit run `44794975727` : en cours au dernier contrôle.
 - E2E deux Android avec émulateurs Auth/RTDB run `44794975691` : en cours au dernier contrôle.
 - Ne pas présenter ces deux derniers tests comme validés avant leur conclusion ; conserver les tests précédents MAJ73 comme acquis.
+
+- Contrôle complémentaire : interface démonstration Android Chromium/WebKit run `44794975727` : **SUCCESS**. Seul l'E2E deux Android run `44794975691` n'avait pas encore conclu au dernier relevé.
