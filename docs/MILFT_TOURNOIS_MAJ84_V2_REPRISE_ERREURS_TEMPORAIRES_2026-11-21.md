@@ -43,5 +43,16 @@ relance immédiate permanente risquerait une boucle de requêtes coûteuse.
 - Aucun geste demandé sur le Samsung pour la MAJ84.
 
 ## Clôture
-**En cours** : noter les SHA, les workflows réussis et la publication avant
-de déclarer cette MAJ validée.
+**MAJ84 VALIDÉE et publiée — 21 novembre 2026.**
+
+- Commit du module, des tests et de cette feuille de route : `4e9ba7cfb2a5db82b55d6ad21047ae05ec106423`. Aucun fichier de production officielle ni aucune règle Firebase modifiés.
+- **Simulation partage V2** `44836351856` : **SUCCESS**.
+- **Interface mobile Chromium et WebKit** `44836352585` : **SUCCESS**.
+- **IndexedDB Chromium et WebKit**, délais de reprise persistants, verrou FIFO, reprise du même ID et relance manuelle sûre, `44836351818` : **SUCCESS**.
+- **GitHub Pages et vérification des octets publics** `44836352056` : **SUCCESS**. Prototype V2 publié isolément.
+- Premier E2E `44836351866` : **FAILURE du code de test**, lié à la valeur de retour de `withSecurityRulesDisabled` (non transmise). Le test avait déjà observé la reprise du score 9–7 ; la lecture de contrôle finale utilisait une valeur indéfinie. Correction du test uniquement : commit `a8b0aa6db5596cf48001c7466008a0e027da6bc7`.
+- **E2E deux Android simulés, Firebase Auth + RTDB émulés**, erreur réseau injectée, fermeture de page et reprise autonome du score fictif 9–7 à version distante 1 : `44836600249` **SUCCESS**.
+- Les parcours MAJ75–MAJ83 restent acquis, sans répétition manuelle sur des fichiers inchangés.
+- Production `MILFT37/milft-tournois`, V1.1, championnats, scores et archives Google Drive inchangés ; règles Firebase réelles et forfait Spark gratuit inchangés.
+- **Aucune action sur Samsung.** Test sur deux appareils physiques et deux comptes Google distincts toujours à effectuer ultérieurement.
+- Prochaine reprise : **MAJ85** depuis ce document, sans recommencer les validations acquises.
