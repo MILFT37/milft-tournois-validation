@@ -20,3 +20,12 @@
 - Projet Firebase Spark gratuit, règles réellement publiées, Google Auth et `v2Trials` **inchangés**.
 - Connexion et écriture du score fictif 5–3 depuis le Samsung déjà validées en MAJ75. Ne pas redemander ce test.
 - Test physique entre deux appareils différents toujours **à faire ultérieurement**, sans bloquer cette amélioration.
+
+## Réception MAJ78 — quatre workflows SUCCESS
+- Commit de corrections `df93388005719060c244b54763286d94ab77ef3a`.
+- Simulation partage V2 `44818884420` : **SUCCESS**.
+- Interface mobile Chromium + Safari/WebKit `44818884767` : **SUCCESS**.
+- Test de deux Android émulés, Firebase Auth/Realtime Database, règle compacte, vérification score vide et réponse ancienne entre salles `44818884627` : **SUCCESS**.
+- Publication GitHub Pages et comparaison des octets des fichiers publics `44818884335` : **SUCCESS**.
+- Production officielle `MILFT37/milft-tournois` : dernier commit `d81c9f03f7e7ca016e517c6df8ae1f458285ee0c`, non modifié par MAJ78. Les données des tournois réels, la V1.1, les archives Drive et les règles Firebase déjà déployées sont inchangées.
+- MAJ78 clôturée côté code/tests/publication. Le test physique avec un deuxième Android ou PC et un autre compte Google reste **non validé**, sans remettre en question les essais Samsung réels déjà confirmés.
