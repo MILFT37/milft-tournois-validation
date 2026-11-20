@@ -7,6 +7,7 @@ const watches=new Map(),callLog=[];
 function sdkFor(auth){
   return {
     ref(_db,p){return p},
+    async get(p){const [_,tid,__,mid]=p.split('/');const v=data.tournaments[tid]?.matches[mid];return {exists:()=>!!v,val:()=>copied(v)}},
     async runTransaction(p,fn){
       const [a,tid,b,mid]=p.split('/');
       assert.equal(a,'tournaments');assert.equal(b,'matches');
@@ -69,7 +70,7 @@ const cmd=(tid,match,id,uid,deviceId,expectedVersion,goals)=>({id,tournamentId:t
  assert.equal(drain.status,'applied');assert.deepEqual(mockOutbox.results.map(x=>x.outcome),['applied']);
  // Genuine network failure: never ack.
  const broken=createTransport({database:{},auth:{currentUser:{uid:'android2Uid'}},sdk:{
-   ref(){return 'fake'},async runTransaction(){throw Error('network offline')},onValue(){return ()=>{}}
+   ref(){return 'fake'},async get(){return {exists:()=>true}},async runTransaction(){throw Error('network offline')},onValue(){return ()=>{}}
  }});
  const missing=await broken.execute(cmd('clubA','m1','e-lost','android2Uid','android-other',3,{a:8,b:8}));
  assert.equal(missing.status,'unavailable');

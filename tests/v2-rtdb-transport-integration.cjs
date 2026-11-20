@@ -7,6 +7,7 @@ const {createTransport}=require('../v2/firebase-match-transport.cjs');
 function sdk(){
  return {
   ref(db,path){return db.ref(path)},
+  get(ref){return ref.once('value')},
   runTransaction(ref,fn){return ref.transaction(fn,undefined,false)},
   onValue(ref,onData,onError){ref.on('value',onData,onError);return ()=>ref.off('value',onData)}
  };

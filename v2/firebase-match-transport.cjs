@@ -3,7 +3,7 @@
 // Adaptateur au SDK RTDB injecté; UNIQUEMENT 'set.record' (aucune bascule en production).
 const {normalize}=require('./operations-core.cjs');
 function createTransport({database,auth,sdk}){
-  if(!database||!auth||!sdk||!['ref','runTransaction','onValue'].every(k=>typeof sdk[k]==='function'))throw Error('Adaptateur Firebase incomplet');
+  if(!database||!auth||!sdk||!['ref','runTransaction','onValue','get'].every(k=>typeof sdk[k]==='function'))throw Error('Adaptateur Firebase incomplet');
   function uid(){return auth.currentUser?.uid||null}
   function path(c){return 'tournaments/'+c.tournamentId+'/matches/'+c.matchId}
   function fingerprint(c){return JSON.stringify([c.tournamentId,c.matchId,c.actorId,c.deviceId,c.expectedVersion,c.setIndex,c.goals.a,c.goals.b])}
@@ -16,6 +16,10 @@ function createTransport({database,auth,sdk}){
     let lastReason='conflict';
     const matchRef=sdk.ref(database,path(c));
     try{
+      // Le SDK RTDB peut proposer null au premier passage si le cache est froid.
+      // Lire d'abord la valeur du serveur évite de conclure à tort « match absent ».
+      const initial=await sdk.get(matchRef);
+      if(!initial?.exists?.())return {status:'missing'};
       const result=await sdk.runTransaction(matchRef,current=>{
         if(!current||typeof current!=='object'){lastReason='missing';return;}
         if(current.lastEventId===c.id){
