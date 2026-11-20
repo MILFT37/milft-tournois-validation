@@ -7,7 +7,7 @@ const state={api:null,auth:null,db:null,user:null,outbox:null,scope:null,trial:n
 function status(msg,tone=''){const e=$('status');e.textContent=msg;e.className=tone;}
 function log(s){const e=$('log');e.textContent=(new Date().toLocaleTimeString('fr-FR')+' · '+s+'\n'+e.textContent).slice(0,3000)}
 function errorText(e){return String(e?.code||e?.message||e||'Erreur').slice(0,200)}
-function resetRoom(){state.unsubscribe?.();state.unsubscribe=null;state.trial=null;state.match=null;state.role=null;state.scope=null;state.outbox?.close();state.outbox=null;state.draftDirty=false;state.draftBaseVersion=null;$('demo').hidden=true;$('sharing').hidden=true;}
+function resetRoom(){state.unsubscribe?.();state.unsubscribe=null;state.trial=null;state.match=null;state.role=null;state.scope=null;state.outbox?.close();state.outbox=null;state.draftDirty=false;state.draftBaseVersion=null;$('demo').hidden=true;$('sharing').hidden=true;$('roomNotice').textContent='';$('inviteNotice').textContent='';}
 function updateUI(){
   $('rooms').hidden=!state.user;
   $('signIn').hidden=!!state.user;$('signOut').hidden=!state.user;
@@ -26,14 +26,16 @@ function trialLink(id){
  url.searchParams.set('essai',id);
  return url.href;
 }
-async function copyText(value,label,field){
+async function copyText(value,label,field,noticeId){
  try{
   if(!navigator.clipboard?.writeText)throw Error('Presse-papiers indisponible');
   await navigator.clipboard.writeText(value);
   status(label+' copié.','good');
+  if(noticeId){const e=$(noticeId);e.textContent=label+' copié.';e.className='inline-status good';}
  }catch(e){
   if(field){field.value=value;field.focus();field.select();}
   status('Copie automatique indisponible. Le texte est sélectionné : utiliser Copier.','error');
+  if(noticeId){const e=$(noticeId);e.textContent='Copie automatique indisponible : utiliser Copier sur le texte sélectionné.';e.className='inline-status error';}
  }
 }
 function fingerprint(c){return JSON.stringify([c.tournamentId,c.matchId,c.actorId,c.deviceId,c.expectedVersion,c.setIndex,c.goals.a,c.goals.b]);}
@@ -168,16 +170,17 @@ async function sendScore(){
   if(navigator.onLine)await transmit();else status('Hors connexion : score conservé localement.','error');
  }catch(e){status('Sauvegarde locale impossible : ne pas quitter avant résolution. '+errorText(e),'error');}
 }
+function inviteFeedback(message,tone){const e=$('inviteNotice');e.textContent=message;e.className='inline-status '+tone;status(message,tone);}
 async function manageUser(revoke=false){
  if(state.role!=='admin'||!state.trial)return;
  const uid=$('invited').value.trim();
- if(!uidValid.test(uid)||uid===state.user.uid){status('UID du second compte invalide.','error');return;}
+ if(!uidValid.test(uid)||uid===state.user.uid){inviteFeedback('UID du second compte invalide.','error');return;}
  try{
   const path='v2Trials/'+state.trial+'/members/'+uid;
   if(revoke)await state.api.remove(state.api.ref(state.db,path));
   else await state.api.set(state.api.ref(state.db,path),$('permission').value);
-  status(revoke?'Accès révoqué.':'Utilisateur autorisé. Il peut ouvrir le code de salle sur son appareil.','good');
- }catch(e){status('Modification des droits refusée : '+errorText(e),'error');}
+  inviteFeedback(revoke?'Accès révoqué.':'Utilisateur autorisé. Il peut ouvrir le code de salle sur son appareil.','good');
+ }catch(e){inviteFeedback('Modification des droits refusée : '+errorText(e),'error');}
 }
 async function initialize(){
  try{
@@ -190,8 +193,8 @@ async function initialize(){
  window.addEventListener('online',()=>{if(state.user&&state.scope&&state.role!=='viewer')transmit();});
  for(const id of ['home','away'])$(''+id).addEventListener('input',()=>{if(!state.draftDirty){state.draftDirty=true;state.draftBaseVersion=state.match?.version??null;}});
  $('copyUid').onclick=()=>{if(state.user)void copyText(state.user.uid,'Identifiant',$('who'));};
- $('copyTrial').onclick=()=>{if(state.trial)void copyText(state.trial,'Code de salle',$('trialId'));};
- $('copyLink').onclick=()=>{if(state.trial)void copyText(trialLink(state.trial),'Lien de partage',$('trialId'));};
+ $('copyTrial').onclick=()=>{if(state.trial)void copyText(state.trial,'Code de salle',$('trialId'),'roomNotice');};
+ $('copyLink').onclick=()=>{if(state.trial)void copyText(trialLink(state.trial),'Lien de partage',$('trialId'),'roomNotice');};
  $('create').onclick=createRoom;
  $('join').onclick=()=>prepareRoom($('trialId').value.trim());
  $('send').onclick=sendScore;

@@ -1,6 +1,6 @@
 {
   "database": {
-    "rules": "v2/database.rules.json"
+    "rules": "v2/database.rules.console-v2-only.json"
   },
   "emulators": {
     "database": {

@@ -7,6 +7,7 @@ on:
       - 'v2/mobile-demo.html'
       - 'v2/outbox-idb.js'
       - 'v2/database.rules.json'
+      - 'v2/database.rules.console-v2-only.json'
       - 'tests/v2-mobile-demo-e2e.cjs'
       - 'firebase.v2.browser.emulator.json'
       - '.github/workflows/v2-mobile-demo-e2e.yml'

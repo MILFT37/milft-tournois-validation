@@ -77,7 +77,15 @@ async function main(){
  const origin='http://127.0.0.1:'+server.address().port;
  let browser,environment;
  try{
-  environment=await initializeTestEnvironment({projectId,database:{host:'127.0.0.1',port:9000,rules:fs.readFileSync('v2/database.rules.json','utf8')}});
+  // Tester exactement les règles compactes publiées dans la console du club,
+  // sans jamais écrire dans le vrai projet Firebase.
+  const compact=JSON.parse(fs.readFileSync('v2/database.rules.console-v2-only.json','utf8'));
+  const reference=JSON.parse(fs.readFileSync('v2/database.rules.json','utf8'));
+  assert.equal(compact.rules['.read'],false);
+  assert.equal(compact.rules['.write'],false);
+  assert.equal(compact.rules.tournaments,undefined,'No real tournament path allowed');
+  assert.deepEqual(compact.rules.v2Trials,reference.rules.v2Trials,'Compact rules must match tested V2 security subtree');
+  environment=await initializeTestEnvironment({projectId,database:{host:'127.0.0.1',port:9000,rules:JSON.stringify(compact)}});
   await environment.clearDatabase();
   browser=await chromium.launch({headless:true});
   const androidA=await browser.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true,serviceWorkers:'block'});
@@ -102,10 +110,12 @@ async function main(){
   assert.match(trial,/^trial[a-f0-9]{24}$/);
   await pageA.locator('#copyTrial').click();
   assert.equal(await pageA.evaluate(()=>window.__milftCopied),trial,'Owner copies trial code');
+  assert.match(await pageA.locator('#roomNotice').innerText(),/Code de salle copié/,'Visible feedback next to copied code');
   await pageA.locator('#copyLink').click();
   const shareUrl=await pageA.evaluate(()=>window.__milftCopied);
   assert.equal(new URL(shareUrl).searchParams.get('essai'),trial,'Share link carries only trial code');
   assert.equal(new URL(shareUrl).pathname,'/v2/mobile-demo.html');
+  assert.match(await pageA.locator('#roomNotice').innerText(),/Lien de partage copié/,'Visible feedback next to copied link');
   await pageB.goto(shareUrl);
   await pageB.locator('#rooms').waitFor({state:'visible',timeout:20000});
   assert.equal(await pageB.locator('#trialId').inputValue(),trial,'Second Android prefilled from share link');
@@ -117,6 +127,7 @@ async function main(){
   await pageA.locator('#invited').fill(uidB);
   await pageA.locator('#invite').click();
   await pageA.locator('#status.good').getByText('Utilisateur autorisé',{exact:false}).waitFor();
+  assert.match(await pageA.locator('#inviteNotice').innerText(),/Utilisateur autorisé/,'Invite feedback visible next to owner controls');
   await pageB.locator('#join').click();
   await pageB.locator('#demo').waitFor({state:'visible',timeout:10000});
   assert.equal(await pageB.locator('#role').innerText(),'Autorisé à saisir');
@@ -161,6 +172,7 @@ async function main(){
   // Revoke editor access. Rules must take effect on reads and writes.
   await pageA.locator('#revoke').click();
   await pageA.locator('#status.good').getByText('Accès révoqué',{exact:false}).waitFor();
+  assert.match(await pageA.locator('#inviteNotice').innerText(),/Accès révoqué/,'Revocation feedback visible next to controls');
   let actual;
   await environment.withSecurityRulesDisabled(async ctx=>{
     actual=(await ctx.database('https://'+projectId+'-default-rtdb.firebaseio.com').ref('v2Trials/'+trial+'/matches/demo').once('value')).val();
