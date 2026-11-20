@@ -3,18 +3,18 @@ import {firebaseConfig} from './firebase-config.mjs';
 const $=id=>document.getElementById(id);
 const valid=/^[A-Za-z0-9][A-Za-z0-9_-]{0,79}$/;
 const uidValid=/^[A-Za-z0-9_-]{1,128}$/;
-const state={api:null,auth:null,db:null,user:null,outbox:null,scope:null,trial:null,role:null,match:null,unsubscribe:null,unsubscribeMember:null,deviceId:null,sending:false,draftDirty:false,draftBaseVersion:null};
+const state={api:null,auth:null,db:null,user:null,outbox:null,scope:null,trial:null,role:null,match:null,unsubscribe:null,unsubscribeMember:null,deviceId:null,sending:false,roomGeneration:0,draftDirty:false,draftBaseVersion:null};
 function status(msg,tone=''){const e=$('status');e.textContent=msg;e.className=tone;}
 function log(s){const e=$('log');e.textContent=(new Date().toLocaleTimeString('fr-FR')+' · '+s+'\n'+e.textContent).slice(0,3000)}
 function errorText(e){return String(e?.code||e?.message||e||'Erreur').slice(0,200)}
-function resetRoom(){state.unsubscribe?.();state.unsubscribe=null;state.unsubscribeMember?.();state.unsubscribeMember=null;state.trial=null;state.match=null;state.role=null;state.scope=null;state.outbox?.close();state.outbox=null;state.draftDirty=false;state.draftBaseVersion=null;$('score').textContent='— : —';$('version').textContent='Version distante inconnue';$('home').value=0;$('away').value=0;$('demo').hidden=true;$('sharing').hidden=true;$('roomNotice').textContent='';$('inviteNotice').textContent='';}
+function resetRoom(){state.roomGeneration++;state.sending=false;state.unsubscribe?.();state.unsubscribe=null;state.unsubscribeMember?.();state.unsubscribeMember=null;state.trial=null;state.match=null;state.role=null;state.scope=null;state.outbox?.close();state.outbox=null;state.draftDirty=false;state.draftBaseVersion=null;$('score').textContent='— : —';$('version').textContent='Version distante inconnue';$('home').value=0;$('away').value=0;$('demo').hidden=true;$('sharing').hidden=true;$('roomNotice').textContent='';$('inviteNotice').textContent='';}
 function updateUI(){
   $('rooms').hidden=!state.user;
   $('signIn').hidden=!!state.user;$('signOut').hidden=!state.user;
   $('who').value=state.user?.uid||'Non connecté';
   $('role').textContent=state.role==='admin'?'Propriétaire':state.role==='editor'?'Autorisé à saisir':state.role==='viewer'?'Lecture seule':'Non autorisé';
-  $('send').disabled=state.role==='viewer'||!state.match||!state.outbox||state.sending;
-  $('retry').disabled=state.role==='viewer'||!state.outbox||state.sending;
+  $('send').disabled=!['admin','editor'].includes(state.role)||!state.match||!state.outbox||state.sending;
+  $('retry').disabled=!['admin','editor'].includes(state.role)||!state.outbox||state.sending;
   $('invite').disabled=state.role!=='admin';$('revoke').disabled=state.role!=='admin';
   $('copyUid').disabled=!state.user;
   $('copyTrial').disabled=!state.trial;
@@ -63,7 +63,9 @@ function syncScore(){
 }
 async function refreshQueue(){
  if(!state.outbox||!state.scope)return;
- const items=await state.outbox.list(state.scope);
+ const countsFromScope={outbox:state.outbox,scope:state.scope,generation:state.roomGeneration};
+ const items=await countsFromScope.outbox.list(countsFromScope.scope);
+ if(state.roomGeneration!==countsFromScope.generation||state.outbox!==countsFromScope.outbox)return;
  const counts={pending:0,sending:0,conflict:0,blocked:0};
  for(const x of items)counts[x.state]=(counts[x.state]||0)+1;
  $('queue').textContent='File locale persistante : '+counts.pending+' en attente, '+counts.sending+' en cours, '+counts.conflict+' conflit(s), '+counts.blocked+' refusé(s)';
@@ -72,25 +74,28 @@ async function refreshQueue(){
 async function prepareRoom(trialId){
  if(!state.user||!valid.test(trialId)){status('Code de salle invalide.','error');return;}
  resetRoom();
- const base='v2Trials/'+trialId,uid=state.user.uid,api=state.api,db=state.db;
+ const base='v2Trials/'+trialId,uid=state.user.uid,api=state.api,db=state.db,generation=state.roomGeneration;
+ const isCurrent=()=>state.roomGeneration===generation&&state.user?.uid===uid;
  try{
    const owner=await api.get(api.ref(db,base+'/ownerUid'));
+   if(!isCurrent())return;
    if(!owner.exists())throw Error('Salle introuvable ou non autorisée');
    let role=owner.val()===uid?'admin':null;
-   if(!role){const membership=await api.get(api.ref(db,base+'/members/'+uid));role=membership.val();}
+   if(!role){const membership=await api.get(api.ref(db,base+'/members/'+uid));if(!isCurrent())return;role=membership.val();}
    if(!['admin','editor','viewer'].includes(role))throw Error('Ce compte n’a pas été autorisé par le propriétaire');
    const dbName='MILFT_V2_DEMO_OUTBOX_20261120';
    const outbox=await window.MILFTV2Outbox.open({indexedDB:window.indexedDB,dbName});
+   if(!isCurrent()){outbox.close();return;}
    state.trial=trialId;state.role=role;state.outbox=outbox;
    state.scope={tournamentId:trialId,actorId:uid,deviceId:state.deviceId};
    $('trialId').value=trialId;
    $('demo').hidden=false;$('sharing').hidden=role!=='admin';updateUI();
    localStorage.setItem(LAST_TRIAL_KEY,trialId);
    state.unsubscribe=api.onValue(api.ref(db,base+'/matches/demo'),snapshot=>{
-      if(state.trial!==trialId||state.user?.uid!==uid)return;
+      if(!isCurrent()||state.trial!==trialId)return;
       state.match=snapshot.val();syncScore();$('net').textContent='Écoute Firebase active';updateUI();
    },e=>{
-      if(state.trial!==trialId||state.user?.uid!==uid)return;
+      if(!isCurrent()||state.trial!==trialId)return;
       resetRoom();updateUI();
       status(errorText(e).toLowerCase().replaceAll('_','-').includes('permission-denied')?'Accès retiré ou refusé par Firebase. Le match est masqué et la file locale reste conservée.':'Lecture du match interrompue : '+errorText(e)+'. La file locale reste conservée.','error');
    });
@@ -98,7 +103,7 @@ async function prepareRoom(trialId){
    // lorsqu'un propriétaire modifie les droits : suivre l'UID autorisé lui-même.
    if(role!=='admin'){
      state.unsubscribeMember=api.onValue(api.ref(db,base+'/members/'+uid),snapshot=>{
-       if(state.trial!==trialId||state.user?.uid!==uid)return;
+       if(!isCurrent()||state.trial!==trialId)return;
        const fresh=snapshot.val();
        if(fresh!=='editor'&&fresh!=='viewer'){
          resetRoom();updateUI();
@@ -110,15 +115,16 @@ async function prepareRoom(trialId){
          status(fresh==='viewer'?'Accès passé en lecture seule. Saisie désactivée.':'Autorisation de saisie rétablie.','good');
        }
      },e=>{
-       if(state.trial!==trialId||state.user?.uid!==uid)return;
+       if(!isCurrent()||state.trial!==trialId)return;
        resetRoom();updateUI();
        status('Contrôle des autorisations indisponible : '+errorText(e)+'. La file locale reste conservée.','error');
      });
    }
    await refreshQueue();
-   if(navigator.onLine&&role!=='viewer')void transmit();
-   status('Essai '+trialId+' ouvert · '+(role==='viewer'?'lecture seule':role==='admin'?'propriétaire':'saisie autorisée'),'good');
- }catch(e){resetRoom();updateUI();status('Accès à l’essai impossible : '+errorText(e),'error');}
+   if(!isCurrent())return;
+   if(navigator.onLine&&state.role!=='viewer')void transmit();
+   status('Essai '+trialId+' ouvert · '+(state.role==='viewer'?'lecture seule':state.role==='admin'?'propriétaire':'saisie autorisée'),'good');
+ }catch(e){if(isCurrent()){resetRoom();updateUI();status('Accès à l’essai impossible : '+errorText(e),'error');}}
 }
 async function createRoom(){
  if(!state.user)return;
@@ -128,7 +134,7 @@ async function createRoom(){
  try{
   await state.api.set(state.api.ref(state.db,'v2Trials/'+id),trial);
   log('Création de la salle fictive validée par le serveur');
-  await prepareRoom(id);
+  if(state.user?.uid===uid)await prepareRoom(id);
  }catch(e){status('Création refusée par Firebase : '+errorText(e),'error');}
 }
 async function execute(command){
@@ -161,30 +167,36 @@ async function execute(command){
  }finally{unsubscribe();}
 }
 async function transmit(){
- if(!state.scope||!state.outbox||!state.user||state.sending)return;
+ if(!state.scope||!state.outbox||!state.user||!['admin','editor'].includes(state.role)||state.sending)return;
+ const scope=state.scope,outbox=state.outbox,uid=state.user.uid,generation=state.roomGeneration;
+ const sameRoom=()=>state.roomGeneration===generation&&state.outbox===outbox&&state.scope===scope&&state.user?.uid===uid;
  state.sending=true;updateUI();
  try{
   for(let i=0;i<15;i++){
-   const item=await state.outbox.claimNext(state.scope);
+   if(!sameRoom()||!['admin','editor'].includes(state.role)||!navigator.onLine)break;
+   const item=await outbox.claimNext(scope);
    if(!item)break;
+   if(!sameRoom()||!['admin','editor'].includes(state.role))break;
    const result=await execute(item.command);
    const outcome=result.status==='applied'||result.status==='duplicate'?result.status:
     result.status==='conflict'?'conflict':
     result.status==='forbidden'||result.status==='id-collision'?'forbidden':'temporary-error';
-   const saved=await state.outbox.finish(state.scope,item.command.id,item.leaseToken,outcome,{reason:result.status});
+   const saved=await outbox.finish(scope,item.command.id,item.leaseToken,outcome,{reason:result.status});
+   if(!sameRoom())break;
    if(outcome==='temporary-error'){status('Envoi non confirmé. La modification est conservée localement.','error');break;}
    if(outcome==='conflict'){status('Conflit : un autre appareil a modifié ce score. Brouillon conservé.','error');}
    if(outcome==='forbidden'){status('Accès refusé. Brouillon conservé, aucune modification distante.','error');break;}
    if(saved.status==='confirmed')status('Score fictif confirmé par Firebase.','good');
   }
-  await refreshQueue();
- }catch(e){status('Erreur de file locale : '+errorText(e)+' — aucune suppression automatique','error');}
- finally{state.sending=false;updateUI();}
+  if(sameRoom())await refreshQueue();
+ }catch(e){if(sameRoom())status('Erreur de file locale : '+errorText(e)+' — aucune suppression automatique','error');}
+ finally{if(sameRoom()){state.sending=false;updateUI();}}
 }
 async function sendScore(){
- if(!state.match||!state.outbox||state.role==='viewer'||!state.user)return;
- const a=Number($('home').value),b=Number($('away').value);
- if(![a,b].every(n=>Number.isSafeInteger(n)&&n>=0&&n<=99)){status('Buts invalides (0 à 99).','error');return;}
+ if(!state.match||!state.outbox||!['admin','editor'].includes(state.role)||!state.user)return;
+ const rawA=$('home').value.trim(),rawB=$('away').value.trim();
+ if(!/^\d{1,2}$/.test(rawA)||!/^\d{1,2}$/.test(rawB)){status('Buts invalides : renseigner les deux scores entiers de 0 à 99.','error');return;}
+ const a=Number(rawA),b=Number(rawB);
  const s=state.scope;
  const command={...s,id:'e'+newId(),matchId:'demo',type:'set.record',expectedVersion:state.draftDirty&&state.draftBaseVersion!==null?state.draftBaseVersion:state.match.version,setIndex:0,goals:{a,b}};
  try{
@@ -216,7 +228,7 @@ async function initialize(){
   if(linkTrial&&/^trial[a-f0-9]{24}$/.test(linkTrial))$('trialId').value=linkTrial;
   else if(savedTrial&&valid.test(savedTrial))$('trialId').value=savedTrial;
  }catch(e){status('Stockage local V2 indisponible : sauvegarde des scores impossible. '+errorText(e),'error');return;}
- window.addEventListener('online',()=>{if(state.user&&state.scope&&state.role!=='viewer')transmit();});
+ window.addEventListener('online',()=>{if(state.user&&state.scope&&['admin','editor'].includes(state.role))void transmit();});
  for(const id of ['home','away'])$(''+id).addEventListener('input',()=>{if(!state.draftDirty){state.draftDirty=true;state.draftBaseVersion=state.match?.version??null;}});
  $('copyUid').onclick=()=>{if(state.user)void copyText(state.user.uid,'Identifiant',$('who'));};
  $('copyTrial').onclick=()=>{if(state.trial)void copyText(state.trial,'Code de salle',$('trialId'),'roomNotice');};

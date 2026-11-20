@@ -14,8 +14,16 @@ const root=process.cwd();
 const fixture=String.raw`
 import {initializeApp} from 'firebase/app';
 import {getAuth as rawGetAuth,connectAuthEmulator,signInAnonymously,onAuthStateChanged,signOut} from 'firebase/auth';
-import {getDatabase as rawGetDatabase,connectDatabaseEmulator,ref,get,set,remove,onValue,runTransaction} from 'firebase/database';
-export {initializeApp,onAuthStateChanged,signOut,ref,get,set,remove,onValue,runTransaction};
+import {getDatabase as rawGetDatabase,connectDatabaseEmulator,ref,get as originalGet,set,remove,onValue,runTransaction} from 'firebase/database';
+export {initializeApp,onAuthStateChanged,signOut,ref,set,remove,onValue,runTransaction};
+export async function get(reference){
+ const hold=globalThis.__milftHoldOwnerFor;
+ if(hold&&reference.toString().includes('/v2Trials/'+hold+'/ownerUid')){
+   globalThis.__milftHoldOwnerFor=null;
+   await new Promise(resolve=>{globalThis.__milftReleaseOwner=resolve;});
+ }
+ return originalGet(reference);
+}
 export function getAuth(app){
  const a=rawGetAuth(app);
  if(!a.__milftTestConnected){
@@ -137,6 +145,13 @@ async function main(){
   await pageA.locator('#score').getByText('5 : 3').waitFor({timeout:15000});
   await pageB.locator('#score').getByText('5 : 3').waitFor({timeout:15000});
   await pageA.locator('#queue').getByText('0 en attente',{exact:false}).waitFor();
+  // MAJ78 : effacer un score ne doit pas le convertir en zéro.
+  await pageA.locator('#home').fill('');
+  await pageA.locator('#send').click();
+  assert.match(await pageA.locator('#status.error').innerText(),/Buts invalides/);
+  assert.equal(await pageA.locator('#score').innerText(),'5 : 3');
+  assert.match(await pageA.locator('#queue').innerText(),/0 en attente/);
+  await pageA.locator('#home').fill('5');
   // Start editing phone B. A updates to a newer version before B submits.
   await pageB.locator('#home').fill('6');
   await pageB.locator('#away').fill('4');
@@ -188,6 +203,21 @@ async function main(){
   assert.match(await restored.locator('#status.error').innerText(),/Accès retiré/,'Guest sees immediate revocation');
   assert.equal(await restored.locator('#copyLink').isDisabled(),true,'Revoked guest has no sharing controls');
   assert.equal(await restored.locator('#score').innerText(),'— : —','Revocation redacts old score in DOM');
+  // MAJ78 : l'ouverture ancienne, retardée artificiellement, ne reprend pas la main.
+  await pageA.evaluate(id=>{window.__milftHoldOwnerFor=id;},trial);
+  await pageA.locator('#trialId').fill(trial);
+  await pageA.locator('#join').click();
+  await pageA.waitForFunction(()=>typeof window.__milftReleaseOwner==='function');
+  await pageA.locator('#create').click();
+  await pageA.locator('#demo').waitFor({state:'visible',timeout:15000});
+  const nextTrial=await pageA.locator('#trialId').inputValue();
+  assert.notEqual(nextTrial,trial);
+  await pageA.locator('#score').getByText('0 : 0').waitFor();
+  await pageA.evaluate(()=>{const release=window.__milftReleaseOwner;window.__milftReleaseOwner=null;release();});
+  await pageA.waitForTimeout(250);
+  assert.equal(await pageA.locator('#trialId').inputValue(),nextTrial,'Stale owner response cannot reopen previous room');
+  assert.equal(await pageA.locator('#score').innerText(),'0 : 0');
+  assert.equal(await pageA.locator('#role').innerText(),'Propriétaire');
   let actual;
   await environment.withSecurityRulesDisabled(async ctx=>{
     actual=(await ctx.database('https://'+projectId+'-default-rtdb.firebaseio.com').ref('v2Trials/'+trial+'/matches/demo').once('value')).val();
@@ -196,7 +226,7 @@ async function main(){
   assert.deepEqual(actual.sets['0'],{a:8,b:6});
   assert.deepEqual(pageErrors,[],'Browser UI must not throw JavaScript errors');
   await Promise.all([androidA.close(),androidB.close()]);
-  console.log('OK MAJ72 Android↔Android navigateur + Firebase Auth/RTDB émulés : création, invitation, édition live, conflit conservé, hors ligne et reprise après fermeture, révocation');
+  console.log('OK MAJ78 Android↔Android avec Firebase émulé : score vide interdit, reprise, droits, révocation et lecture obsolète entre salles');
  }finally{
   if(browser)await browser.close();
   if(environment)await environment.cleanup();
