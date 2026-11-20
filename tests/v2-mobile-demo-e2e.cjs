@@ -235,6 +235,42 @@ async function main(){
   await pageA.locator('#queue').getByText('0 en attente',{exact:false}).waitFor();
   assert.match(await pageA.locator('#version').innerText(),/Version distante 1/,'Only one confirmed event after reconnection');
   assert.notEqual(nextTrial,trial,'New room is different from previously completed match');
+  // MAJ80 : relancer automatiquement un événement resté « sending » après
+  // fermeture sans forcer le bail encore actif (plusieurs onglets possibles).
+  await pageA.locator('#create').click();
+  await pageA.locator('#demo').waitFor({state:'visible'});
+  const recoveryTrial=await pageA.locator('#trialId').inputValue();
+  const stranded=await pageA.evaluate(async()=>{
+    const d=await MILFTV2Outbox.open({indexedDB,dbName:'MILFT_V2_DEMO_OUTBOX_20261120'});
+    const scope={tournamentId:document.getElementById('trialId').value,
+      actorId:document.getElementById('who').value,
+      deviceId:localStorage.getItem('MILFT_V2_DEMO_DEVICE_ID')};
+    const command={...scope,id:'eMAJ80Recovery',matchId:'demo',type:'set.record',
+      expectedVersion:0,setIndex:0,goals:{a:2,b:1}};
+    await d.enqueue(scope,command);
+    const lease=await d.claimNext(scope,{now:Date.now(),leaseMs:5000});
+    const items=await d.list(scope);d.close();
+    return {leaseId:lease?.command.id,items:items.map(x=>({id:x.command.id,state:x.state}))};
+  });
+  assert.equal(stranded.leaseId,'eMAJ80Recovery','Crash simulation must hold a sending lease');
+  assert.deepEqual(stranded.items,[{id:'eMAJ80Recovery',state:'sending'}]);
+  await pageA.close();
+  const recovered=await androidA.newPage();
+  recovered.on('pageerror',e=>pageErrors.push(e.message));
+  await recovered.goto(origin+'/v2/mobile-demo.html');
+  await recovered.locator('#rooms').waitFor({state:'visible',timeout:15000});
+  await recovered.locator('#trialId').fill(recoveryTrial);
+  await recovered.locator('#join').click();
+  await recovered.locator('#demo').waitFor({state:'visible'});
+  await recovered.locator('#queue').getByText('1 en cours',{exact:false}).waitFor({timeout:5000});
+  assert.equal(await recovered.locator('#score').innerText(),'0 : 0',
+    'Unexpired lease must not be sent early');
+  assert.match(await recovered.locator('#queue').innerText(),/Reprise automatique/,
+    'Recovery should be announced near the queue');
+  await recovered.locator('#score').getByText('2 : 1').waitFor({timeout:12000});
+  await recovered.locator('#version').getByText('Version distante 1',{exact:false}).waitFor();
+  await recovered.locator('#queue').getByText('0 en cours',{exact:false}).waitFor();
+  assert.match(await recovered.locator('#queue').innerText(),/0 en attente/);
   let actual;
   await environment.withSecurityRulesDisabled(async ctx=>{
     actual=(await ctx.database('https://'+projectId+'-default-rtdb.firebaseio.com').ref('v2Trials/'+trial+'/matches/demo').once('value')).val();
@@ -243,7 +279,7 @@ async function main(){
   assert.deepEqual(actual.sets['0'],{a:8,b:6});
   assert.deepEqual(pageErrors,[],'Browser UI must not throw JavaScript errors');
   await Promise.all([androidA.close(),androidB.close()]);
-  console.log('OK MAJ79 Android↔Android Firebase émulé : tests antérieurs + double-clic offline unique et reprise automatique');
+  console.log('OK MAJ80 Android↔Android Firebase émulé : scénarios acquis + reprise automatique d’un bail sending après fermeture et délai de sécurité');
  }finally{
   if(browser)await browser.close();
   if(environment)await environment.cleanup();

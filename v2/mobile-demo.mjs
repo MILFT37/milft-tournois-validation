@@ -3,11 +3,11 @@ import {firebaseConfig} from './firebase-config.mjs';
 const $=id=>document.getElementById(id);
 const valid=/^[A-Za-z0-9][A-Za-z0-9_-]{0,79}$/;
 const uidValid=/^[A-Za-z0-9_-]{1,128}$/;
-const state={api:null,auth:null,db:null,user:null,outbox:null,scope:null,trial:null,role:null,match:null,unsubscribe:null,unsubscribeMember:null,deviceId:null,sending:false,enqueuing:false,roomGeneration:0,draftDirty:false,draftBaseVersion:null};
+const state={api:null,auth:null,db:null,user:null,outbox:null,scope:null,trial:null,role:null,match:null,unsubscribe:null,unsubscribeMember:null,deviceId:null,sending:false,enqueuing:false,roomGeneration:0,recoveryTimer:null,draftDirty:false,draftBaseVersion:null};
 function status(msg,tone=''){const e=$('status');e.textContent=msg;e.className=tone;}
 function log(s){const e=$('log');e.textContent=(new Date().toLocaleTimeString('fr-FR')+' · '+s+'\n'+e.textContent).slice(0,3000)}
 function errorText(e){return String(e?.code||e?.message||e||'Erreur').slice(0,200)}
-function resetRoom(){state.roomGeneration++;state.sending=false;state.enqueuing=false;state.unsubscribe?.();state.unsubscribe=null;state.unsubscribeMember?.();state.unsubscribeMember=null;state.trial=null;state.match=null;state.role=null;state.scope=null;state.outbox?.close();state.outbox=null;state.draftDirty=false;state.draftBaseVersion=null;$('score').textContent='— : —';$('version').textContent='Version distante inconnue';$('home').value=0;$('away').value=0;$('demo').hidden=true;$('sharing').hidden=true;$('roomNotice').textContent='';$('inviteNotice').textContent='';}
+function resetRoom(){state.roomGeneration++;clearTimeout(state.recoveryTimer);state.recoveryTimer=null;state.sending=false;state.enqueuing=false;state.unsubscribe?.();state.unsubscribe=null;state.unsubscribeMember?.();state.unsubscribeMember=null;state.trial=null;state.match=null;state.role=null;state.scope=null;state.outbox?.close();state.outbox=null;state.draftDirty=false;state.draftBaseVersion=null;$('score').textContent='— : —';$('version').textContent='Version distante inconnue';$('home').value=0;$('away').value=0;$('demo').hidden=true;$('sharing').hidden=true;$('roomNotice').textContent='';$('inviteNotice').textContent='';}
 function updateUI(){
   $('rooms').hidden=!state.user;
   $('signIn').hidden=!!state.user;$('signOut').hidden=!state.user;
@@ -61,6 +61,23 @@ function syncScore(){
    $('home').value=x?.a??0;$('away').value=x?.b??0;state.draftBaseVersion=null;
  }
 }
+// Les événements « sending » peuvent survivre à une fermeture de navigateur.
+ // Ne jamais voler un bail non expiré : la reprise se fait à son échéance.
+function scheduleLeaseRecovery(items,context){
+ clearTimeout(state.recoveryTimer);state.recoveryTimer=null;
+ if(state.roomGeneration!==context.generation||state.outbox!==context.outbox||
+    !navigator.onLine||!['admin','editor'].includes(state.role)||state.sending)return;
+ const deadlines=items.filter(item=>item.state==='sending'&&Number.isFinite(item.leaseUntil)&&item.leaseUntil>0)
+   .map(item=>item.leaseUntil);
+ if(!deadlines.length)return;
+ const ms=Math.max(250,Math.min(300000,Math.min(...deadlines)-Date.now()+150));
+ state.recoveryTimer=setTimeout(()=>{
+   state.recoveryTimer=null;
+   if(state.roomGeneration!==context.generation||state.outbox!==context.outbox||
+      state.scope!==context.scope||!navigator.onLine||!['admin','editor'].includes(state.role))return;
+   void transmit();
+ },ms);
+}
 async function refreshQueue(){
  if(!state.outbox||!state.scope)return;
  const countsFromScope={outbox:state.outbox,scope:state.scope,generation:state.roomGeneration};
@@ -68,8 +85,9 @@ async function refreshQueue(){
  if(state.roomGeneration!==countsFromScope.generation||state.outbox!==countsFromScope.outbox)return;
  const counts={pending:0,sending:0,conflict:0,blocked:0};
  for(const x of items)counts[x.state]=(counts[x.state]||0)+1;
- $('queue').textContent='File locale persistante : '+counts.pending+' en attente, '+counts.sending+' en cours, '+counts.conflict+' conflit(s), '+counts.blocked+' refusé(s)';
+ $('queue').textContent='File locale persistante : '+counts.pending+' en attente, '+counts.sending+' en cours, '+counts.conflict+' conflit(s), '+counts.blocked+' refusé(s)'+(counts.sending&&!state.sending&&navigator.onLine&&['admin','editor'].includes(state.role)?' · Reprise automatique après le délai de sécurité':'');
  $('conflicts').textContent=items.filter(x=>x.state==='conflict'||x.state==='blocked').map(x=>'Événement '+x.command.id+' conservé : '+x.state+' ('+(x.reason||'')+')').join(' · ');
+ scheduleLeaseRecovery(items,countsFromScope);
 }
 async function prepareRoom(trialId){
  if(!state.user||!valid.test(trialId)){status('Code de salle invalide.','error');return;}
@@ -190,7 +208,7 @@ async function transmit(){
   }
   if(sameRoom())await refreshQueue();
  }catch(e){if(sameRoom())status('Erreur de file locale : '+errorText(e)+' — aucune suppression automatique','error');}
- finally{if(sameRoom()){state.sending=false;updateUI();}}
+ finally{if(sameRoom()){state.sending=false;updateUI();void refreshQueue();}}
 }
 async function sendScore(){
  if(!state.match||!state.outbox||!['admin','editor'].includes(state.role)||!state.user||state.enqueuing||state.sending)return;
@@ -241,6 +259,7 @@ async function initialize(){
   else if(savedTrial&&valid.test(savedTrial))$('trialId').value=savedTrial;
  }catch(e){status('Stockage local V2 indisponible : sauvegarde des scores impossible. '+errorText(e),'error');return;}
  window.addEventListener('online',()=>{if(state.user&&state.scope&&['admin','editor'].includes(state.role))void transmit();});
+ window.addEventListener('offline',()=>{clearTimeout(state.recoveryTimer);state.recoveryTimer=null;});
  for(const id of ['home','away'])$(''+id).addEventListener('input',()=>{if(!state.draftDirty){state.draftDirty=true;state.draftBaseVersion=state.match?.version??null;}});
  $('copyUid').onclick=()=>{if(state.user)void copyText(state.user.uid,'Identifiant',$('who'));};
  $('copyTrial').onclick=()=>{if(state.trial)void copyText(state.trial,'Code de salle',$('trialId'),'roomNotice');};
