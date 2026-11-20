@@ -17,6 +17,7 @@ Il ne faut jamais écraser ce score concurrent.
   `enqueue()`, **atomique dans la transaction IndexedDB**. Les saisies locales
   successives sur un même match reçoivent des versions successives, quel que soit
   l'ordre alphabétique des IDs, avec dépendance `dependsOn` vers leur prédécesseur.
+- Un ancien événement déjà en `conflict` ou `blocked` ne devient pas le prédécesseur d'une **nouvelle** saisie : un score neuf fondé sur la version Firebase actuelle doit rester possible. Une saisie déjà dépendante d'un conflit reste en revanche protégée.
 - `claimNext()` ne peut libérer un score dépendant qu'après l'enregistrement du
   reçu `applied` ou `duplicate` du prédécesseur. Si celui-ci est en `conflict`
   ou `blocked`, le suivant reste `pending` sans écraser le score distant.
@@ -52,5 +53,7 @@ Il ne faut jamais écraser ce score concurrent.
 - Aucun geste demandé sur le Samsung pour cette MAJ.
 
 ## Statut de clôture
+**Premier lot :** commit `d7b9f413` ; workflows simulation `44833334031` SUCCESS, navigateur `44833334041` SUCCESS, IndexedDB `44833333907` SUCCESS, Pages `44833334011` SUCCESS. E2E `44833334042` FAILURE sur une ancienne saisie légitime après conflit (régression identifiée ; ne pas déclarer validé avant nouveau test). Correction ciblée en cours.
+
 **Développement engagé.** Ajouter ici les commits, les numéros de workflows,
 leur verdict et la validation de publication avant de déclarer MAJ82 close.
