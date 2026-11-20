@@ -20,7 +20,7 @@
           ".write": false,
           "$mid": {
             ".write": "auth != null && (root.child('tournaments').child($tid).child('members').child(auth.uid).val() === 'admin' || root.child('tournaments').child($tid).child('members').child(auth.uid).val() === 'editor') && data.exists() && newData.exists() && data.child('status').val() === 'playing' && newData.child('status').val() === 'playing' && newData.child('version').isNumber() && newData.child('version').val() === data.child('version').val() + 1 && newData.child('updatedBy').val() === auth.uid && newData.child('lastEventId').isString() && newData.child('lastEventId').val() !== data.child('lastEventId').val()",
-            ".validate": "newData.hasChildren(['version','status','sets','updatedBy','lastEventId','lastEventFingerprint']) && newData.childrenCount() === 6",
+            ".validate": "newData.hasChildren(['version','status','sets','updatedBy','lastEventId','lastEventFingerprint'])",
             "version": {
               ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 1000000"
             },
@@ -28,9 +28,9 @@
               ".validate": "newData.isString() && newData.val() === 'playing'"
             },
             "sets": {
-              ".validate": "newData.hasChildren() && newData.childrenCount() <= 5",
+              ".validate": "newData.hasChildren() && !newData.hasChild('5') && !newData.hasChild('6')",
               "$set": {
-                ".validate": "$set.matches(/^[0-4]$/) && newData.hasChildren(['a','b']) && newData.childrenCount() === 2",
+                ".validate": "newData.hasChildren(['a','b'])",
                 "a": {
                   ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 99 && newData.val() % 1 === 0"
                 },
