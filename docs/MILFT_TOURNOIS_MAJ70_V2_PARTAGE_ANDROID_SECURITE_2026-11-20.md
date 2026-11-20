@@ -37,3 +37,18 @@ Le partage V2 doit fonctionner **Samsung ↔ autre Android**, **Android ↔ PC**
 
 ## Reprise après changement de chat
 Repartir de la MAJ 70, vérifier les deux workflows SUCCESS ci-dessus sans relancer les anciennes validations, et poursuivre dans `v2/` exclusivement. La date de ce document remplace les références de novembre 19 devenues obsolètes. L'utilisateur souhaite intervenir le moins possible, uniquement depuis Android.
+
+
+## Complément — intégration authentique SDK ↔ émulateur : RÉUSSIE
+
+- Test `tests/v2-rtdb-transport-integration.cjs` ajouté au workflow Firebase. Il exerce **le SDK Realtime Database réel face à l'émulateur officiel** : deux clients Android fictifs, même tournoi et versions concurrentes, refus d'écrasement, répétition d'événement, rôle viewer refusé, puis deuxième appareil Android sur le même UID.
+- Premier contrôle exposait la particularité du cache RTDB : une transaction pouvait recevoir `null` au premier passage, bien que le match existe. Correction : conserver une écoute active durant la transaction (et prélecture), ne pas traiter cette absence transitoire comme une suppression du match.
+- Le SDK émettait `permission_denied` avec underscore : le transport normalise ce statut pour garder le brouillon en état **blocked**, et ne jamais le supprimer par erreur.
+- Commit final du transport et des simulations : `d0f7b65eda16261492faaf1877ceba17b1716a01`.
+- **Run GitHub Actions `44743519905` — sécurité Firebase + intégration SDK vraie sur émulateur : SUCCESS.**
+- **Run GitHub Actions `44743519724` — simulations métiers V2 et Android ↔ Android : SUCCESS.**
+- **Attention : succès d'essais dans un émulateur, pas une activation d'appareils réels.** Aucun utilisateur ni donnée vraie n'a été connecté ou transféré. La production V1.1 reste inchangée.
+
+### Prochain verrou, à traiter en priorité
+
+Transformer le transport testé en **page Web V2 isolée pour navigateurs mobiles**, avec Firebase Authentication Google, configuration Spark sans facturation, accès à un tournoi fictif, et consentement explicite avant tout transfert. Sécuriser la création de tournoi et les invitations entre comptes (actuellement refusées volontairement), puis tester réellement Samsung ↔ autre Android avant tout déploiement officiel. Établir des règles métier strictes par format et la validation de matchs / gestion des tables ensuite. Le compte Google Drive déjà connecté à la V1.1 n'est pas un projet Firebase. Une intervention dans la console Firebase sous le compte de l'utilisateur sera requise pour créer/autoriser le projet ; ne pas la demander pour des validations purement simulées.
