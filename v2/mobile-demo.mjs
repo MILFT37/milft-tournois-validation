@@ -3,17 +3,17 @@ import {firebaseConfig} from './firebase-config.mjs';
 const $=id=>document.getElementById(id);
 const valid=/^[A-Za-z0-9][A-Za-z0-9_-]{0,79}$/;
 const uidValid=/^[A-Za-z0-9_-]{1,128}$/;
-const state={api:null,auth:null,db:null,user:null,outbox:null,scope:null,trial:null,role:null,match:null,unsubscribe:null,unsubscribeMember:null,deviceId:null,sending:false,roomGeneration:0,draftDirty:false,draftBaseVersion:null};
+const state={api:null,auth:null,db:null,user:null,outbox:null,scope:null,trial:null,role:null,match:null,unsubscribe:null,unsubscribeMember:null,deviceId:null,sending:false,enqueuing:false,roomGeneration:0,draftDirty:false,draftBaseVersion:null};
 function status(msg,tone=''){const e=$('status');e.textContent=msg;e.className=tone;}
 function log(s){const e=$('log');e.textContent=(new Date().toLocaleTimeString('fr-FR')+' · '+s+'\n'+e.textContent).slice(0,3000)}
 function errorText(e){return String(e?.code||e?.message||e||'Erreur').slice(0,200)}
-function resetRoom(){state.roomGeneration++;state.sending=false;state.unsubscribe?.();state.unsubscribe=null;state.unsubscribeMember?.();state.unsubscribeMember=null;state.trial=null;state.match=null;state.role=null;state.scope=null;state.outbox?.close();state.outbox=null;state.draftDirty=false;state.draftBaseVersion=null;$('score').textContent='— : —';$('version').textContent='Version distante inconnue';$('home').value=0;$('away').value=0;$('demo').hidden=true;$('sharing').hidden=true;$('roomNotice').textContent='';$('inviteNotice').textContent='';}
+function resetRoom(){state.roomGeneration++;state.sending=false;state.enqueuing=false;state.unsubscribe?.();state.unsubscribe=null;state.unsubscribeMember?.();state.unsubscribeMember=null;state.trial=null;state.match=null;state.role=null;state.scope=null;state.outbox?.close();state.outbox=null;state.draftDirty=false;state.draftBaseVersion=null;$('score').textContent='— : —';$('version').textContent='Version distante inconnue';$('home').value=0;$('away').value=0;$('demo').hidden=true;$('sharing').hidden=true;$('roomNotice').textContent='';$('inviteNotice').textContent='';}
 function updateUI(){
   $('rooms').hidden=!state.user;
   $('signIn').hidden=!!state.user;$('signOut').hidden=!state.user;
   $('who').value=state.user?.uid||'Non connecté';
   $('role').textContent=state.role==='admin'?'Propriétaire':state.role==='editor'?'Autorisé à saisir':state.role==='viewer'?'Lecture seule':'Non autorisé';
-  $('send').disabled=!['admin','editor'].includes(state.role)||!state.match||!state.outbox||state.sending;
+  $('send').disabled=!['admin','editor'].includes(state.role)||!state.match||!state.outbox||state.sending||state.enqueuing;
   $('retry').disabled=!['admin','editor'].includes(state.role)||!state.outbox||state.sending;
   $('invite').disabled=state.role!=='admin';$('revoke').disabled=state.role!=='admin';
   $('copyUid').disabled=!state.user;
@@ -193,20 +193,32 @@ async function transmit(){
  finally{if(sameRoom()){state.sending=false;updateUI();}}
 }
 async function sendScore(){
- if(!state.match||!state.outbox||!['admin','editor'].includes(state.role)||!state.user)return;
+ if(!state.match||!state.outbox||!['admin','editor'].includes(state.role)||!state.user||state.enqueuing||state.sending)return;
  const rawA=$('home').value.trim(),rawB=$('away').value.trim();
  if(!/^\d{1,2}$/.test(rawA)||!/^\d{1,2}$/.test(rawB)){status('Buts invalides : renseigner les deux scores entiers de 0 à 99.','error');return;}
  const a=Number(rawA),b=Number(rawB);
- const s=state.scope;
- const command={...s,id:'e'+newId(),matchId:'demo',type:'set.record',expectedVersion:state.draftDirty&&state.draftBaseVersion!==null?state.draftBaseVersion:state.match.version,setIndex:0,goals:{a,b}};
+ // Le numéro de génération et la portée empêchent un acquittement tardif de
+ // modifier l'interface d'une autre salle ou d'un autre compte Google.
+ const outbox=state.outbox,scope=state.scope,uid=state.user.uid,generation=state.roomGeneration;
+ const sameRoom=()=>state.roomGeneration===generation&&state.outbox===outbox&&state.scope===scope&&state.user?.uid===uid;
+ const command={...scope,id:'e'+newId(),matchId:'demo',type:'set.record',expectedVersion:state.draftDirty&&state.draftBaseVersion!==null?state.draftBaseVersion:state.match.version,setIndex:0,goals:{a,b}};
+ state.enqueuing=true;updateUI();
  try{
-  const result=await state.outbox.enqueue(s,command);
+  const result=await outbox.enqueue(scope,command);
+  if(!sameRoom())return; // Les événements confirmés restent dans leur file IndexedDB d'origine.
   if(result.status!=='queued'&&result.status!=='duplicate'){status('Ajout local non confirmé : '+result.status,'error');return;}
   state.draftDirty=false;state.draftBaseVersion=null;
-  status('Score fictif enregistré localement. Envoi en cours…');
   await refreshQueue();
-  if(navigator.onLine)await transmit();else status('Hors connexion : score conservé localement.','error');
- }catch(e){status('Sauvegarde locale impossible : ne pas quitter avant résolution. '+errorText(e),'error');}
+  if(!sameRoom())return;
+  if(!['admin','editor'].includes(state.role)){
+    status('Score fictif conservé dans la file locale. Droits de saisie retirés : aucun envoi.','error');
+    return;
+  }
+  status('Score fictif enregistré localement. Envoi en cours…');
+  if(navigator.onLine)await transmit();
+  else status('Hors connexion : score conservé localement.','error');
+ }catch(e){if(sameRoom())status('Sauvegarde locale impossible : ne pas quitter avant résolution. '+errorText(e),'error');}
+ finally{if(sameRoom()){state.enqueuing=false;updateUI();}}
 }
 function inviteFeedback(message,tone){const e=$('inviteNotice');e.textContent=message;e.className='inline-status '+tone;status(message,tone);}
 async function manageUser(revoke=false){

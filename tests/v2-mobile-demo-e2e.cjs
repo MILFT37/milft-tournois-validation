@@ -218,6 +218,23 @@ async function main(){
   assert.equal(await pageA.locator('#trialId').inputValue(),nextTrial,'Stale owner response cannot reopen previous room');
   assert.equal(await pageA.locator('#score').innerText(),'0 : 0');
   assert.equal(await pageA.locator('#role').innerText(),'Propriétaire');
+  // MAJ79 : double-clic sur Enregistrer hors ligne : un seul événement local.
+  await androidA.setOffline(true);
+  await pageA.locator('#home').fill('4');
+  await pageA.locator('#away').fill('2');
+  await pageA.evaluate(()=>{const b=document.getElementById('send');b.click();b.click();});
+  await pageA.locator('#status.error').getByText('Hors connexion',{exact:false}).waitFor();
+  await pageA.locator('#queue').getByText('1 en attente',{exact:false}).waitFor();
+  assert.equal((await pageA.evaluate(async()=>{
+    const d=await MILFTV2Outbox.open({indexedDB,dbName:'MILFT_V2_DEMO_OUTBOX_20261120'});
+    const s={tournamentId:document.getElementById('trialId').value,actorId:document.getElementById('who').value,deviceId:localStorage.getItem('MILFT_V2_DEMO_DEVICE_ID')};
+    const values=await d.list(s);d.close();return values.length;
+  })),1,'Double click creates a single queued event');
+  await androidA.setOffline(false);
+  await pageA.locator('#score').getByText('4 : 2').waitFor({timeout:20000});
+  await pageA.locator('#queue').getByText('0 en attente',{exact:false}).waitFor();
+  assert.match(await pageA.locator('#version').innerText(),/Version distante 1/,'Only one confirmed event after reconnection');
+  assert.notEqual(nextTrial,trial,'New room is different from previously completed match');
   let actual;
   await environment.withSecurityRulesDisabled(async ctx=>{
     actual=(await ctx.database('https://'+projectId+'-default-rtdb.firebaseio.com').ref('v2Trials/'+trial+'/matches/demo').once('value')).val();
@@ -226,7 +243,7 @@ async function main(){
   assert.deepEqual(actual.sets['0'],{a:8,b:6});
   assert.deepEqual(pageErrors,[],'Browser UI must not throw JavaScript errors');
   await Promise.all([androidA.close(),androidB.close()]);
-  console.log('OK MAJ78 Android↔Android avec Firebase émulé : score vide interdit, reprise, droits, révocation et lecture obsolète entre salles');
+  console.log('OK MAJ79 Android↔Android Firebase émulé : tests antérieurs + double-clic offline unique et reprise automatique');
  }finally{
   if(browser)await browser.close();
   if(environment)await environment.cleanup();
