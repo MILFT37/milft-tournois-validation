@@ -41,3 +41,9 @@ L'utilisateur travaille depuis un Samsung Android, souhaite intervenir uniquemen
 - Vue d'ensemble du projet **MILFT Tournois Partage** affichée, application Web visible sous le nom du projet.
 - Badge **Forfait Spark** clairement visible : gratuité confirmée pour le projet à ce stade. Ne pas sélectionner « Mettre à niveau ».
 - Étape suivante demandée à l'utilisateur : ouvrir le menu « Sécurité » pour accéder au paramétrage d'Authentication. Une manipulation à la fois ; ne pas modifier le code ni déployer de règles tant que le service RTDB réel n'est pas créé et vérifié.
+
+## Capture Samsung du 20/11/2026 à 18 h 29 — Google Authentication activée
+- Dans le projet Firebase `milft-tournois-partage-55e44`, la page **Authentication > Méthode de connexion** affiche le fournisseur **Google** avec le statut vert **Activé** (capture utilisateur).
+- Au cours de la configuration, l'adresse e-mail d'assistance du compte club a été sélectionnée et le nom public du projet personnalisé ; statut d'enregistrement confirmé par le retour à la liste des fournisseurs.
+- **À faire immédiatement** : ouvrir **Authentication > Paramètres > Domaines autorisés**, y vérifier/ajouter `milft37.github.io`. Ne pas considérer cette autorisation comme acquise avant validation visuelle.
+- À suivre : créer Realtime Database Spark, examiner/publier les règles de sécurité V2 avant toute écriture réelle, récupérer la configuration Web complète (dont `databaseURL`) et raccorder le **prototype de validation seul**. Aucun changement V1.1 ou données/archives.
