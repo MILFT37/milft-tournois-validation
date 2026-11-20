@@ -59,3 +59,8 @@ L'utilisateur travaille depuis un Samsung Android, souhaite intervenir uniquemen
 - Forfait **Spark** toujours visible en bas à gauche. Aucune donnée fictive ni réelle insérée.
 - **Prochaine manipulation minimale** : ouvrir l'onglet **Règles** pour vérifier les règles réellement en vigueur. Ne pas en déduire leur état sans cette lecture. Le fichier de règles d'essai `v2/database.rules.json` est déjà dans GitHub, mais **non déployé**.
 - Après vérification, déployer les règles isolées pour `v2Trials` avec les protections existantes, puis récupérer la configuration Web publique complète, modifier uniquement `v2/firebase-config.mjs` et effectuer un premier essai **strictement fictif**. V1.1, sauvegardes Drive et données locales protégées.
+
+## Capture Samsung du 20/11/2026 à 18 h 48 — RTDB verrouillée confirmée
+- Capture **Realtime Database > Règles** : la base active contient uniquement `{"rules": {".read": false, ".write": false}}`, confirmant l'interdiction de lecture et écriture avant installation des règles métier.
+- Le fichier GitHub versionné `v2/database.rules.json` (blob `3d571d272a0f17810cda5c788f6a037019eb39c9`) a été relu, avec `.read/.write` racine à `false` et restrictions d'accès `v2Trials`. Aucun déploiement sur Firebase effectué à ce stade.
+- Prochaine étape manuelle nécessaire depuis Samsung : transférer l'intégralité de ce fichier JSON depuis GitHub dans l'éditeur des règles Firebase et publier après contrôle, sans modifier la production V1.1 ni importer des données. Le processus doit minimiser les manipulations sur téléphone.
