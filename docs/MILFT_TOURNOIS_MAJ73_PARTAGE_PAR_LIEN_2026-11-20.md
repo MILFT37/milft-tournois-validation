@@ -15,9 +15,9 @@ Commit `41d7a543c57bcea84d0361a122828a972240a1b9` dans `MILFT37/milft-tournois-v
 
 ## Tests de la MAJ73
 - Simulation métier V2 `44775844991` : **SUCCESS**.
-- Navigateur Chromium Android / WebKit `44775845347` : **à confirmer**.
-- E2E Firebase Auth + RTDB émulateurs `44775845020` : **à confirmer**.
-- GitHub Pages validation `44775845079` : **à confirmer**.
+- Navigateur Chromium Android / WebKit `44775845347` : **SUCCESS**.
+- E2E Firebase Auth + RTDB émulateurs `44775845020` : **SUCCESS**.
+- GitHub Pages validation `44775845079` : **SUCCESS**.
 
 ## Protection et limites
 - La V1.1 officielle `MILFT37/milft-tournois` reste à la MAJ67, commit `d81c9f03f7e7ca016e517c6df8ae1f458285ee0c`. Aucun changement de code de production, aucune migration de joueurs, scores, championnats, tables ni archives Drive.
@@ -27,3 +27,6 @@ Commit `41d7a543c57bcea84d0361a122828a972240a1b9` dans `MILFT37/milft-tournois-v
 
 ## À faire ensuite
 Confirmer les trois workflows de la MAJ73, corriger uniquement les échecs éventuels, puis préparer l'activation sécurisée d'un projet Firebase Spark neuf (Auth Google, domaine `milft37.github.io`, RTDB et règles MAJ71) via l'intégration Firebase si installée. Sans installation ni accès direct Firebase, ne pas feindre une connexion réelle ni demander de manipulation supplémentaire inutile sur Android.
+
+## Clôture MAJ73
+Les quatre workflows GitHub Actions de MAJ73 ont terminé avec la conclusion **SUCCESS**, notamment l'essai complet de deux Android avec vrais SDK Firebase Auth et RTDB contre les émulateurs locaux (run `44775845020`). Le lien préremplit le code sans contourner l'invitation. Aucune configuration Firebase réelle n'a été installée ; aucun partage de tournois réels n'est actif. Le chantier demeure bloqué pour son premier essai physique uniquement par la connexion d'un projet Firebase Spark sous contrôle du propriétaire, puis les autorisations et la configuration Web publique.
