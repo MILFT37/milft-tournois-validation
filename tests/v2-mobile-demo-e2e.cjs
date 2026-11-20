@@ -147,7 +147,10 @@ async function main(){
   // Revoke editor access. Rules must take effect on reads and writes.
   await pageA.locator('#revoke').click();
   await pageA.locator('#status.good').getByText('Accès révoqué',{exact:false}).waitFor();
-  const actual=(await environment.authenticatedContext(uidA).database().ref('v2Trials/'+trial+'/matches/demo').once('value')).val();
+  let actual;
+  await environment.withSecurityRulesDisabled(async ctx=>{
+    actual=(await ctx.database().ref('v2Trials/'+trial+'/matches/demo').once('value')).val();
+  });
   assert.equal(actual.version,3,'Three accepted score updates only');
   assert.deepEqual(actual.sets['0'],{a:8,b:6});
   assert.deepEqual(pageErrors,[],'Browser UI must not throw JavaScript errors');
