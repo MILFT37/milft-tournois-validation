@@ -20,3 +20,14 @@ Après fermeture ou rechargement de la page **pendant** une transmission, Indexe
 - Aucun changement de l'application de production `MILFT37/milft-tournois`, des données de tournois, du championnat annuel ou des archives Google Drive.
 - Base Firebase réelle, règles publiées, configuration Google Auth et forfait gratuit Spark inchangés.
 - Aucun nouveau test utilisateur sur Samsung ; test inter-appareils physiques avec **deux comptes distincts toujours non effectué**, à réaliser lorsqu'un PC ou un deuxième Android sera disponible.
+
+## Clôture MAJ80 — quatre contrôles réussis
+- Commit d'application `61cd53a45887ed45ee868ea64cbd9d5bffa11984` : reprise automatique après délai de bail IndexedDB, contrôle de salle active et messages d'interface.
+- Simulation partage V2 `44827687963` : **SUCCESS**.
+- Test mobile Chromium et WebKit `44827686937` : **SUCCESS**.
+- Déploiement GitHub Pages avec comparaison des fichiers publics `44827687131` : **SUCCESS**.
+- Test E2E initial `44827687080` : **FAILURE**, non pas à cause de la nouvelle reprise mais d'une attente du compteur de file précédent. Diagnostic ciblé du compteur ajouté dans `a1f719d4` ; deuxième exécution a confirmé la fin de ce parcours, puis relevé une synchronisation trop précoce du test de création de la salle suivante.
+- Test corrigé dans `624071cf` : attente explicite du nouveau code de salle avant vérification. Test E2E final `44828236235` : **SUCCESS** (règles Firebase compactes, reprise du bail après fermeture, score 2–1 sans envoi anticipé, plus scénarios préexistants).
+- La nouvelle application V2 est publiée par Pages ; les modifications des deux derniers commits concernaient seulement les tests. **MAJ80 validée côté code, publication et tests automatisés.**
+- Aucun test réel sur deux appareils physiques n'a encore été effectué. L'authentification Google, la création de salle et le score fictif 5–3 déjà validés sur le vrai Samsung (MAJ75) restent acquis.
+- Production officielle `MILFT37/milft-tournois` dernier commit `d81c9f03f7e7ca016e517c6df8ae1f458285ee0c` : non modifiée. Aucune modification de données, archives Drive, règles RTDB réelles ou formule Spark.
