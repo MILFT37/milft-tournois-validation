@@ -47,3 +47,8 @@ L'utilisateur travaille depuis un Samsung Android, souhaite intervenir uniquemen
 - Au cours de la configuration, l'adresse e-mail d'assistance du compte club a été sélectionnée et le nom public du projet personnalisé ; statut d'enregistrement confirmé par le retour à la liste des fournisseurs.
 - **À faire immédiatement** : ouvrir **Authentication > Paramètres > Domaines autorisés**, y vérifier/ajouter `milft37.github.io`. Ne pas considérer cette autorisation comme acquise avant validation visuelle.
 - À suivre : créer Realtime Database Spark, examiner/publier les règles de sécurité V2 avant toute écriture réelle, récupérer la configuration Web complète (dont `databaseURL`) et raccorder le **prototype de validation seul**. Aucun changement V1.1 ou données/archives.
+
+## Capture Samsung du 20/11/2026 à 18 h 36 — domaine GitHub Pages autorisé
+- Authentication > Paramètres > Domaines autorisés affiche `milft37.github.io` avec type **Custom**, à côté des trois domaines préexistants `localhost`, `milft-tournois-partage-55e44.firebaseapp.com`, `milft-tournois-partage-55e44.web.app` : **confirmation visuelle de l'autorisation du domaine GitHub Pages**.
+- Google est déjà activé dans Authentication (capture 18h29). Aucun service Realtime Database encore créé/confirmé et aucune règle déployée : ne pas considérer le partage réel comme actif.
+- Suite : rejoindre **Bases de données et stockage > Realtime Database** depuis le menu du projet, créer une base compatible Spark et sécurisée, puis contrôler et déployer `v2/database.rules.json` **avant le premier essai réel**, récupérer `databaseURL` et les paramètres publics de l'application Web. V1.1 et archives restent intouchées.
