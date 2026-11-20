@@ -232,7 +232,18 @@ async function main(){
   })),1,'Double click creates a single queued event');
   await androidA.setOffline(false);
   await pageA.locator('#score').getByText('4 : 2').waitFor({timeout:20000});
-  await pageA.locator('#queue').getByText('0 en attente',{exact:false}).waitFor();
+  try {
+    await pageA.locator('#queue').getByText('0 en attente',{exact:false}).waitFor({timeout:10000});
+  } catch (error) {
+    const diagnostic=await pageA.evaluate(async()=>{
+      const d=await MILFTV2Outbox.open({indexedDB,dbName:'MILFT_V2_DEMO_OUTBOX_20261120'});
+      const s={tournamentId:document.getElementById('trialId').value,actorId:document.getElementById('who').value,deviceId:localStorage.getItem('MILFT_V2_DEMO_DEVICE_ID')};
+      const items=(await d.list(s)).map(x=>({state:x.state,reason:x.reason,leaseUntil:x.leaseUntil,attempts:x.attempts}));
+      d.close();
+      return {items,queue:document.getElementById('queue').textContent,status:document.getElementById('status').textContent};
+    });
+    throw new Error('MAJ80 diagnostic de la file après reconnexion '+JSON.stringify(diagnostic),{cause:error});
+  }
   assert.match(await pageA.locator('#version').innerText(),/Version distante 1/,'Only one confirmed event after reconnection');
   assert.notEqual(nextTrial,trial,'New room is different from previously completed match');
   // MAJ80 : relancer automatiquement un événement resté « sending » après
