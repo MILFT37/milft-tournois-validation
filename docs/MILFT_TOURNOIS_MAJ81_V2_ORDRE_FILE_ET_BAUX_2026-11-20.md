@@ -19,3 +19,13 @@ Le `claimNext` IndexedDB initial parcourait l'index `byScope`, qui trie sur la c
 - Application officielle V1.1 `MILFT37/milft-tournois`, championnats, scores et archives Drive **intouchés**.
 - Règles RTDB réelles, compte Google, données du club et forfait Firebase Spark inchangés. Tests automatisés uniquement sur émulateurs et données fictives.
 - Le test réel sur deux appareils/identités différents demeure à faire ultérieurement ; ne pas le confondre avec la simulation E2E.
+
+## Clôture MAJ81 — contrôles validés
+- Commit application/test initial `388cfb204a3f77d368880bf34ab3055b2d017354` : chronologie `createdAt` des événements `pending/sending` et blocage de la file devant un bail actif. Aucun changement du stockage des données V1.1 ni des règles Firebase.
+- Simulation partage V2 `44829179874` : **SUCCESS**.
+- Interface navigateur Android Chromium/WebKit `44829179968` : **SUCCESS**.
+- E2E deux smartphones simulés, Firebase Auth/Realtime Database émulateur, FIFO et bail actif `44829179899` : **SUCCESS**.
+- GitHub Pages + vérification des fichiers publics `44829180034` : **SUCCESS**.
+- Premier test spécialisé IndexedDB `44829179886` : **FAILURE de syntaxe du nouveau test** (apostrophe non échappée dans une assertion ; pas d'échec métier). Correction `25826624f5bad865d6f33e8f319871e34e5b9fba`. Nouvelle exécution `44829317678` : **SUCCESS**, sous **Chromium et WebKit** ; tests des baux multi-onglets, accusés de réception tardifs, des IDs hors ordre alphabétique et du FIFO chronologique validés.
+- MAJ81 **publiée, tests complets validés**, bilan consigné. Production officielle `MILFT37/milft-tournois` : commit `d81c9f03f7e7ca016e517c6df8ae1f458285ee0c`, inchangé.
+- Le test physique entre deux appareils réels et deux identités Google distinctes demeure **non effectué**. Ne pas redemander le test Samsung réussi de la MAJ75 (Google Auth, salle fictive, score distant 5–3) ; continuer sur prototype V2 sans transfert de données ni archives.
