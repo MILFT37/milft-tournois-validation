@@ -19,6 +19,19 @@ function updateUI(){
 }
 function newId(){return Array.from(crypto.getRandomValues(new Uint8Array(12)),n=>n.toString(16).padStart(2,'0')).join('');}
 function fingerprint(c){return JSON.stringify([c.tournamentId,c.matchId,c.actorId,c.deviceId,c.expectedVersion,c.setIndex,c.goals.a,c.goals.b]);}
+// L'identifiant V2 doit survivre à la fermeture du navigateur : sessionStorage
+// seul rendrait les brouillons IndexedDB inaccessibles à la réouverture.
+const DEVICE_KEY='MILFT_V2_DEMO_DEVICE_ID';
+const LAST_TRIAL_KEY='MILFT_V2_DEMO_LAST_TRIAL';
+function persistentDeviceId(){
+  let value=localStorage.getItem(DEVICE_KEY);
+  if(!value||!valid.test(value)){
+    value='device'+newId();
+    localStorage.setItem(DEVICE_KEY,value);
+  }
+  if(localStorage.getItem(DEVICE_KEY)!==value)throw Error('Stockage local V2 non fiable');
+  return value;
+}
 function syncScore(){
  if(!state.match){$('score').textContent='— : —';$('version').textContent='Version distante inconnue';return;}
  const x=state.match.sets?.['0'];
@@ -52,10 +65,12 @@ async function prepareRoom(trialId){
    state.scope={tournamentId:trialId,actorId:uid,deviceId:state.deviceId};
    $('trialId').value=trialId;
    $('demo').hidden=false;$('sharing').hidden=role!=='admin';updateUI();
+   localStorage.setItem(LAST_TRIAL_KEY,trialId);
    state.unsubscribe=api.onValue(api.ref(db,base+'/matches/demo'),snapshot=>{
       state.match=snapshot.val();syncScore();$('net').textContent='Écoute Firebase active';updateUI();
    },e=>{state.match=null;$('net').textContent='Écoute indisponible';updateUI();status('Lecture du match refusée : '+errorText(e),'error');});
    await refreshQueue();
+   if(navigator.onLine&&role!=='viewer')void transmit();
    status('Essai '+trialId+' ouvert · '+(role==='viewer'?'lecture seule':role==='admin'?'propriétaire':'saisie autorisée'),'good');
  }catch(e){resetRoom();updateUI();status('Accès à l’essai impossible : '+errorText(e),'error');}
 }
@@ -147,6 +162,12 @@ async function manageUser(revoke=false){
  }catch(e){status('Modification des droits refusée : '+errorText(e),'error');}
 }
 async function initialize(){
+ try{
+  state.deviceId=persistentDeviceId();
+  const savedTrial=localStorage.getItem(LAST_TRIAL_KEY);
+  if(savedTrial&&valid.test(savedTrial))$('trialId').value=savedTrial;
+ }catch(e){status('Stockage local V2 indisponible : sauvegarde des scores impossible. '+errorText(e),'error');return;}
+ window.addEventListener('online',()=>{if(state.user&&state.scope&&state.role!=='viewer')transmit();});
  for(const id of ['home','away'])$(''+id).addEventListener('input',()=>{if(!state.draftDirty){state.draftDirty=true;state.draftBaseVersion=state.match?.version??null;}});
  $('create').onclick=createRoom;
  $('join').onclick=()=>prepareRoom($('trialId').value.trim());
@@ -170,9 +191,6 @@ async function initialize(){
   const app=initializeApp(firebaseConfig,'milft-v2-demo');
   state.auth=getAuth(app);state.db=getDatabase(app);
   state.api={ref,get,set,remove,onValue,runTransaction,signOut};
-  let deviceId=sessionStorage.getItem('MILFT_V2_DEVICE_ID');
-  if(!deviceId||!valid.test(deviceId)){deviceId='android'+newId();sessionStorage.setItem('MILFT_V2_DEVICE_ID',deviceId);}
-  state.deviceId=deviceId;
   $('signIn').disabled=false;
   $('signIn').onclick=async()=>{
     try{await signInWithPopup(state.auth,new GoogleAuthProvider());}
