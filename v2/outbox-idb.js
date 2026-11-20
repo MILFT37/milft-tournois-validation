@@ -55,20 +55,43 @@ function open({indexedDB,dbName=DEFAULT_DB}={}){
      try{operation(tr,x=>{result=x;});}catch(e){tr.abort();fail(e);}
     });
    }
-   function enqueue(scope,raw,now=Date.now()){
+   function enqueue(scope,raw,now=Date.now(),{chainLocalScore=false}={}){
     const s=scopeOf(scope),cmd=normalizeCommand(raw);
     if(cmd.tournamentId!==s.tournamentId||cmd.actorId!==s.actorId||cmd.deviceId!==s.deviceId)throw Error('Commande hors portée');
     if(!Number.isFinite(now)||now<0)throw Error('Horodatage invalide');
-    const key=itemKey(s,cmd.id),fingerprint=JSON.stringify(cmd);
+    if(chainLocalScore&&cmd.type!=='set.record')throw Error('Chaînage réservé aux scores');
+    const key=itemKey(s,cmd.id),inputFingerprint=JSON.stringify(cmd);
     return tx([STORE,RECEIPTS],'readwrite',(tr,done)=>{
      const receipt=tr.objectStore(RECEIPTS).get(key);
      receipt.onsuccess=()=>{
-      if(receipt.result){done({status:receipt.result.fingerprint===fingerprint?'already-confirmed':'id-collision'});return;}
+      if(receipt.result){done({status:(receipt.result.inputFingerprint||receipt.result.fingerprint)===inputFingerprint?'already-confirmed':'id-collision'});return;}
       const get=tr.objectStore(STORE).get(key);
       get.onsuccess=()=>{
-       if(get.result){done({status:get.result.fingerprint===fingerprint?'duplicate':'id-collision'});return;}
-       tr.objectStore(STORE).add({key,scope:scopeKey(s),command:cmd,fingerprint,state:'pending',createdAt:now,updatedAt:now,attempts:0,leaseToken:null,leaseUntil:0,reason:null});
-       done({status:'queued'});
+       if(get.result){done({status:(get.result.inputFingerprint||get.result.fingerprint)===inputFingerprint?'duplicate':'id-collision'});return;}
+       const store=tr.objectStore(STORE);
+       const insert=items=>{
+        let dependsOn=null;
+        if(chainLocalScore){
+         // Deux scores saisis hors connexion sur le même match doivent avoir
+         // deux versions successives. La réservation se fait atomiquement :
+         // deux onglets ne peuvent pas calculer la même version locale.
+         const previous=items.filter(x=>x.command?.matchId===cmd.matchId
+           &&x.command?.type==='set.record'&&['pending','sending','conflict','blocked'].includes(x.state))
+           .sort((x,y)=>x.createdAt-y.createdAt||x.key.localeCompare(y.key)).at(-1);
+         if(previous){
+          cmd.expectedVersion=Math.max(cmd.expectedVersion,previous.command.expectedVersion+1);
+          dependsOn=previous.command.id;
+         }
+        }
+        store.add({key,scope:scopeKey(s),command:cmd,fingerprint:JSON.stringify(cmd),
+         inputFingerprint,state:'pending',createdAt:now,updatedAt:now,attempts:0,
+         leaseToken:null,leaseUntil:0,reason:null,dependsOn});
+        done({status:'queued'});
+       };
+       if(chainLocalScore){
+        const queued=store.index('byScope').getAll(scopeKey(s));
+        queued.onsuccess=()=>insert(queued.result);
+       }else insert([]);
       };
      };
     });
@@ -83,7 +106,7 @@ function open({indexedDB,dbName=DEFAULT_DB}={}){
    function claimNext(scope,{now=Date.now(),leaseMs=30000}={}){
     const key=scopeKey(scope);
     if(!Number.isFinite(now)||now<0||!Number.isSafeInteger(leaseMs)||leaseMs<1000||leaseMs>300000)throw Error('Bail invalide');
-    return tx([STORE],'readwrite',(tr,done)=>{
+    return tx([STORE,RECEIPTS],'readwrite',(tr,done)=>{
      const store=tr.objectStore(STORE);
      // L'index byScope trie par clé primaire d'événement et non par createdAt.
      // La file doit respecter la chronologie des saisies et ne jamais sauter
@@ -94,10 +117,18 @@ function open({indexedDB,dbName=DEFAULT_DB}={}){
        .sort((a,b)=>a.createdAt-b.createdAt||a.key.localeCompare(b.key));
       const item=waiting[0];
       if(!item||item.state==='sending'&&item.leaseUntil>now){done(null);return;}
-      item.state='sending';
-      item.leaseToken=String(now)+'-'+Math.random().toString(36).slice(2)+'-'+item.attempts;
-      item.leaseUntil=now+leaseMs;item.updatedAt=now;item.attempts++;
-      store.put(item);done(item);
+      const reserve=()=>{
+       item.state='sending';
+       item.leaseToken=String(now)+'-'+Math.random().toString(36).slice(2)+'-'+item.attempts;
+       item.leaseUntil=now+leaseMs;item.updatedAt=now;item.attempts++;
+       store.put(item);done(item);
+      };
+      if(item.dependsOn){
+       // Une saisie fondée sur la précédente ne doit JAMAIS passer si celle-ci
+       // a été refusée : le numéro distant pourrait coïncider par hasard.
+       const receipt=tr.objectStore(RECEIPTS).get(itemKey(scope,item.dependsOn));
+       receipt.onsuccess=()=>{if(!receipt.result){done(null);return;}reserve();};
+      }else reserve();
      };
     });
    }
@@ -113,7 +144,7 @@ function open({indexedDB,dbName=DEFAULT_DB}={}){
       if(!item){done({status:'missing'});return;}
       if(item.state!=='sending'||item.leaseToken!==leaseToken){done({status:'stale-lease'});return;}
       if(outcome==='applied'||outcome==='duplicate'){
-       tr.objectStore(RECEIPTS).put({key,fingerprint:item.fingerprint,confirmedAt:now,outcome});
+       tr.objectStore(RECEIPTS).put({key,fingerprint:item.fingerprint,inputFingerprint:item.inputFingerprint||item.fingerprint,confirmedAt:now,outcome});
        store.delete(key);done({status:'confirmed'});return;
       }
       item.state=outcome==='conflict'?'conflict':outcome==='forbidden'?'blocked':'pending';

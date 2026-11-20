@@ -222,7 +222,7 @@ async function sendScore(){
  const command={...scope,id:'e'+newId(),matchId:'demo',type:'set.record',expectedVersion:state.draftDirty&&state.draftBaseVersion!==null?state.draftBaseVersion:state.match.version,setIndex:0,goals:{a,b}};
  state.enqueuing=true;updateUI();
  try{
-  const result=await outbox.enqueue(scope,command);
+  const result=await outbox.enqueue(scope,command,Date.now(),{chainLocalScore:true});
   if(!sameRoom())return; // Les événements confirmés restent dans leur file IndexedDB d'origine.
   if(result.status!=='queued'&&result.status!=='duplicate'){status('Ajout local non confirmé : '+result.status,'error');return;}
   state.draftDirty=false;state.draftBaseVersion=null;

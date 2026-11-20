@@ -140,7 +140,70 @@ async function main(){
   assert.equal(ordering.second,'evtAsecond','Only then can the second event be claimed');
   assert.equal(ordering.final,'confirmed');
   assert.equal(ordering.remaining,0);
-  console.log('OK V2 MAJ81 '+engine.name+': FIFO by creation date, active lease blocks newer edits, cross-tab atomic claims, replay and isolation');
+  // MAJ82 : les scores successifs saisis hors ligne sur le même match
+  // reçoivent des versions distinctes et restent liés jusqu'à confirmation.
+  const chained=await reopened.evaluate(async()=>{
+    const db=await MILFTV2Outbox.open({indexedDB});
+    const s={tournamentId:'trial82success',actorId:'samsung82',deviceId:'phone82'};
+    const make=(id,goals)=>({...s,id,matchId:'demo',type:'set.record',expectedVersion:0,setIndex:0,goals});
+    const first=make('evtZ82first',{a:2,b:1}),second=make('evtA82second',{a:4,b:2});
+    const one=await db.enqueue(s,first,20000,{chainLocalScore:true});
+    const two=await db.enqueue(s,second,20001,{chainLocalScore:true});
+    const replay=await db.enqueue(s,second,20002,{chainLocalScore:true});
+    const queued=await db.list(s);
+    const claim1=await db.claimNext(s,{now:20100,leaseMs:1000});
+    const leased=await db.claimNext(s,{now:20101,leaseMs:1000});
+    const ack1=await db.finish(s,claim1.command.id,claim1.leaseToken,'applied',{now:20102});
+    const claim2=await db.claimNext(s,{now:20103,leaseMs:1000});
+    const ack2=await db.finish(s,claim2.command.id,claim2.leaseToken,'applied',{now:20104});
+    const confirmedReplay=await db.enqueue(s,second,20105,{chainLocalScore:true});
+    const remaining=await db.list(s);db.close();
+    return {one,two,replay,queued:queued.map(x=>({id:x.command.id,v:x.command.expectedVersion,dependsOn:x.dependsOn})),
+      first:claim1?.command.id,leased,ack1:ack1.status,second:claim2?.command.id,
+      secondVersion:claim2?.command.expectedVersion,ack2:ack2.status,
+      confirmedReplay,remaining:remaining.length};
+  });
+  assert.deepEqual([chained.one.status,chained.two.status,chained.replay.status],
+    ['queued','queued','duplicate'],'A repeated offline command must stay idempotent');
+  assert.deepEqual(chained.queued,[
+    {id:'evtZ82first',v:0,dependsOn:null},
+    {id:'evtA82second',v:1,dependsOn:'evtZ82first'}
+  ],'Second offline score must depend on first and use the next version');
+  assert.equal(chained.first,'evtZ82first');
+  assert.equal(chained.leased,null,'Unexpired predecessor blocks later local score');
+  assert.equal(chained.ack1,'confirmed');
+  assert.equal(chained.second,'evtA82second');
+  assert.equal(chained.secondVersion,1);
+  assert.equal(chained.ack2,'confirmed');
+  assert.equal(chained.confirmedReplay.status,'already-confirmed');
+  assert.equal(chained.remaining,0);
+  const rejectedChain=await reopened.evaluate(async()=>{
+    const db=await MILFTV2Outbox.open({indexedDB});
+    const s={tournamentId:'trial82conflict',actorId:'samsung82',deviceId:'phone82'};
+    const make=(id,goals)=>({...s,id,matchId:'demo',type:'set.record',expectedVersion:0,setIndex:0,goals});
+    await db.enqueue(s,make('evt82conflicting',{a:2,b:1}),22000,{chainLocalScore:true});
+    await db.enqueue(s,make('evt82dependent',{a:4,b:2}),22001,{chainLocalScore:true});
+    const first=await db.claimNext(s,{now:22100,leaseMs:1000});
+    await db.finish(s,first.command.id,first.leaseToken,'conflict',{now:22101,reason:'remote changed'});
+    const second=await db.claimNext(s,{now:22102,leaseMs:1000});
+    const items=(await db.list(s)).map(x=>({id:x.command.id,state:x.state,dependsOn:x.dependsOn}));
+    db.close();return {second,items};
+  });
+  assert.equal(rejectedChain.second,null,'Never overwrite remote edits through a dependent score after conflict');
+  assert.deepEqual(rejectedChain.items,[
+    {id:'evt82conflicting',state:'conflict',dependsOn:null},
+    {id:'evt82dependent',state:'pending',dependsOn:'evt82conflicting'}
+  ],'Both conflicting and dependent scores must be preserved');
+  await reopened.reload();
+  const afterRestart=await reopened.evaluate(async()=>{
+    const db=await MILFTV2Outbox.open({indexedDB});
+    const s={tournamentId:'trial82conflict',actorId:'samsung82',deviceId:'phone82'};
+    const claim=await db.claimNext(s,{now:30000,leaseMs:1000});
+    const entries=await db.list(s);db.close();return {claim,entries:entries.length};
+  });
+  assert.equal(afterRestart.claim,null,'Dependent operation remains protected after browser reload');
+  assert.equal(afterRestart.entries,2,'No offline score lost on reload');
+  console.log('OK V2 MAJ82 '+engine.name+': chained offline scores, durable dependencies and safe conflict blocking');
  }finally{
   if(context)await context.close();
   await new Promise(r=>server.close(r));

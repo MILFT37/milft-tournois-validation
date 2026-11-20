@@ -318,6 +318,43 @@ async function main(){
   await recovered.locator('#score').getByText('3 : 2').waitFor({timeout:15000});
   await recovered.locator('#version').getByText('Version distante 2',{exact:false}).waitFor();
   await recovered.locator('#queue').getByText('0 en attente, 0 en cours',{exact:false}).waitFor();
+  // MAJ82 : deux saisies réelles dans l'UI pendant la même déconnexion.
+  // Le second score se base sur la première opération locale, pas sur
+  // la version distante restée figée pendant le mode hors connexion.
+  await recovered.locator('#create').click();
+  await recovered.waitForFunction(previous=>document.getElementById('trialId').value!==previous,fifoTrial);
+  await recovered.locator('#score').getByText('0 : 0').waitFor();
+  const chainedTrial=await recovered.locator('#trialId').inputValue();
+  await androidA.setOffline(true);
+  await recovered.locator('#home').fill('2');
+  await recovered.locator('#away').fill('1');
+  await recovered.locator('#send').click();
+  await recovered.locator('#queue').getByText('1 en attente',{exact:false}).waitFor();
+  await recovered.locator('#home').fill('4');
+  await recovered.locator('#away').fill('2');
+  await recovered.locator('#send').click();
+  await recovered.locator('#queue').getByText('2 en attente',{exact:false}).waitFor();
+  const queuedVersions=await recovered.evaluate(async()=>{
+    const db=await MILFTV2Outbox.open({indexedDB,dbName:'MILFT_V2_DEMO_OUTBOX_20261120'});
+    const s={tournamentId:document.getElementById('trialId').value,
+      actorId:document.getElementById('who').value,deviceId:localStorage.getItem('MILFT_V2_DEMO_DEVICE_ID')};
+    const values=(await db.list(s)).map(x=>({v:x.command.expectedVersion,id:x.command.id,dependsOn:x.dependsOn}));
+    db.close();return values;
+  });
+  assert.deepEqual(queuedVersions.map(x=>x.v),[0,1],'Two offline UI edits must not share the same version');
+  assert.equal(queuedVersions[1].dependsOn,queuedVersions[0].id,'Second score depends on first receipt');
+  assert.equal(await recovered.locator('#score').innerText(),'0 : 0','No offline score transmitted before reconnection');
+  await androidA.setOffline(false);
+  await recovered.locator('#score').getByText('4 : 2').waitFor({timeout:20000});
+  await recovered.locator('#version').getByText('Version distante 2',{exact:false}).waitFor();
+  await recovered.locator('#queue').getByText('0 en attente, 0 en cours',{exact:false}).waitFor();
+  let chainedMatch;
+  await environment.withSecurityRulesDisabled(async ctx=>{
+    chainedMatch=(await ctx.database('https://'+projectId+'-default-rtdb.firebaseio.com')
+      .ref('v2Trials/'+chainedTrial+'/matches/demo').once('value')).val();
+  });
+  assert.equal(chainedMatch.version,2,'Both offline edits must be applied once and in order');
+  assert.deepEqual(chainedMatch.sets['0'],{a:4,b:2});
   let actual;
   await environment.withSecurityRulesDisabled(async ctx=>{
     actual=(await ctx.database('https://'+projectId+'-default-rtdb.firebaseio.com').ref('v2Trials/'+trial+'/matches/demo').once('value')).val();
