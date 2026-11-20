@@ -5,6 +5,7 @@ on:
     paths:
       - 'v2/**'
       - 'tests/v2-sync-simulated.cjs'
+      - 'tests/v2-android-android-transport.cjs'
       - '.github/workflows/v2-sync-simulated.yml'
   workflow_dispatch:
 permissions:
@@ -20,3 +21,5 @@ jobs:
           node-version: '22'
       - run: node tests/v2-sync-simulated.cjs
       - run: node tests/v2-operations-simulated.cjs
+      - name: Deux appareils Android, permissions, conflits et transport simulé
+        run: node tests/v2-android-android-transport.cjs
