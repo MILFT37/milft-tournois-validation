@@ -135,7 +135,7 @@ async function main(){
   assert.equal(ordering.first,'evtZfirst','FIFO must follow creation timestamps, not event IDs');
   assert.equal(ordering.blocked,null,'Second entry must wait while first lease is active');
   assert.equal(ordering.stolen,'evtZfirst','Expired head is reclaimed first');
-  assert.equal(ordering.stale,'stale-lease','Expired owner's late acknowledgement cannot delete');
+  assert.equal(ordering.stale,'stale-lease','Late acknowledgement from an expired lease cannot delete');
   assert.equal(ordering.done,'confirmed');
   assert.equal(ordering.second,'evtAsecond','Only then can the second event be claimed');
   assert.equal(ordering.final,'confirmed');
