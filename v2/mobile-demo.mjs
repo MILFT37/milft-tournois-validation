@@ -61,16 +61,17 @@ function syncScore(){
    $('home').value=x?.a??0;$('away').value=x?.b??0;state.draftBaseVersion=null;
  }
 }
-// Les événements « sending » peuvent survivre à une fermeture de navigateur.
- // Ne jamais voler un bail non expiré : la reprise se fait à son échéance.
+// Un bail « sending » ou une erreur réseau temporaire peut survivre à
+// la fermeture du navigateur. La reprise n'anticipe jamais les délais.
 function scheduleLeaseRecovery(items,context){
  clearTimeout(state.recoveryTimer);state.recoveryTimer=null;
  if(state.roomGeneration!==context.generation||state.outbox!==context.outbox||
     !navigator.onLine||!['admin','editor'].includes(state.role)||state.sending)return;
- const deadlines=items.filter(item=>item.state==='sending'&&Number.isFinite(item.leaseUntil)&&item.leaseUntil>0)
-   .map(item=>item.leaseUntil);
- if(!deadlines.length)return;
- const ms=Math.max(250,Math.min(300000,Math.min(...deadlines)-Date.now()+150));
+ const head=items.find(item=>item.state==='pending'||item.state==='sending');
+ if(!head)return;
+ const deadline=head.state==='sending'?head.leaseUntil:head.retryAt;
+ if(!Number.isFinite(deadline)||deadline<=0)return;
+ const ms=Math.max(250,Math.min(300000,deadline-Date.now()+150));
  state.recoveryTimer=setTimeout(()=>{
    state.recoveryTimer=null;
    if(state.roomGeneration!==context.generation||state.outbox!==context.outbox||
@@ -85,7 +86,11 @@ async function refreshQueue(){
  if(state.roomGeneration!==countsFromScope.generation||state.outbox!==countsFromScope.outbox)return;
  const counts={pending:0,sending:0,conflict:0,blocked:0};
  for(const x of items)counts[x.state]=(counts[x.state]||0)+1;
- $('queue').textContent='File locale persistante : '+counts.pending+' en attente, '+counts.sending+' en cours, '+counts.conflict+' conflit(s), '+counts.blocked+' refusé(s)'+(counts.sending&&!state.sending&&navigator.onLine&&['admin','editor'].includes(state.role)?' · Reprise automatique après le délai de sécurité':'');
+ const head=items.find(x=>x.state==='pending'||x.state==='sending');
+ const scheduled=head&&navigator.onLine&&['admin','editor'].includes(state.role)&&
+   ((head.state==='sending'&&head.leaseUntil>Date.now())||
+    (head.state==='pending'&&head.retryAt>Date.now()));
+ $('queue').textContent='File locale persistante : '+counts.pending+' en attente, '+counts.sending+' en cours, '+counts.conflict+' conflit(s), '+counts.blocked+' refusé(s)'+(scheduled&&!state.sending?' · Reprise automatique après le délai de sécurité':'');
  $('conflicts').textContent=items.filter(x=>x.state==='conflict'||x.state==='blocked').map(x=>'Événement '+x.command.id+' conservé : '+x.state+' ('+(x.reason||'')+')').join(' · ');
  scheduleLeaseRecovery(items,countsFromScope);
 }
@@ -184,7 +189,7 @@ async function execute(command){
   return {status:msg.includes('permission-denied')?'forbidden':'unavailable'};
  }finally{unsubscribe();}
 }
-async function transmit(){
+async function transmit({manual=false}={}){
  if(!state.scope||!state.outbox||!state.user||!['admin','editor'].includes(state.role)||state.sending)return;
  const scope=state.scope,outbox=state.outbox,uid=state.user.uid,generation=state.roomGeneration;
  const sameRoom=()=>state.roomGeneration===generation&&state.outbox===outbox&&state.scope===scope&&state.user?.uid===uid;
@@ -192,16 +197,17 @@ async function transmit(){
  try{
   for(let i=0;i<15;i++){
    if(!sameRoom()||!['admin','editor'].includes(state.role)||!navigator.onLine)break;
-   const item=await outbox.claimNext(scope);
+   const item=await outbox.claimNext(scope,{ignoreRetryAt:manual&&i===0});
    if(!item)break;
    if(!sameRoom()||!['admin','editor'].includes(state.role))break;
    const result=await execute(item.command);
    const outcome=result.status==='applied'||result.status==='duplicate'?result.status:
     result.status==='conflict'?'conflict':
     result.status==='forbidden'||result.status==='id-collision'?'forbidden':'temporary-error';
-   const saved=await outbox.finish(scope,item.command.id,item.leaseToken,outcome,{reason:result.status});
+   const retryAfterMs=outcome==='temporary-error'?Math.min(60000,2000*2**Math.min(item.attempts-1,5)):0;
+   const saved=await outbox.finish(scope,item.command.id,item.leaseToken,outcome,{reason:result.status,retryAfterMs});
    if(!sameRoom())break;
-   if(outcome==='temporary-error'){status('Envoi non confirmé. La modification est conservée localement.','error');break;}
+   if(outcome==='temporary-error'){status('Envoi non confirmé. Score conservé localement ; nouvelle tentative automatique après délai.','error');break;}
    if(outcome==='conflict'){status('Conflit : un autre appareil a modifié ce score. Brouillon conservé.','error');}
    if(outcome==='forbidden'){status('Accès refusé. Brouillon conservé, aucune modification distante.','error');break;}
    if(saved.status==='confirmed')status('Score fictif confirmé par Firebase.','good');
@@ -267,7 +273,7 @@ async function initialize(){
  $('create').onclick=createRoom;
  $('join').onclick=()=>prepareRoom($('trialId').value.trim());
  $('send').onclick=sendScore;
- $('retry').onclick=transmit;
+ $('retry').onclick=()=>transmit({manual:true});
  $('invite').onclick=()=>manageUser(false);
  $('revoke').onclick=()=>manageUser(true);
  $('signOut').onclick=async()=>{if(state.api&&state.auth)await state.api.signOut(state.auth);};

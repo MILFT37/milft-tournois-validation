@@ -250,7 +250,68 @@ async function main(){
   assert.deepEqual(restoredChain.entries,['conflict','conflict','conflict'],
     'Rejected scores remain stored across reload');
   assert.equal(restoredChain.pending,null,'No blocked descendant sent after a reload');
-  console.log('OK V2 MAJ83 '+engine.name+': preserve dependent conflicts, free independent fresh score, reload safe');
+  // MAJ84 : une panne temporaire laisse le même ID en attente,
+  // bloque la file pendant la temporisation et résiste au redémarrage.
+  const temporary=await reopened.evaluate(async()=>{
+    const db=await MILFTV2Outbox.open({indexedDB});
+    const s={tournamentId:'trial84retry',actorId:'samsung84',deviceId:'phone84'};
+    const mk=(id,version)=>({...s,id,matchId:'demo',type:'set.record',
+      expectedVersion:version,setIndex:0,goals:{a:5,b:3}});
+    await db.enqueue(s,mk('evtZ84retry',0),60000,{chainLocalScore:true});
+    await db.enqueue(s,mk('evtA84following',1),60001,{chainLocalScore:true});
+    const first=await db.claimNext(s,{now:60100,leaseMs:1000});
+    const failure=await db.finish(s,first.command.id,first.leaseToken,'temporary-error',
+      {now:60101,retryAfterMs:2000,reason:'temporary-network'});
+    const held=await db.claimNext(s,{now:60200,leaseMs:1000});
+    const entries=await db.list(s);
+    db.close();return {first:first.command.id,failure,held,entries:entries.map(x=>({state:x.state,retryAt:x.retryAt,attempts:x.attempts}))};
+  });
+  assert.equal(temporary.first,'evtZ84retry');
+  assert.equal(temporary.failure.status,'pending');
+  assert.equal(temporary.failure.retryAt,62101);
+  assert.equal(temporary.held,null,'Temporary error must prevent hot looping and FIFO bypass');
+  assert.deepEqual(temporary.entries.map(x=>x.state),['pending','pending']);
+  assert.equal(temporary.entries[0].attempts,1);
+  await reopened.reload();
+  const retryAfterReload=await reopened.evaluate(async()=>{
+    const db=await MILFTV2Outbox.open({indexedDB});
+    const s={tournamentId:'trial84retry',actorId:'samsung84',deviceId:'phone84'};
+    const held=await db.claimNext(s,{now:62099,leaseMs:1000});
+    const resumed=await db.claimNext(s,{now:62102,leaseMs:1000});
+    const ack=await db.finish(s,resumed.command.id,resumed.leaseToken,'applied',{now:62103});
+    const next=await db.claimNext(s,{now:62104,leaseMs:1000});
+    const ackNext=await db.finish(s,next.command.id,next.leaseToken,'applied',{now:62105});
+    const empty=await db.list(s);db.close();
+    return {held,resumedId:resumed.command.id,resumedAttempts:resumed.attempts,
+      ack:ack.status,nextId:next.command.id,ackNext:ackNext.status,empty:empty.length};
+  });
+  assert.equal(retryAfterReload.held,null,'Retry delay must survive browser restart');
+  assert.equal(retryAfterReload.resumedId,'evtZ84retry','Retry must reuse original ID');
+  assert.equal(retryAfterReload.resumedAttempts,2);
+  assert.equal(retryAfterReload.ack,'confirmed');
+  assert.equal(retryAfterReload.nextId,'evtA84following');
+  assert.equal(retryAfterReload.ackNext,'confirmed');
+  assert.equal(retryAfterReload.empty,0);
+  const manual=await reopened.evaluate(async()=>{
+    const db=await MILFTV2Outbox.open({indexedDB});
+    const s={tournamentId:'trial84manual',actorId:'samsung84',deviceId:'phone84'};
+    const cmd={...s,id:'evt84manual',matchId:'demo',type:'set.record',
+      expectedVersion:0,setIndex:0,goals:{a:1,b:0}};
+    await db.enqueue(s,cmd,70000);
+    const first=await db.claimNext(s,{now:70100,leaseMs:1000});
+    await db.finish(s,first.command.id,first.leaseToken,'temporary-error',
+      {now:70101,retryAfterMs:60000});
+    const automatic=await db.claimNext(s,{now:70102,leaseMs:1000});
+    const forced=await db.claimNext(s,{now:70103,leaseMs:1000,ignoreRetryAt:true});
+    const confirmed=await db.finish(s,forced.command.id,forced.leaseToken,'applied',{now:70104});
+    const replay=await db.enqueue(s,cmd,70105);
+    db.close();return {automatic,forcedId:forced.command.id,confirmed:confirmed.status,replay:replay.status};
+  });
+  assert.equal(manual.automatic,null);
+  assert.equal(manual.forcedId,'evt84manual','Explicit retry can bypass only retry timeout');
+  assert.equal(manual.confirmed,'confirmed');
+  assert.equal(manual.replay,'already-confirmed','Manual retry preserves idempotency');
+  console.log('OK V2 MAJ84 '+engine.name+': durable retry deadline, FIFO, manual override and receipts');
  }finally{
   if(context)await context.close();
   await new Promise(r=>server.close(r));

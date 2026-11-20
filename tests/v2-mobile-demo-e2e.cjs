@@ -14,8 +14,15 @@ const root=process.cwd();
 const fixture=String.raw`
 import {initializeApp} from 'firebase/app';
 import {getAuth as rawGetAuth,connectAuthEmulator,signInAnonymously,onAuthStateChanged,signOut} from 'firebase/auth';
-import {getDatabase as rawGetDatabase,connectDatabaseEmulator,ref,get as originalGet,set,remove,onValue,runTransaction} from 'firebase/database';
-export {initializeApp,onAuthStateChanged,signOut,ref,set,remove,onValue,runTransaction};
+import {getDatabase as rawGetDatabase,connectDatabaseEmulator,ref,get as originalGet,set,remove,onValue,runTransaction as originalRunTransaction} from 'firebase/database';
+export {initializeApp,onAuthStateChanged,signOut,ref,set,remove,onValue};
+export async function runTransaction(...args){
+ if(globalThis.__milftFailNextTransaction){
+  globalThis.__milftFailNextTransaction=false;
+  throw Error('simulated-network-temporary');
+ }
+ return originalRunTransaction(...args);
+}
 export async function get(reference){
  const hold=globalThis.__milftHoldOwnerFor;
  if(hold&&reference.toString().includes('/v2Trials/'+hold+'/ownerUid')){
@@ -406,6 +413,47 @@ async function main(){
   });
   assert.deepEqual(strandedEntries.map(x=>x.state),['conflict','conflict'],
     'Both original offline scores must remain for review');
+  // MAJ84 : erreur réseau temporaire alors que le navigateur reste en ligne.
+  // La file reprogramme une tentative sans clic et avec le même identifiant,
+  // même après fermeture puis réouverture du navigateur avant l'échéance.
+  await recovered.locator('#create').click();
+  await recovered.waitForFunction(previous=>document.getElementById('trialId').value!==previous,failedTrial);
+  await recovered.locator('#score').getByText('0 : 0').waitFor();
+  const retryTrial=await recovered.locator('#trialId').inputValue();
+  await recovered.evaluate(()=>{window.__milftFailNextTransaction=true;});
+  await recovered.locator('#home').fill('9');
+  await recovered.locator('#away').fill('7');
+  await recovered.locator('#send').click();
+  await recovered.locator('#status.error').getByText('nouvelle tentative automatique',{exact:false}).waitFor({timeout:15000});
+  await recovered.locator('#queue').getByText('1 en attente',{exact:false}).waitFor();
+  const waitingRetry=await recovered.evaluate(async()=>{
+    const db=await MILFTV2Outbox.open({indexedDB,dbName:'MILFT_V2_DEMO_OUTBOX_20261120'});
+    const s={tournamentId:document.getElementByIdById?.('trialId')?.value || document.getElementById('trialId').value,
+      actorId:document.getElementById('who').value,deviceId:localStorage.getItem('MILFT_V2_DEMO_DEVICE_ID')};
+    const items=await db.list(s);db.close();
+    return items.map(x=>({id:x.command.id,state:x.state,retryAt:x.retryAt,attempts:x.attempts}));
+  });
+  assert.equal(waitingRetry.length,1);
+  assert.equal(waitingRetry[0].state,'pending');
+  assert(waitingRetry[0].retryAt>Date.now()-2000,'Retry deadline saved to IndexedDB');
+  await recovered.close();
+  const retryPage=await androidA.newPage();
+  retryPage.on('pageerror',err=>pageErrors.push(err.message));
+  await retryPage.goto(origin+'/v2/mobile-demo.html');
+  await retryPage.locator('#rooms').waitFor({state:'visible',timeout:15000});
+  await retryPage.locator('#trialId').fill(retryTrial);
+  await retryPage.locator('#join').click();
+  await retryPage.locator('#demo').waitFor({state:'visible'});
+  await retryPage.locator('#score').getByText('9 : 7').waitFor({timeout:15000});
+  await retryPage.locator('#version').getByText('Version distante 1',{exact:false}).waitFor();
+  await retryPage.locator('#queue').getByText('0 en attente, 0 en cours',{exact:false}).waitFor();
+  const remoteRetry=await environment.withSecurityRulesDisabled(async ctx=>(
+    (await ctx.database('https://'+projectId+'-default-rtdb.firebaseio.com')
+      .ref('v2Trials/'+retryTrial+'/matches/demo').once('value')).val()
+  ));
+  assert.equal(remoteRetry.version,1,'Temporary network error must be retried exactly once');
+  assert.equal(remoteRetry.lastEventId,waitingRetry[0].id,'Retry reuses the original operation ID');
+  assert.deepEqual(remoteRetry.sets['0'],{a:9,b:7});
   let actual;
   await environment.withSecurityRulesDisabled(async ctx=>{
     actual=(await ctx.database('https://'+projectId+'-default-rtdb.firebaseio.com').ref('v2Trials/'+trial+'/matches/demo').once('value')).val();

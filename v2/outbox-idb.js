@@ -119,7 +119,7 @@ function open({indexedDB,dbName=DEFAULT_DB}={}){
      req.onsuccess=()=>done(req.result.sort((a,b)=>a.createdAt-b.createdAt||a.key.localeCompare(b.key)));
     });
    }
-   function claimNext(scope,{now=Date.now(),leaseMs=30000}={}){
+   function claimNext(scope,{now=Date.now(),leaseMs=30000,ignoreRetryAt=false}={}){
     const key=scopeKey(scope);
     if(!Number.isFinite(now)||now<0||!Number.isSafeInteger(leaseMs)||leaseMs<1000||leaseMs>300000)throw Error('Bail invalide');
     return tx([STORE,RECEIPTS],'readwrite',(tr,done)=>{
@@ -139,11 +139,13 @@ function open({indexedDB,dbName=DEFAULT_DB}={}){
       // Les saisies indépendantes plus récentes peuvent ensuite être envoyées.
       function tryNext(position){
        const item=waiting[position];
-       if(!item||item.state==='sending'&&item.leaseUntil>now){done(null);return;}
+       if(!item||
+          item.state==='sending'&&item.leaseUntil>now||
+          item.state==='pending'&&!ignoreRetryAt&&(item.retryAt||0)>now){done(null);return;}
        const reserve=()=>{
         item.state='sending';
         item.leaseToken=String(now)+'-'+Math.random().toString(36).slice(2)+'-'+item.attempts;
-        item.leaseUntil=now+leaseMs;item.updatedAt=now;item.attempts++;
+        item.leaseUntil=now+leaseMs;item.updatedAt=now;item.attempts++;item.retryAt=0;
         store.put(item);done(item);
        };
        if(!item.dependsOn){reserve();return;}
@@ -168,11 +170,12 @@ function open({indexedDB,dbName=DEFAULT_DB}={}){
      };
     });
    }
-   function finish(scope,eventId,leaseToken,outcome,{now=Date.now(),reason=''}={}){
+   function finish(scope,eventId,leaseToken,outcome,{now=Date.now(),reason='',retryAfterMs=0}={}){
     const key=itemKey(scope,eventId);
     if(typeof leaseToken!=='string'||leaseToken.length<5)throw Error('Bail absent');
     if(!['applied','duplicate','conflict','forbidden','temporary-error'].includes(outcome))throw Error('Statut distant inconnu : aucune suppression');
     if(!Number.isFinite(now)||now<0)throw Error('Horodatage invalide');
+    if(!Number.isSafeInteger(retryAfterMs)||retryAfterMs<0||retryAfterMs>300000)throw Error('Délai de reprise invalide');
     return tx([STORE,RECEIPTS],'readwrite',(tr,done)=>{
      const store=tr.objectStore(STORE),req=store.get(key);
      req.onsuccess=()=>{
@@ -185,7 +188,10 @@ function open({indexedDB,dbName=DEFAULT_DB}={}){
       }
       item.state=outcome==='conflict'?'conflict':outcome==='forbidden'?'blocked':'pending';
       item.reason=String(reason).slice(0,180)||outcome;item.leaseToken=null;item.leaseUntil=0;item.updatedAt=now;
-      store.put(item);done({status:item.state});
+      // Ancien schéma compatible : retryAt est un champ optionnel, sans migration.
+      // Seules les erreurs temporaires retardent la tête de file ; jamais les conflits.
+      item.retryAt=outcome==='temporary-error'?now+retryAfterMs:0;
+      store.put(item);done({status:item.state,retryAt:item.retryAt});
      };
     });
    }
