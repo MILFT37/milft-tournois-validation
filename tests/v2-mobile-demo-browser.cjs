@@ -25,6 +25,12 @@ async function main(){
   assert.equal(await page.locator('#sharing').isHidden(),true);
   assert.match(await page.title(),/Partage V2/);
   assert.deepEqual(external,[],'No outbound connection without project configuration');
+  const identityBefore=await page.evaluate(()=>({
+    device:localStorage.getItem('MILFT_V2_DEMO_DEVICE_ID'),
+    session:sessionStorage.getItem('MILFT_V2_DEVICE_ID')
+  }));
+  assert.match(identityBefore.device,/^device[a-f0-9]{24}$/,'V2 device identity must persist in localStorage');
+  assert.equal(identityBefore.session,null,'No ephemeral session-scoped device identity');
   const isolated=await page.evaluate(async()=>{
     const prod=localStorage.getItem('milft_iso_20261102_tournois_v01');
     const prototype=window.MILFTV2Outbox;
@@ -39,11 +45,26 @@ async function main(){
   assert.equal(isolated.enqueue.status,'queued');
   assert.equal(isolated.items,1);
   await page.reload();
+  assert.equal(await page.evaluate(()=>localStorage.getItem('MILFT_V2_DEMO_DEVICE_ID')),
+    identityBefore.device,'V2 device ID stable across page reload');
   assert.deepEqual(await page.evaluate(async()=>{
     const db=await MILFTV2Outbox.open({indexedDB,dbName:'MILFT_V2_SMOKE_71'});
     const items=await db.list({tournamentId:'trial1234567890abcd',actorId:'android1',deviceId:'phoneA'});
     db.close();return items.map(x=>x.command.id);
   }),['evt-test'],'IndexedDB outbox persists across reload');
+  // A newly opened browser context on the same device should still recover ID
+  // and pending commands when the browser profile is preserved.
+  const oldDevice=await page.evaluate(()=>localStorage.getItem('MILFT_V2_DEMO_DEVICE_ID'));
+  await page.close();
+  const reopened=await context.newPage();
+  await reopened.goto(origin+'/v2/mobile-demo.html');
+  assert.equal(await reopened.evaluate(()=>localStorage.getItem('MILFT_V2_DEMO_DEVICE_ID')),
+    oldDevice,'V2 device ID persists after closing tab');
+  assert.deepEqual(await reopened.evaluate(async()=>{
+    const db=await MILFTV2Outbox.open({indexedDB,dbName:'MILFT_V2_SMOKE_71'});
+    const items=await db.list({tournamentId:'trial1234567890abcd',actorId:'android1',deviceId:'phoneA'});
+    db.close();return items.map(x=>x.command.id);
+  }),['evt-test'],'V2 draft persists after closing tab');
   await context.close();
   console.log('OK MAJ71 mobile UI '+type+': no Firebase configured, no outbound calls, no V1 storage, durable draft after reload');
  }finally{await browser.close();await new Promise(resolve=>server.close(resolve));}
