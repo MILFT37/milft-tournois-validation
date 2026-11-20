@@ -22,3 +22,12 @@
 
 ## Étape suivante
 Après vérification des nouveaux workflows et de la page publiée : premier essai **match fictif** depuis Samsung, connexion Google, création de salle fictive, puis second Android avec invitation par UID. Si erreur d'authentification ou de permission, contrôler sans toucher aux données réelles ni ouvrir la base au public. Pas de forfait Blaze ni carte bancaire.
+
+## État des workflows au contrôle suivant la MAJ75
+- Commit de configuration V2 : `73b6542c22f39cca7bb2b7e2b03bb7c5d0b147a4`.
+- Diagnostic GitHub Pages run `44794975631` : **SUCCESS**.
+- Simulation partage isolée run `44794975660` : **SUCCESS**.
+- Publication GitHub Pages run `44794975877` : **SUCCESS**.
+- Tests interface Chromium/WebKit run `44794975727` : en cours au dernier contrôle.
+- E2E deux Android avec émulateurs Auth/RTDB run `44794975691` : en cours au dernier contrôle.
+- Ne pas présenter ces deux derniers tests comme validés avant leur conclusion ; conserver les tests précédents MAJ73 comme acquis.
