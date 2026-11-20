@@ -36,3 +36,8 @@ L'utilisateur travaille depuis un Samsung Android, souhaite intervenir uniquemen
 - Configuration publique affichée par la console : `projectId = milft-tournois-partage-55e44`. L'application Web est désormais enregistrée ; nom proposé au jalon précédent : `MILFT Tournois Partage Web` (non relu dans la capture finale).
 - Étape courante : « Ajouter le SDK Firebase » ; l'utilisateur n'a pas à installer npm sur Android, ni à recopier le code de la capture. Prochaine action : terminer l'assistant et revenir à la console du projet.
 - **Non encore confirmé** : forfait Spark, Authentication Google, domaine autorisé, création RTDB et ses règles, valeur `databaseURL`. La configuration GitHub `v2/firebase-config.mjs` reste volontairement désactivée ; aucun échange réel et aucune donnée existante migrée.
+
+## Confirmation sur capture Samsung à 18 h 23 (heure de Paris)
+- Vue d'ensemble du projet **MILFT Tournois Partage** affichée, application Web visible sous le nom du projet.
+- Badge **Forfait Spark** clairement visible : gratuité confirmée pour le projet à ce stade. Ne pas sélectionner « Mettre à niveau ».
+- Étape suivante demandée à l'utilisateur : ouvrir le menu « Sécurité » pour accéder au paramétrage d'Authentication. Une manipulation à la fois ; ne pas modifier le code ni déployer de règles tant que le service RTDB réel n'est pas créé et vérifié.
