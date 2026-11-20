@@ -26,3 +26,12 @@
 ## Périmètre strict
 - Aucun changement dans `MILFT37/milft-tournois` officiel, ses sauvegardes et archives Google Drive.
 - Aucune modification des règles déjà publiées dans Firebase, du tarif Spark ou des données des tournois. Prototype V2 fictif `v2Trials` exclusivement.
+
+## Clôture MAJ79 — workflows SUCCESS
+- Commit de travail `6b73804a6b23d2585bf2449374260c6789b6cb49` : verrou `enqueuing` avant IndexedDB, réponses obsolètes isolées, absence de transmission hors rôle autorisé.
+- Simulation partage V2 `44827192454` : **SUCCESS**.
+- Tests navigateurs Android Chromium et Safari WebKit `44827192472` : **SUCCESS**.
+- E2E deux Android simulés avec Firebase Auth + RTDB émulateur et règles compactes `44827192705` : **SUCCESS**, y compris nouveau double-clic hors ligne donnant une seule opération et un seul changement de version après reconnexion.
+- Publication GitHub Pages + vérification des octets servis `44827192700` : **SUCCESS**.
+- MAJ79 **validée et publiée côté tests/code**. La synchronisation entre deux appareils physiques ou deux comptes Google réels reste **non validée** ; le premier essai Samsung réel MAJ75 reste acquis et n'est pas à recommencer.
+- Dernier commit de production officielle `MILFT37/milft-tournois` : `d81c9f03f7e7ca016e517c6df8ae1f458285ee0c` (inchangé). Aucun transfert/restauration de données V1.1 ni d'archives Drive, aucune modification des règles Firebase déjà publiées ou du forfait Spark.
