@@ -84,15 +84,20 @@ function open({indexedDB,dbName=DEFAULT_DB}={}){
     const key=scopeKey(scope);
     if(!Number.isFinite(now)||now<0||!Number.isSafeInteger(leaseMs)||leaseMs<1000||leaseMs>300000)throw Error('Bail invalide');
     return tx([STORE],'readwrite',(tr,done)=>{
-     const cursorReq=tr.objectStore(STORE).index('byScope').openCursor(key);
-     cursorReq.onsuccess=()=>{
-      const cursor=cursorReq.result;if(!cursor){done(null);return;}
-      const item=cursor.value;
-      if(item.state==='pending'||item.state==='sending'&&item.leaseUntil<=now){
-       item.state='sending';item.leaseToken=String(now)+'-'+Math.random().toString(36).slice(2)+'-'+item.attempts;
-       item.leaseUntil=now+leaseMs;item.updatedAt=now;item.attempts++;
-       cursor.update(item);done(item);
-      }else cursor.continue();
+     const store=tr.objectStore(STORE);
+     // L'index byScope trie par clé primaire d'événement et non par createdAt.
+     // La file doit respecter la chronologie des saisies et ne jamais sauter
+     // une opération "sending" dont le bail appartient encore à un onglet.
+     const request=store.index('byScope').getAll(key);
+     request.onsuccess=()=>{
+      const waiting=request.result.filter(x=>x.state==='pending'||x.state==='sending')
+       .sort((a,b)=>a.createdAt-b.createdAt||a.key.localeCompare(b.key));
+      const item=waiting[0];
+      if(!item||item.state==='sending'&&item.leaseUntil>now){done(null);return;}
+      item.state='sending';
+      item.leaseToken=String(now)+'-'+Math.random().toString(36).slice(2)+'-'+item.attempts;
+      item.leaseUntil=now+leaseMs;item.updatedAt=now;item.attempts++;
+      store.put(item);done(item);
      };
     });
    }

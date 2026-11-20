@@ -285,15 +285,56 @@ async function main(){
   await recovered.locator('#version').getByText('Version distante 1',{exact:false}).waitFor();
   await recovered.locator('#queue').getByText('0 en cours',{exact:false}).waitFor();
   assert.match(await recovered.locator('#queue').innerText(),/0 en attente/);
+  // MAJ81 : deux scores hors ligne, dont le premier était réservé au crash.
+  // L'ordre chronologique prime sur les IDs, et le second ne doit pas
+  // s'envoyer avant l'expiration du bail du premier.
+  await recovered.locator('#create').click();
+  await recovered.waitForFunction(previous=>document.getElementById('trialId').value!==previous,recoveryTrial);
+  await recovered.locator('#score').getByText('0 : 0').waitFor();
+  const fifoTrial=await recovered.locator('#trialId').inputValue();
+  const queuePair=await recovered.evaluate(async()=>{
+    const db=await MILFTV2Outbox.open({indexedDB,dbName:'MILFT_V2_DEMO_OUTBOX_20261120'});
+    const s={tournamentId:document.getElementById('trialId').value,
+      actorId:document.getElementById('who').value,
+      deviceId:localStorage.getItem('MILFT_V2_DEMO_DEVICE_ID')};
+    const make=(id,v,goals)=>({...s,id,matchId:'demo',type:'set.record',
+      expectedVersion:v,setIndex:0,goals});
+    const now=Date.now();
+    await db.enqueue(s,make('eZMAJ81First',0,{a:1,b:0}),now);
+    await db.enqueue(s,make('eAMAJ81Second',1,{a:3,b:2}),now+1);
+    const first=await db.claimNext(s,{now,leaseMs:5000});
+    const items=(await db.list(s)).map(x=>({id:x.command.id,state:x.state}));
+    db.close();return {first:first?.command.id,items};
+  });
+  assert.equal(queuePair.first,'eZMAJ81First');
+  assert.deepEqual(queuePair.items.map(x=>x.state),['sending','pending']);
+  await recovered.reload();
+  await recovered.locator('#rooms').waitFor({state:'visible',timeout:15000});
+  await recovered.locator('#join').click();
+  await recovered.locator('#demo').waitFor({state:'visible'});
+  await recovered.locator('#queue').getByText('1 en attente, 1 en cours',{exact:false}).waitFor();
+  assert.equal(await recovered.locator('#score').innerText(),'0 : 0',
+    'The second queued score cannot bypass an unexpired first lease');
+  await recovered.locator('#score').getByText('3 : 2').waitFor({timeout:15000});
+  await recovered.locator('#version').getByText('Version distante 2',{exact:false}).waitFor();
+  await recovered.locator('#queue').getByText('0 en attente, 0 en cours',{exact:false}).waitFor();
   let actual;
   await environment.withSecurityRulesDisabled(async ctx=>{
     actual=(await ctx.database('https://'+projectId+'-default-rtdb.firebaseio.com').ref('v2Trials/'+trial+'/matches/demo').once('value')).val();
   });
   assert.equal(actual.version,3,'Three accepted score updates only');
   assert.deepEqual(actual.sets['0'],{a:8,b:6});
+  let fifoMatch;
+  await environment.withSecurityRulesDisabled(async ctx=>{
+    fifoMatch=(await ctx.database('https://'+projectId+'-default-rtdb.firebaseio.com')
+      .ref('v2Trials/'+fifoTrial+'/matches/demo').once('value')).val();
+  });
+  assert.equal(fifoMatch.version,2,'Exactly two ordered accepted score updates');
+  assert.equal(fifoMatch.lastEventId,'eAMAJ81Second','The first event must be confirmed before the second');
+  assert.deepEqual(fifoMatch.sets['0'],{a:3,b:2});
   assert.deepEqual(pageErrors,[],'Browser UI must not throw JavaScript errors');
   await Promise.all([androidA.close(),androidB.close()]);
-  console.log('OK MAJ80 Android↔Android Firebase émulé : scénarios acquis + reprise automatique d’un bail sending après fermeture et délai de sécurité');
+  console.log('OK MAJ81 Android↔Android Firebase émulé : droits, offline, reprise et transmission FIFO avec bail actif');
  }finally{
   if(browser)await browser.close();
   if(environment)await environment.cleanup();

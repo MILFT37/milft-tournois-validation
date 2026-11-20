@@ -75,20 +75,22 @@ async function main(){
   const after=await reopened.evaluate(async({scope,other,two,oldToken})=>{
    const db=await MILFTV2Outbox.open({indexedDB});
    const entries=await db.list(scope),independent=await db.list(other);
-   const claimed3=await db.claimNext(scope,{now:3500,leaseMs:1000});
+   const held=await db.claimNext(scope,{now:3500,leaseMs:1000});
    const reclaimed=await db.claimNext(scope,{now:4200,leaseMs:1000});
    const stale=await db.finish(scope,'evt2',oldToken,'applied',{now:4201});
    const ack=await db.finish(scope,'evt2',reclaimed.leaseToken,'applied',{now:4250});
+   const claimed3=await db.claimNext(scope,{now:4251,leaseMs:1000});
    const repeat=await db.enqueue(scope,two,4300);
    const collision=await db.enqueue(scope,{...two,goals:{a:0,b:0}},4301);
    const remaining=await db.list(scope);
    const prod=localStorage.getItem('milft_prod_v11_20261117_tournois_v01');
-   db.close();return {entries,independent,claimed3,reclaimed,stale,ack,repeat,collision,remaining,prod};
+   db.close();return {entries,independent,held,claimed3,reclaimed,stale,ack,repeat,collision,remaining,prod};
   },{scope,other,two,oldToken:before.sending.leaseToken});
   assert.equal(after.entries.length,3,'Durable IndexedDB survives browser restart');
   assert.deepEqual(after.entries.map(x=>x.state),['conflict','sending','pending']);
   assert.equal(after.independent.length,1);
-  assert.equal(after.claimed3.command.id,'evt3','Unexpired sending lease is protected');
+  assert.equal(after.held,null,'A later pending command cannot bypass an unexpired earlier lease');
+  assert.equal(after.claimed3.command.id,'evt3','Next command becomes claimable after earlier one is acknowledged');
   assert.equal(after.reclaimed.command.id,'evt2','Expired sending lease can be reclaimed');
   assert.notEqual(after.reclaimed.leaseToken,before.sending.leaseToken);
   assert.equal(after.stale.status,'stale-lease','Stale ack must never delete');
@@ -109,7 +111,36 @@ async function main(){
   assert(blocked.unknownRejected);
   assert.equal(blocked.forbidden.status,'blocked');
   assert.equal(blocked.state[0].state,'blocked');
-  console.log('OK V2 MAJ 69 '+engine.name+': persistent browser restart, two-tab leases, conflict retention, receipts, isolation, no network');
+  // MAJ81 : des IDs inversés alphabétiquement ne changent jamais
+  // l'ordre chronologique et un bail actif bloque la saisie suivante.
+  const ordering=await reopened.evaluate(async()=>{
+    const db=await MILFTV2Outbox.open({indexedDB});
+    const s={tournamentId:'trial81',actorId:'owner81',deviceId:'phone81'};
+    const mk=(id,version,goals)=>({...s,id,matchId:'demo',type:'set.record',expectedVersion:version,setIndex:0,goals});
+    await db.enqueue(s,mk('evtZfirst',0,{a:1,b:0}),10000);
+    await db.enqueue(s,mk('evtAsecond',1,{a:2,b:0}),10001);
+    const first=await db.claimNext(s,{now:10100,leaseMs:1000});
+    const blocked=await db.claimNext(s,{now:10200,leaseMs:1000});
+    const stolen=await db.claimNext(s,{now:11101,leaseMs:1000});
+    const stale=await db.finish(s,first.command.id,first.leaseToken,'applied',{now:11102});
+    const done=await db.finish(s,stolen.command.id,stolen.leaseToken,'applied',{now:11103});
+    const second=await db.claimNext(s,{now:11104,leaseMs:1000});
+    const final=await db.finish(s,second.command.id,second.leaseToken,'applied',{now:11105});
+    const empty=await db.list(s);
+    db.close();
+    return {first:first?.command.id,blocked,stolen:stolen?.command.id,
+      stale:stale.status,done:done.status,second:second?.command.id,
+      final:final.status,remaining:empty.length};
+  });
+  assert.equal(ordering.first,'evtZfirst','FIFO must follow creation timestamps, not event IDs');
+  assert.equal(ordering.blocked,null,'Second entry must wait while first lease is active');
+  assert.equal(ordering.stolen,'evtZfirst','Expired head is reclaimed first');
+  assert.equal(ordering.stale,'stale-lease','Expired owner's late acknowledgement cannot delete');
+  assert.equal(ordering.done,'confirmed');
+  assert.equal(ordering.second,'evtAsecond','Only then can the second event be claimed');
+  assert.equal(ordering.final,'confirmed');
+  assert.equal(ordering.remaining,0);
+  console.log('OK V2 MAJ81 '+engine.name+': FIFO by creation date, active lease blocks newer edits, cross-tab atomic claims, replay and isolation');
  }finally{
   if(context)await context.close();
   await new Promise(r=>server.close(r));
