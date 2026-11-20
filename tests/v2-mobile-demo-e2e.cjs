@@ -428,7 +428,7 @@ async function main(){
   await recovered.locator('#queue').getByText('1 en attente',{exact:false}).waitFor();
   const waitingRetry=await recovered.evaluate(async()=>{
     const db=await MILFTV2Outbox.open({indexedDB,dbName:'MILFT_V2_DEMO_OUTBOX_20261120'});
-    const s={tournamentId:document.getElementByIdById?.('trialId')?.value || document.getElementById('trialId').value,
+    const s={tournamentId:document.getElementById('trialId').value,
       actorId:document.getElementById('who').value,deviceId:localStorage.getItem('MILFT_V2_DEMO_DEVICE_ID')};
     const items=await db.list(s);db.close();
     return items.map(x=>({id:x.command.id,state:x.state,retryAt:x.retryAt,attempts:x.attempts}));
@@ -447,10 +447,11 @@ async function main(){
   await retryPage.locator('#score').getByText('9 : 7').waitFor({timeout:15000});
   await retryPage.locator('#version').getByText('Version distante 1',{exact:false}).waitFor();
   await retryPage.locator('#queue').getByText('0 en attente, 0 en cours',{exact:false}).waitFor();
-  const remoteRetry=await environment.withSecurityRulesDisabled(async ctx=>(
-    (await ctx.database('https://'+projectId+'-default-rtdb.firebaseio.com')
-      .ref('v2Trials/'+retryTrial+'/matches/demo').once('value')).val()
-  ));
+  let remoteRetry;
+  await environment.withSecurityRulesDisabled(async ctx=>{
+    remoteRetry=(await ctx.database('https://'+projectId+'-default-rtdb.firebaseio.com')
+      .ref('v2Trials/'+retryTrial+'/matches/demo').once('value')).val();
+  });
   assert.equal(remoteRetry.version,1,'Temporary network error must be retried exactly once');
   assert.equal(remoteRetry.lastEventId,waitingRetry[0].id,'Retry reuses the original operation ID');
   assert.deepEqual(remoteRetry.sets['0'],{a:9,b:7});
