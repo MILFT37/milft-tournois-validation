@@ -4,6 +4,7 @@ on:
     branches: [main]
     paths:
       - 'v2/database.rules.json'
+      - 'v2/firebase-match-transport.cjs'
       - 'tests/v2-rtdb-security.cjs'
       - 'tests/v2-rtdb-transport-integration.cjs'
       - 'firebase.v2.emulator.json'
