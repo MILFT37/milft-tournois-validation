@@ -76,7 +76,7 @@ function open({indexedDB,dbName=DEFAULT_DB}={}){
          // deux versions successives. La réservation se fait atomiquement :
          // deux onglets ne peuvent pas calculer la même version locale.
          const previous=items.filter(x=>x.command?.matchId===cmd.matchId
-           &&x.command?.type==='set.record'&&['pending','sending','conflict','blocked'].includes(x.state))
+           &&x.command?.type==='set.record'&&['pending','sending'].includes(x.state))
            .sort((x,y)=>x.createdAt-y.createdAt||x.key.localeCompare(y.key)).at(-1);
          if(previous){
           cmd.expectedVersion=Math.max(cmd.expectedVersion,previous.command.expectedVersion+1);
