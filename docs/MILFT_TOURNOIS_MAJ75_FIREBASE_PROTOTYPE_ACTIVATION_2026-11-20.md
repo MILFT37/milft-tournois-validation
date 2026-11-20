@@ -38,3 +38,8 @@ Après vérification des nouveaux workflows et de la page publiée : premier ess
 - Après publication du commit `73b6542c22f39cca7bb2b7e2b03bb7c5d0b147a4`, les **cinq** workflows GitHub Actions ont conclu **SUCCESS** : Diagnostic Pages `44794975631`, Simulation V2 `44794975660`, Publication Pages `44794975877`, Chromium/WebKit `44794975727`, E2E deux Android sur émulateurs Firebase `44794975691`.
 - Capture Samsung du 20/11/2026 à 19 h 42 : le prototype `https://milft37.github.io/milft-tournois-validation/v2/mobile-demo.html` affiche la page V2 actualisée, le texte indiquant Firebase Spark, et un bouton **Connexion Google** actif. Affichage initial « Non connecté » normal.
 - **Prochaine étape manuelle** : toucher « Connexion Google » sur Samsung et choisir le compte du club, puis constater l'état de connexion avant toute création de match fictif. Ne pas supposer le partage réel fonctionnel sans test et contrôle du résultat.
+
+## 19 h 49 — première connexion Google réelle réussie sur Samsung
+- Capture Samsung de l'utilisateur : page publique `/v2/mobile-demo.html` affiche en vert « Connecté. Créer un match fictif ou saisir un code de salle. » ; bouton « Déconnexion » affiché et UID Firebase attribué au compte connecté. Cela confirme le premier succès **d'authentification Google réelle** depuis le Samsung.
+- La capture ne prouve pas à elle seule l'adresse e-mail du compte effectivement choisi ; ne pas la déduire de l'UID.
+- **Prochaine manipulation utilisateur :** appuyer sur « Créer un match fictif » puis envoyer la capture du résultat ; la permission effective d'écriture dans la RTDB reste à valider. Aucun changement de production ou de données historiques.
