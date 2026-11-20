@@ -192,7 +192,7 @@ async function main(){
   assert.equal(rejectedChain.second,null,'Never overwrite remote edits through a dependent score after conflict');
   assert.deepEqual(rejectedChain.items,[
     {id:'evt82conflicting',state:'conflict',dependsOn:null},
-    {id:'evt82dependent',state:'pending',dependsOn:'evt82conflicting'}
+    {id:'evt82dependent',state:'conflict',dependsOn:'evt82conflicting'}
   ],'Both conflicting and dependent scores must be preserved');
   await reopened.reload();
   const afterRestart=await reopened.evaluate(async()=>{
