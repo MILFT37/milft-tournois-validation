@@ -55,5 +55,15 @@ Il ne faut jamais écraser ce score concurrent.
 ## Statut de clôture
 **Premier lot :** commit `d7b9f413` ; workflows simulation `44833334031` SUCCESS, navigateur `44833334041` SUCCESS, IndexedDB `44833333907` SUCCESS, Pages `44833334011` SUCCESS. E2E `44833334042` FAILURE sur une ancienne saisie légitime après conflit (régression identifiée ; ne pas déclarer validé avant nouveau test). Correction ciblée en cours.
 
-**Développement engagé.** Ajouter ici les commits, les numéros de workflows,
-leur verdict et la validation de publication avant de déclarer MAJ82 close.
+## Clôture MAJ82 — VALIDÉE et publiée
+- Commit du premier lot `d7b9f413e847350853722e91ad3ecb2e1e1c5893` : versions locales successives, dépendances transactionnelles IndexedDB, tests et intégration du prototype.
+- L'E2E initial `44833334042` a révélé une régression : une saisie neuve effectuée après un ancien conflit héritait à tort de ce conflit. Le correctif ciblé `28c7ddd0bb60d309baeb39391feca9bd036a65b1` n'enchaîne que les opérations encore `pending/sending`; les opérations déjà bloquées restent préservées. Documentation intermédiaire `8b35057b`.
+- **Simulation V2** `44833627905` : **SUCCESS**.
+- **Interface V2 Chromium et Safari/WebKit** `44833627876` : **SUCCESS**.
+- **IndexedDB Chromium et WebKit**, dont dépendances, accusés de réception, conflits et redémarrage `44833627847` : **SUCCESS**.
+- **E2E deux Android émulés + Firebase Auth/RTDB**, dont les précédents parcours et deux saisies consécutives 2–1 puis 4–2 hors connexion (version finale distante 2) `44833627800` : **SUCCESS**.
+- **Déploiement GitHub Pages + contrôle public par SHA-256** `44833627794` : **SUCCESS**.
+- Le prototype isolé V2 est publié ; **aucun transfert vers l'application officielle V1.1**. Firebase Spark et règles réelles inchangées ; données réelles, championnats et archives Google Drive inchangés.
+- **Aucune action sur Samsung**. Test inter-appareils physiques sous deux comptes Google différents : **toujours non effectué**, sans empêcher la suite de la fiabilisation V2.
+- Prochaine reprise : **MAJ83**, sur cette clôture, sans répéter les validations MAJ75–82 sur des fichiers inchangés.
+
