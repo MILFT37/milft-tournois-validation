@@ -3,11 +3,11 @@ import {firebaseConfig} from './firebase-config.mjs';
 const $=id=>document.getElementById(id);
 const valid=/^[A-Za-z0-9][A-Za-z0-9_-]{0,79}$/;
 const uidValid=/^[A-Za-z0-9_-]{1,128}$/;
-const state={api:null,auth:null,db:null,user:null,outbox:null,scope:null,trial:null,role:null,match:null,unsubscribe:null,deviceId:null,sending:false};
+const state={api:null,auth:null,db:null,user:null,outbox:null,scope:null,trial:null,role:null,match:null,unsubscribe:null,deviceId:null,sending:false,draftDirty:false,draftBaseVersion:null};
 function status(msg,tone=''){const e=$('status');e.textContent=msg;e.className=tone;}
 function log(s){const e=$('log');e.textContent=(new Date().toLocaleTimeString('fr-FR')+' · '+s+'\n'+e.textContent).slice(0,3000)}
 function errorText(e){return String(e?.code||e?.message||e||'Erreur').slice(0,200)}
-function resetRoom(){state.unsubscribe?.();state.unsubscribe=null;state.trial=null;state.match=null;state.role=null;state.scope=null;state.outbox?.close();state.outbox=null;$('demo').hidden=true;$('sharing').hidden=true;}
+function resetRoom(){state.unsubscribe?.();state.unsubscribe=null;state.trial=null;state.match=null;state.role=null;state.scope=null;state.outbox?.close();state.outbox=null;state.draftDirty=false;state.draftBaseVersion=null;$('demo').hidden=true;$('sharing').hidden=true;}
 function updateUI(){
   $('rooms').hidden=!state.user;
   $('signIn').hidden=!!state.user;$('signOut').hidden=!state.user;
@@ -24,8 +24,8 @@ function syncScore(){
  const x=state.match.sets?.['0'];
  $('score').textContent=(x?.a??'—')+' : '+(x?.b??'—');
  $('version').textContent='Version distante '+state.match.version+' · Dernier événement '+(state.match.lastEventId||'inconnu');
- if(document.activeElement!==$('home')&&document.activeElement!==$('away')){
-   $('home').value=x?.a??0;$('away').value=x?.b??0;
+ if(!state.draftDirty){
+   $('home').value=x?.a??0;$('away').value=x?.b??0;state.draftBaseVersion=null;
  }
 }
 async function refreshQueue(){
@@ -125,10 +125,11 @@ async function sendScore(){
  const a=Number($('home').value),b=Number($('away').value);
  if(![a,b].every(n=>Number.isSafeInteger(n)&&n>=0&&n<=99)){status('Buts invalides (0 à 99).','error');return;}
  const s=state.scope;
- const command={...s,id:'e'+newId(),matchId:'demo',type:'set.record',expectedVersion:state.match.version,setIndex:0,goals:{a,b}};
+ const command={...s,id:'e'+newId(),matchId:'demo',type:'set.record',expectedVersion:state.draftDirty&&state.draftBaseVersion!==null?state.draftBaseVersion:state.match.version,setIndex:0,goals:{a,b}};
  try{
   const result=await state.outbox.enqueue(s,command);
   if(result.status!=='queued'&&result.status!=='duplicate'){status('Ajout local non confirmé : '+result.status,'error');return;}
+  state.draftDirty=false;state.draftBaseVersion=null;
   status('Score fictif enregistré localement. Envoi en cours…');
   await refreshQueue();
   if(navigator.onLine)await transmit();else status('Hors connexion : score conservé localement.','error');
@@ -146,6 +147,7 @@ async function manageUser(revoke=false){
  }catch(e){status('Modification des droits refusée : '+errorText(e),'error');}
 }
 async function initialize(){
+ for(const id of ['home','away'])$(''+id).addEventListener('input',()=>{if(!state.draftDirty){state.draftDirty=true;state.draftBaseVersion=state.match?.version??null;}});
  $('create').onclick=createRoom;
  $('join').onclick=()=>prepareRoom($('trialId').value.trim());
  $('send').onclick=sendScore;
