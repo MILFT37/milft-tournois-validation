@@ -28,6 +28,9 @@ async function main(){
     return {db,transport:createTransport({database:db,auth:{currentUser:{uid}},sdk:sdk()})};
   };
   const samsung=user('samsungUid'),android=user('android2Uid');
+  const check=await assertSucceeds(samsung.db.ref('tournaments/clubA/matches/m1').once('value'));
+  console.log('Prélecture contrôlée de la simulation:',JSON.stringify({exists:check.exists(),version:check.val()?.version}));
+  assert.equal(check.exists(),true,'État initial émulé absent avant transaction');
   const first=command('m1-a','samsungUid','galaxy-s25',0,{a:5,b:4});
   const second=command('m1-b','android2Uid','another-android',0,{a:5,b:5});
   const [a,b]=await Promise.all([samsung.transport.execute(first),android.transport.execute(second)]);
