@@ -86,6 +86,28 @@ jobs:
       - uses: actions/upload-pages-artifact@v3
         with:
           path: _site
+      # API GitHub Pages: éviter la course entre l'upload réussi et la
+      # propagation des métadonnées de l'artefact jusqu'au service Pages.
+      - name: Attendre la visibilité de l'artefact de cette exécution
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPOSITORY: ${{ github.repository }}
+          GH_RUN_ID: ${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          for attempt in {1..18}; do
+            count=$(curl -fsSL -H "Authorization: Bearer $GH_TOKEN" \
+              -H "Accept: application/vnd.github+json" \
+              "https://api.github.com/repos/$GH_REPOSITORY/actions/runs/$GH_RUN_ID/artifacts?per_page=100" \
+              | python3 -c "import json,sys; print(sum(a.get('name')=='github-pages' and not a.get('expired',False) for a in json.load(sys.stdin).get('artifacts',[])))")
+            echo "Artefact github-pages visible : $count (essai $attempt)"
+            if [ "$count" = "1" ]; then exit 0; fi
+            if [ "$count" -gt 1 ]; then echo "::error::Artefacts Pages dupliqués"; exit 1; fi
+            sleep 5
+          done
+          echo "::error::Artefact Pages introuvable après upload"
+          exit 1
       - id: deployment
         uses: actions/deploy-pages@v4
 
