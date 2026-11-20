@@ -75,8 +75,24 @@ function open({indexedDB,dbName=DEFAULT_DB}={}){
          // Deux scores saisis hors connexion sur le même match doivent avoir
          // deux versions successives. La réservation se fait atomiquement :
          // deux onglets ne peuvent pas calculer la même version locale.
+         // La descendance d'un événement déjà en conflit est conservée,
+         // mais ne peut devenir le parent de nouvelles saisies.
+         const byId=new Map(items.map(x=>[x.command.id,x]));
+         function hasFailedAncestor(item){
+          const seen=new Set();
+          while(item?.dependsOn){
+           if(seen.has(item.command.id))return true;
+           seen.add(item.command.id);
+           const parent=byId.get(item.dependsOn);
+           if(!parent)break; // Un reçu confirmé a retiré le parent de la file.
+           if(parent.state==='conflict'||parent.state==='blocked')return true;
+           item=parent;
+          }
+          return false;
+         }
          const previous=items.filter(x=>x.command?.matchId===cmd.matchId
-           &&x.command?.type==='set.record'&&['pending','sending'].includes(x.state))
+           &&x.command?.type==='set.record'&&['pending','sending'].includes(x.state)
+           &&!hasFailedAncestor(x))
            .sort((x,y)=>x.createdAt-y.createdAt||x.key.localeCompare(y.key)).at(-1);
          if(previous){
           cmd.expectedVersion=Math.max(cmd.expectedVersion,previous.command.expectedVersion+1);
@@ -113,22 +129,42 @@ function open({indexedDB,dbName=DEFAULT_DB}={}){
      // une opération "sending" dont le bail appartient encore à un onglet.
      const request=store.index('byScope').getAll(key);
      request.onsuccess=()=>{
-      const waiting=request.result.filter(x=>x.state==='pending'||x.state==='sending')
+      const all=request.result;
+      const waiting=all.filter(x=>x.state==='pending'||x.state==='sending')
        .sort((a,b)=>a.createdAt-b.createdAt||a.key.localeCompare(b.key));
-      const item=waiting[0];
-      if(!item||item.state==='sending'&&item.leaseUntil>now){done(null);return;}
-      const reserve=()=>{
-       item.state='sending';
-       item.leaseToken=String(now)+'-'+Math.random().toString(36).slice(2)+'-'+item.attempts;
-       item.leaseUntil=now+leaseMs;item.updatedAt=now;item.attempts++;
-       store.put(item);done(item);
-      };
-      if(item.dependsOn){
-       // Une saisie fondée sur la précédente ne doit JAMAIS passer si celle-ci
-       // a été refusée : le numéro distant pourrait coïncider par hasard.
-       const receipt=tr.objectStore(RECEIPTS).get(itemKey(scope,item.dependsOn));
-       receipt.onsuccess=()=>{if(!receipt.result){done(null);return;}reserve();};
-      }else reserve();
+      const byId=new Map(all.map(x=>[x.command.id,x]));
+      const receipts=tr.objectStore(RECEIPTS);
+      // Résoudre une chaîne dont un parent est en conflit dans cette MÊME
+      // transaction : chaque descendant devient « conflict » (jamais supprimé).
+      // Les saisies indépendantes plus récentes peuvent ensuite être envoyées.
+      function tryNext(position){
+       const item=waiting[position];
+       if(!item||item.state==='sending'&&item.leaseUntil>now){done(null);return;}
+       const reserve=()=>{
+        item.state='sending';
+        item.leaseToken=String(now)+'-'+Math.random().toString(36).slice(2)+'-'+item.attempts;
+        item.leaseUntil=now+leaseMs;item.updatedAt=now;item.attempts++;
+        store.put(item);done(item);
+       };
+       if(!item.dependsOn){reserve();return;}
+       const receipt=receipts.get(itemKey(scope,item.dependsOn));
+       receipt.onsuccess=()=>{
+        if(receipt.result){reserve();return;}
+        const predecessor=byId.get(item.dependsOn);
+        if(predecessor&&['conflict','blocked'].includes(predecessor.state)){
+         item.state='conflict';
+         item.reason='Score précédent '+item.dependsOn+' non confirmé : brouillon conservé';
+         item.leaseToken=null;item.leaseUntil=0;item.updatedAt=now;
+         store.put(item);
+         tryNext(position+1);
+         return;
+        }
+        // Bail en cours, parent indéterminé ou reçu manquant :
+        // ne jamais sauter une opération dont l'état reste incertain.
+        done(null);
+       };
+      }
+      tryNext(0);
      };
     });
    }

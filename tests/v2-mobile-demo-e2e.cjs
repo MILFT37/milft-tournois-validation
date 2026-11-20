@@ -355,6 +355,57 @@ async function main(){
   });
   assert.equal(chainedMatch.version,2,'Both offline edits must be applied once and in order');
   assert.deepEqual(chainedMatch.sets['0'],{a:4,b:2});
+  // MAJ83 : le deuxième score hors ligne dépend du premier.
+  // Une écriture concurrente sur Firebase rend le premier invalide.
+  // La file doit conserver les deux conflits, puis autoriser un nouveau score.
+  await recovered.locator('#create').click();
+  await recovered.waitForFunction(previous=>document.getElementById('trialId').value!==previous,chainedTrial);
+  await recovered.locator('#score').getByText('0 : 0').waitFor();
+  const failedTrial=await recovered.locator('#trialId').inputValue();
+  await androidA.setOffline(true);
+  await recovered.locator('#home').fill('2');
+  await recovered.locator('#away').fill('1');
+  await recovered.locator('#send').click();
+  await recovered.locator('#queue').getByText('1 en attente',{exact:false}).waitFor();
+  await recovered.locator('#home').fill('4');
+  await recovered.locator('#away').fill('2');
+  await recovered.locator('#send').click();
+  await recovered.locator('#queue').getByText('2 en attente',{exact:false}).waitFor();
+  await environment.withSecurityRulesDisabled(async ctx=>{
+    await ctx.database('https://'+projectId+'-default-rtdb.firebaseio.com')
+      .ref('v2Trials/'+failedTrial+'/matches/demo').update({
+        version:1,sets:{'0':{a:6,b:5}},lastEventId:'remote83',
+        lastEventFingerprint:'remote83',updatedBy:'other-device-83'
+      });
+  });
+  await androidA.setOffline(false);
+  await recovered.locator('#score').getByText('6 : 5').waitFor({timeout:15000});
+  await recovered.locator('#queue').getByText('2 conflit(s)',{exact:false}).waitFor({timeout:20000});
+  assert.match(await recovered.locator('#conflicts').innerText(),/Score précédent/,
+    'Dependent draft must show preserved conflict and never silently disappear');
+  assert.match(await recovered.locator('#version').innerText(),/Version distante 1/);
+  await recovered.locator('#home').fill('7');
+  await recovered.locator('#away').fill('6');
+  await recovered.locator('#send').click();
+  await recovered.locator('#score').getByText('7 : 6').waitFor({timeout:20000});
+  await recovered.locator('#version').getByText('Version distante 2',{exact:false}).waitFor();
+  await recovered.locator('#queue').getByText('0 en attente, 0 en cours, 2 conflit(s)',{exact:false}).waitFor();
+  let resolvedMatch;
+  await environment.withSecurityRulesDisabled(async ctx=>{
+    resolvedMatch=(await ctx.database('https://'+projectId+'-default-rtdb.firebaseio.com')
+      .ref('v2Trials/'+failedTrial+'/matches/demo').once('value')).val();
+  });
+  assert.equal(resolvedMatch.version,2,'Remote change and new independent score only');
+  assert.deepEqual(resolvedMatch.sets['0'],{a:7,b:6});
+  const strandedEntries=await recovered.evaluate(async()=>{
+    const db=await MILFTV2Outbox.open({indexedDB,dbName:'MILFT_V2_DEMO_OUTBOX_20261120'});
+    const s={tournamentId:document.getElementById('trialId').value,
+      actorId:document.getElementById('who').value,deviceId:localStorage.getItem('MILFT_V2_DEMO_DEVICE_ID')};
+    const entries=(await db.list(s)).map(x=>({state:x.state,reason:x.reason}));
+    db.close();return entries;
+  });
+  assert.deepEqual(strandedEntries.map(x=>x.state),['conflict','conflict'],
+    'Both original offline scores must remain for review');
   let actual;
   await environment.withSecurityRulesDisabled(async ctx=>{
     actual=(await ctx.database('https://'+projectId+'-default-rtdb.firebaseio.com').ref('v2Trials/'+trial+'/matches/demo').once('value')).val();

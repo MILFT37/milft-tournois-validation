@@ -203,7 +203,54 @@ async function main(){
   });
   assert.equal(afterRestart.claim,null,'Dependent operation remains protected after browser reload');
   assert.equal(afterRestart.entries,2,'No offline score lost on reload');
-  console.log('OK V2 MAJ82 '+engine.name+': chained offline scores, durable dependencies and safe conflict blocking');
+  // MAJ83 : un conflit sur la tête ne doit ni supprimer les descendants
+  // ni empêcher une nouvelle saisie indépendante, fondée sur Firebase.
+  const stranded=await reopened.evaluate(async()=>{
+    const db=await MILFTV2Outbox.open({indexedDB});
+    const s={tournamentId:'trial83recovery',actorId:'samsung83',deviceId:'phone83'};
+    const mk=(id,version,a)=>({...s,id,matchId:'demo',type:'set.record',expectedVersion:version,setIndex:0,goals:{a,b:0}});
+    const mode={chainLocalScore:true};
+    await db.enqueue(s,mk('evtZ83first',0,1),40000,mode);
+    await db.enqueue(s,mk('evtA83second',0,2),40001,mode);
+    await db.enqueue(s,mk('evtB83third',0,3),40002,mode);
+    const initial=(await db.list(s)).map(x=>({id:x.command.id,version:x.command.expectedVersion,parent:x.dependsOn}));
+    const head=await db.claimNext(s,{now:40100,leaseMs:1000});
+    const failed=await db.finish(s,head.command.id,head.leaseToken,'conflict',{now:40101,reason:'other-device'});
+    const fresh=await db.enqueue(s,mk('evtC83fresh',1,4),40102,mode);
+    const claimed=await db.claimNext(s,{now:40103,leaseMs:1000});
+    const beforeFinish=(await db.list(s)).map(x=>({id:x.command.id,state:x.state,parent:x.dependsOn,reason:x.reason}));
+    const final=await db.finish(s,claimed.command.id,claimed.leaseToken,'applied',{now:40104});
+    const remaining=await db.list(s);
+    db.close();
+    return {initial,first:head.command.id,failed:failed.status,fresh:fresh.status,
+      claimed:claimed?.command.id,claimedVersion:claimed?.command.expectedVersion,
+      beforeFinish,final:final.status,remaining:remaining.map(x=>({id:x.command.id,state:x.state}))};
+  });
+  assert.deepEqual(stranded.initial.map(x=>x.version),[0,1,2],
+    'Offline dependent commands must have increasing versions');
+  assert.deepEqual(stranded.initial.map(x=>x.parent),[null,'evtZ83first','evtA83second']);
+  assert.equal(stranded.failed,'conflict');
+  assert.equal(stranded.fresh,'queued');
+  assert.equal(stranded.claimed,'evtC83fresh','Fresh independent score must not be starved');
+  assert.equal(stranded.claimedVersion,1,'Fresh score must use current remote version');
+  assert.deepEqual(stranded.beforeFinish.map(x=>x.state),['conflict','conflict','conflict','sending']);
+  assert.deepEqual(stranded.beforeFinish.slice(1,3).map(x=>x.reason.includes('non confirmé')),[true,true],
+    'Dependent scores preserved as explicit conflicts');
+  assert.equal(stranded.beforeFinish[3].parent,null,'Fresh score cannot inherit a rejected chain');
+  assert.equal(stranded.final,'confirmed');
+  assert.deepEqual(stranded.remaining.map(x=>x.state),['conflict','conflict','conflict']);
+  await reopened.reload();
+  const restoredChain=await reopened.evaluate(async()=>{
+    const db=await MILFTV2Outbox.open({indexedDB});
+    const s={tournamentId:'trial83recovery',actorId:'samsung83',deviceId:'phone83'};
+    const entries=await db.list(s);
+    const pending=await db.claimNext(s,{now:50000,leaseMs:1000});
+    db.close();return {entries:entries.map(x=>x.state),pending};
+  });
+  assert.deepEqual(restoredChain.entries,['conflict','conflict','conflict'],
+    'Rejected scores remain stored across reload');
+  assert.equal(restoredChain.pending,null,'No blocked descendant sent after a reload');
+  console.log('OK V2 MAJ83 '+engine.name+': preserve dependent conflicts, free independent fresh score, reload safe');
  }finally{
   if(context)await context.close();
   await new Promise(r=>server.close(r));
