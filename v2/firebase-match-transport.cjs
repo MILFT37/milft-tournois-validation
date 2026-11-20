@@ -15,13 +15,17 @@ function createTransport({database,auth,sdk}){
     if(fp.length>500)throw Error('Empreinte trop longue');
     let lastReason='conflict';
     const matchRef=sdk.ref(database,path(c));
+    let stopListening=()=>{};
     try{
+      // Garder un abonnement durant la transaction: sur cache froid RTDB
+      // peut proposer null au tout premier appel, même après une lecture ponctuelle.
+      stopListening=sdk.onValue(matchRef,()=>{},()=>{} )||(()=>{});
       // Le SDK RTDB peut proposer null au premier passage si le cache est froid.
       // Lire d'abord la valeur du serveur évite de conclure à tort « match absent ».
       const initial=await sdk.get(matchRef);
       if(!initial?.exists?.())return {status:'missing'};
       const result=await sdk.runTransaction(matchRef,current=>{
-        if(!current||typeof current!=='object'){lastReason='missing';return;}
+        if(!current||typeof current!=='object'){lastReason='cache-unavailable';return;}
         if(current.lastEventId===c.id){
           lastReason=current.lastEventFingerprint===fp?'duplicate':'id-collision';return;
         }
@@ -42,12 +46,12 @@ function createTransport({database,auth,sdk}){
         return {status:'unverified'};
       }
       if(data?.lastEventId===c.id)return {status:data.lastEventFingerprint===fp?'duplicate':'id-collision'};
-      return {status:lastReason==='proposed'?'conflict':lastReason};
+      return {status:lastReason==='proposed'?'conflict':lastReason==='cache-unavailable'?'unavailable':lastReason};
     }catch(e){
       const code=String(e?.code||'').toLowerCase();
       if(code.includes('permission-denied'))return {status:'forbidden',reason:'Règles serveur : accès refusé'};
       return {status:'unavailable',reason:'Accusé distant absent : modification conservée'};
-    }
+    }finally{if(typeof stopListening==='function')stopListening()}
   }
   function watch(tournamentId,matchId,onUpdate,onError){
     const val={tournamentId,matchId}; // la validation s'effectue dans normalize pour l'écriture
