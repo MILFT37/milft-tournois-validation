@@ -5,6 +5,7 @@ on:
     paths:
       - 'v2/database.rules.json'
       - 'tests/v2-rtdb-security.cjs'
+      - 'tests/v2-rtdb-transport-integration.cjs'
       - 'firebase.v2.emulator.json'
       - '.github/workflows/v2-rtdb-security.yml'
   workflow_dispatch:
@@ -28,4 +29,4 @@ jobs:
       - name: Vérifier le JSON des règles
         run: node -e "JSON.parse(require('fs').readFileSync('v2/database.rules.json'))"
       - name: Tester les règles contre Firebase Emulator uniquement (aucun projet réel)
-        run: npx firebase --config firebase.v2.emulator.json --project demo-milft-v2-70 emulators:exec --only database "node tests/v2-rtdb-security.cjs"
+        run: npx firebase --config firebase.v2.emulator.json --project demo-milft-v2-70 emulators:exec --only database "node tests/v2-rtdb-security.cjs && node tests/v2-rtdb-transport-integration.cjs"
