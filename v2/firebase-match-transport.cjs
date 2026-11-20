@@ -48,8 +48,9 @@ function createTransport({database,auth,sdk}){
       if(data?.lastEventId===c.id)return {status:data.lastEventFingerprint===fp?'duplicate':'id-collision'};
       return {status:lastReason==='proposed'?'conflict':lastReason==='cache-unavailable'?'unavailable':lastReason};
     }catch(e){
-      const code=String(e?.code||'').toLowerCase();
-      if(code.includes('permission-denied'))return {status:'forbidden',reason:'Règles serveur : accès refusé'};
+      const code=String(e?.code||'')+' '+String(e?.message||'');
+      const canonical=code.toLowerCase().replace(/_/g,'-');
+      if(canonical.includes('permission-denied')||canonical.includes('permission denied'))return {status:'forbidden',reason:'Règles serveur : accès refusé'};
       return {status:'unavailable',reason:'Accusé distant absent : modification conservée'};
     }finally{if(typeof stopListening==='function')stopListening()}
   }
