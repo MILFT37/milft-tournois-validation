@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>MILFT — Partage V2 (essai isolé)</title>
+<style>
+:root{font-family:system-ui,-apple-system,Roboto,Arial,sans-serif;color-scheme:light;background:#f4f6f9;color:#172337}
+body{margin:0;padding:14px 14px 80px;max-width:740px;margin-inline:auto}header{padding:16px;border-radius:14px;background:#223653;color:white}
+h1{font-size:1.35rem;margin:0 0 8px}h2{font-size:1.05rem;margin:0 0 12px}.sub{font-size:.86rem;opacity:.9}
+section{background:white;padding:16px;margin-top:12px;border-radius:14px;border:1px solid #dfe6ef}
+button,input,select{font:inherit;border-radius:9px;min-height:43px}button{padding:9px 14px;border:0;background:#1e559b;color:#fff;font-weight:700;cursor:pointer}button:disabled{opacity:.45;cursor:not-allowed}
+button.secondary{background:#576575}button.danger{background:#a33542}button.link{background:#e4eaf2;color:#172337}
+input,select{box-sizing:border-box;border:1px solid #b7c5d7;padding:8px;width:100%;background:white;color:#172337}
+label{display:block;font-weight:650;font-size:.9rem;margin-bottom:6px}.field{margin:12px 0}
+.row{display:flex;gap:9px;flex-wrap:wrap;align-items:center}.row>*{flex:1;min-width:120px}
+.note{color:#526171;font-size:.86rem;line-height:1.4}.muted{color:#607181}
+#status{padding:10px 12px;background:#eaf0f8;border-radius:10px;font-size:.88rem;overflow-wrap:anywhere}
+#status.error{background:#fff0ed;color:#8c2533}#status.good{background:#e8f6ef;color:#16623c}
+code{overflow-wrap:anywhere}strong{font-weight:750}.score{font-size:1.7rem;font-weight:800;text-align:center;color:#1a4683}
+.small{font-size:.78rem}#log{white-space:pre-wrap;max-height:170px;overflow:auto;color:#526171;font-size:.8rem}
+[hidden]{display:none!important}.tag{display:inline-block;padding:4px 8px;border-radius:7px;background:#eaf0f9;font-size:.8rem}
+</style></head><body>
+<header><h1>MILFT — Partage d'essai V2</h1><div class="sub">Tournoi fictif uniquement · Samsung / autre Android / PC · Aucune donnée de la V1.1</div></header>
+<section><p id="status" role="status" aria-live="polite">Initialisation de l'essai…</p>
+<p class="note">Cette page est un prototype séparé. Les résultats réels, les joueurs MILFT et les sauvegardes Google Drive ne sont jamais importés.</p>
+<div class="row"><button id="signIn" disabled>Connexion Google</button><button id="signOut" class="secondary" hidden>Déconnexion</button></div>
+<div class="field"><label for="who">Compte connecté / Identifiant à partager au propriétaire</label><input id="who" readonly value="Non connecté"></div>
+</section>
+<section id="rooms" hidden>
+<h2>1. Créer ou rejoindre un essai</h2>
+<div class="row"><button id="create">Créer un match fictif</button><button id="join" class="secondary">Ouvrir le code saisi</button></div>
+<div class="field"><label for="trialId">Code de la salle d'essai</label><input id="trialId" maxlength="80" autocomplete="off" placeholder="trial..."></div>
+<p class="note">Sur l'autre Android : ouvrir cette même page, se connecter, puis saisir le code. L'accès avec un compte différent nécessite d'abord une autorisation du propriétaire.</p>
+</section>
+<section id="demo" hidden>
+<h2>2. Match de démonstration</h2>
+<p><span id="role" class="tag">Accès à vérifier</span> <span id="net" class="tag">État distant inconnu</span></p>
+<div class="score" id="score">— : —</div>
+<p class="note" id="version">Version distante non connue</p>
+<div class="row"><div><label for="home">Buts A</label><input id="home" type="number" min="0" max="99" value="5" inputmode="numeric"></div><div><label for="away">Buts B</label><input id="away" type="number" min="0" max="99" value="3" inputmode="numeric"></div></div>
+<div class="row" style="margin-top:10px"><button id="send">Enregistrer le score fictif</button><button id="retry" class="secondary">Renvoyer les opérations en attente</button></div>
+<p class="note" id="queue">File locale : non chargée</p>
+<div id="conflicts" class="note"></div>
+</section>
+<section id="sharing" hidden>
+<h2>3. Autoriser un autre compte Google</h2>
+<div class="field"><label for="invited">Identifiant UID communiqué par l'autre appareil</label><input id="invited" autocomplete="off" placeholder="Identifiant Firebase du second appareil"></div>
+<div class="row"><select id="permission"><option value="editor">Saisie des scores</option><option value="viewer">Lecture seule</option></select><button id="invite">Autoriser</button><button id="revoke" class="danger">Retirer l'accès</button></div>
+<p class="note">L'autorisation n'est donnée qu'au compte exact indiqué. Elle ne transfère aucune archive ni donnée de tournoi réel.</p>
+</section>
+<section><h2>Informations techniques</h2>
+<p class="note">Le projet Firebase de démonstration n'est pas encore configuré. Aucune connexion réseau à une base de données n'est tentée avant configuration explicite. Connexion Google via fenêtre contextuelle (autorisations du navigateur requises).</p>
+<pre id="log" aria-live="polite"></pre></section>
+<script src="./outbox-idb.js"></script><script type="module" src="./mobile-demo.mjs"></script>
+</body></html>
