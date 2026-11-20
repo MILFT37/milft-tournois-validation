@@ -49,3 +49,10 @@ Après vérification des nouveaux workflows et de la page publiée : premier ess
 - Match initial affiché **0–0**, **version distante 0**, dernier événement `seed`, file locale **0 en attente / 0 en cours / 0 conflit / 0 refusé**. Il s'agit de la première preuve visuelle que la création de salle fictive et sa lecture temps réel sur Firebase fonctionnent depuis le vrai Samsung.
 - Prochaine étape : enregistrer un score de test **5–3**, confirmer la **version distante 1** et l'absence d'erreur ; ensuite tester le partage avec un second Android et une seconde identité autorisée. Ne pas considérer la synchronisation inter-appareils comme validée avant cet essai.
 - Aucun transfert de tournois V1.1, joueurs, championnats ou archives Drive.
+
+## 19 h 51 — score fictif 5–3 écrit et relu sur Firebase réel
+- Capture Samsung : statut **Propriétaire**, **Écoute Firebase active** ; score fictif `5 : 3` après clic sur « Enregistrer le score fictif ».
+- Version distante passée de **0 à 1**, événement enregistré et affiché ; file locale persistante à **0 en attente, 0 en cours, 0 conflit, 0 refus**.
+- Conclusion limitée mais concrète : **première écriture et relecture d'un score fictif via la vraie Realtime Database depuis le Samsung validées**. Ceci ne valide pas encore la synchronisation entre deux appareils physiques.
+- À suivre : second Android avec **compte Google distinct** pour obtenir son UID ; le propriétaire doit inviter cet UID dans la salle fictive avant que le second appareil puisse lire/modifier le score. Vérifier d'abord refus avant invitation, puis autorisation, lecture du 5–3, modification d'essai et visibilité sur le Samsung. Ne pas demander de tests historiques sur versions inchangées.
+- Périmètre inchangé : prototype V2 sur `v2Trials` uniquement, pas de migration ni accès aux championnats, données V1.1 ou archives Drive.
