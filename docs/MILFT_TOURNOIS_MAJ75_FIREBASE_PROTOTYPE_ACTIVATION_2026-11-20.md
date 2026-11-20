@@ -33,3 +33,8 @@ Après vérification des nouveaux workflows et de la page publiée : premier ess
 - Ne pas présenter ces deux derniers tests comme validés avant leur conclusion ; conserver les tests précédents MAJ73 comme acquis.
 
 - Contrôle complémentaire : interface démonstration Android Chromium/WebKit run `44794975727` : **SUCCESS**. Seul l'E2E deux Android run `44794975691` n'avait pas encore conclu au dernier relevé.
+
+## Vérification finale des cinq workflows et ouverture Samsung
+- Après publication du commit `73b6542c22f39cca7bb2b7e2b03bb7c5d0b147a4`, les **cinq** workflows GitHub Actions ont conclu **SUCCESS** : Diagnostic Pages `44794975631`, Simulation V2 `44794975660`, Publication Pages `44794975877`, Chromium/WebKit `44794975727`, E2E deux Android sur émulateurs Firebase `44794975691`.
+- Capture Samsung du 20/11/2026 à 19 h 42 : le prototype `https://milft37.github.io/milft-tournois-validation/v2/mobile-demo.html` affiche la page V2 actualisée, le texte indiquant Firebase Spark, et un bouton **Connexion Google** actif. Affichage initial « Non connecté » normal.
+- **Prochaine étape manuelle** : toucher « Connexion Google » sur Samsung et choisir le compte du club, puis constater l'état de connexion avant toute création de match fictif. Ne pas supposer le partage réel fonctionnel sans test et contrôle du résultat.
