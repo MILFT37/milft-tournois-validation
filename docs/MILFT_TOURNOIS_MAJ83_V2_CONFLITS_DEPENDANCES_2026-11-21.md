@@ -49,5 +49,16 @@ nouvelles saisies indépendantes** effectuées après la résolution du conflit.
 - Aucune action nécessaire de l'utilisateur pour cette étape.
 
 ## Clôture
-**En cours.** Ajouter les SHA des commits, les verdicts de chaque workflow
-et la confirmation de publication avant de déclarer la MAJ83 validée.
+**MAJ83 VALIDÉE et publiée** — 21 novembre 2026.
+
+- Commit initial application + tests + feuille de route `81a45f6d50243007b516d445ac6816b2904ce09b`.
+- **Simulation partage V2** `44834583500` : **SUCCESS**.
+- **Interface mobile Chromium et Safari/WebKit** `44834583658` : **SUCCESS**.
+- **E2E deux Android simulés, Firebase Auth et Realtime Database émulés**, y compris conflits successifs, brouillons conservés et nouvelle saisie indépendante, `44834583505` : **SUCCESS**.
+- **Déploiement GitHub Pages et vérification des empreintes publiques** `44834583507` : **SUCCESS**.
+- Premier passage IndexedDB `44834583552` : **FAILURE d'une assertion historique MAJ82** (attendait `pending` pour un score dépendant ; le nouveau comportement MAJ83 exige `conflict`). Aucun brouillon perdu. Assertion corrigée par commit `883ea61c92b814bb88bf1d860762a82fc1718b42`.
+- **IndexedDB Chromium + WebKit après correction**, `44834747104` : **SUCCESS** ; nouveaux tests de trois scores dépendants, conflit, reprise indépendante et conservation après rechargement.
+- **Production V1.1 officielle inchangée**, aucune donnée réelle, championnat, archive Google Drive ou règle Firebase modifiés ; forfait Spark gratuit inchangé.
+- **Aucune action utilisateur nécessaire**. Le test réel sur deux appareils physiques et deux comptes Google distincts reste à réaliser plus tard.
+- Prochaine reprise : **MAJ84**, depuis cette feuille de route ; ne pas répéter les validations MAJ75–83 sur des fichiers inchangés.
+
