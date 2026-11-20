@@ -92,7 +92,7 @@ async function prepareRoom(trialId){
    },e=>{
       if(state.trial!==trialId||state.user?.uid!==uid)return;
       resetRoom();updateUI();
-      status('Lecture du match interrompue : '+errorText(e)+'. La file locale reste conservée.','error');
+      status(errorText(e).toLowerCase().replaceAll('_','-').includes('permission-denied')?'Accès retiré ou refusé par Firebase. Le match est masqué et la file locale reste conservée.':'Lecture du match interrompue : '+errorText(e)+'. La file locale reste conservée.','error');
    });
    // L'écoute du score seule ne suffit pas pour retirer immédiatement le contenu
    // lorsqu'un propriétaire modifie les droits : suivre l'UID autorisé lui-même.
