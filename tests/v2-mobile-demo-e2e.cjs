@@ -455,6 +455,89 @@ async function main(){
   assert.equal(remoteRetry.version,1,'Temporary network error must be retried exactly once');
   assert.equal(remoteRetry.lastEventId,waitingRetry[0].id,'Retry reuses the original operation ID');
   assert.deepEqual(remoteRetry.sets['0'],{a:9,b:7});
+  // MAJ85 : le statut d'un match fictif ne peut pas être confondu
+  // avec une panne réseau transitoire. Injecter des états « terminé »
+  // et « match supprimé » uniquement dans la base émulateur.
+  await retryPage.locator('#create').click();
+  await retryPage.waitForFunction(previous=>document.getElementById('trialId').value!==previous,retryTrial);
+  await retryPage.locator('#score').getByText('0 : 0').waitFor();
+  const finishedTrial=await retryPage.locator('#trialId').inputValue();
+  await environment.withSecurityRulesDisabled(async ctx=>{
+    await ctx.database('https://'+projectId+'-default-rtdb.firebaseio.com')
+      .ref('v2Trials/'+finishedTrial+'/matches/demo/status').set('finished');
+  });
+  await retryPage.waitForFunction(()=>document.getElementById('send').disabled===true);
+  assert.equal(await retryPage.locator('#send').isDisabled(),true,'Finished match must disable score entry');
+  const localFinished=await retryPage.evaluate(async()=>{
+    const db=await MILFTV2Outbox.open({indexedDB,dbName:'MILFT_V2_DEMO_OUTBOX_20261120'});
+    const s={tournamentId:document.getElementById('trialId').value,
+      actorId:document.getElementById('who').value,
+      deviceId:localStorage.getItem('MILFT_V2_DEMO_DEVICE_ID')};
+    const res=await db.enqueue(s,{...s,id:'eMAJ85Finished',matchId:'demo',type:'set.record',
+      expectedVersion:0,setIndex:0,goals:{a:5,b:3}});
+    db.close();return res;
+  });
+  assert.equal(localFinished.status,'queued');
+  await retryPage.locator('#retry').click();
+  await retryPage.locator('#queue').getByText('1 conflit(s)',{exact:false}).waitFor({timeout:15000});
+  assert.match(await retryPage.locator('#status.error').innerText(),/Match fictif terminé/);
+  const finishedState=await retryPage.evaluate(async()=>{
+    const db=await MILFTV2Outbox.open({indexedDB,dbName:'MILFT_V2_DEMO_OUTBOX_20261120'});
+    const s={tournamentId:document.getElementById('trialId').value,
+      actorId:document.getElementById('who').value,
+      deviceId:localStorage.getItem('MILFT_V2_DEMO_DEVICE_ID')};
+    const items=await db.list(s);db.close();
+    return items.map(x=>({state:x.state,reason:x.reason,retryAt:x.retryAt||0,attempts:x.attempts}));
+  });
+  assert.deepEqual(finishedState,[{state:'conflict',reason:'closed-match',retryAt:0,attempts:1}],
+    'Finished score must be retained as terminal conflict without retry timer');
+  let remoteFinished;
+  await environment.withSecurityRulesDisabled(async ctx=>{
+    remoteFinished=(await ctx.database('https://'+projectId+'-default-rtdb.firebaseio.com')
+      .ref('v2Trials/'+finishedTrial+'/matches/demo').once('value')).val();
+  });
+  assert.equal(remoteFinished.version,0,'No write allowed on finished match');
+  assert.equal(remoteFinished.status,'finished');
+
+  await retryPage.locator('#create').click();
+  await retryPage.waitForFunction(previous=>document.getElementById('trialId').value!==previous,finishedTrial);
+  await retryPage.locator('#score').getByText('0 : 0').waitFor();
+  const missingTrial=await retryPage.locator('#trialId').inputValue();
+  await environment.withSecurityRulesDisabled(async ctx=>{
+    await ctx.database('https://'+projectId+'-default-rtdb.firebaseio.com')
+      .ref('v2Trials/'+missingTrial+'/matches/demo').remove();
+  });
+  await retryPage.locator('#score').getByText('— : —').waitFor({timeout:15000});
+  assert.equal(await retryPage.locator('#send').isDisabled(),true,'Missing match must disable score entry');
+  const localMissing=await retryPage.evaluate(async()=>{
+    const db=await MILFTV2Outbox.open({indexedDB,dbName:'MILFT_V2_DEMO_OUTBOX_20261120'});
+    const s={tournamentId:document.getElementById('trialId').value,
+      actorId:document.getElementById('who').value,
+      deviceId:localStorage.getItem('MILFT_V2_DEMO_DEVICE_ID')};
+    const res=await db.enqueue(s,{...s,id:'eMAJ85Missing',matchId:'demo',type:'set.record',
+      expectedVersion:0,setIndex:0,goals:{a:4,b:2}});
+    db.close();return res;
+  });
+  assert.equal(localMissing.status,'queued');
+  await retryPage.locator('#retry').click();
+  await retryPage.locator('#queue').getByText('1 conflit(s)',{exact:false}).waitFor({timeout:15000});
+  assert.match(await retryPage.locator('#status.error').innerText(),/Match fictif introuvable/);
+  const missingState=await retryPage.evaluate(async()=>{
+    const db=await MILFTV2Outbox.open({indexedDB,dbName:'MILFT_V2_DEMO_OUTBOX_20261120'});
+    const s={tournamentId:document.getElementById('trialId').value,
+      actorId:document.getElementById('who').value,
+      deviceId:localStorage.getItem('MILFT_V2_DEMO_DEVICE_ID')};
+    const entries=await db.list(s);db.close();
+    return entries.map(x=>({state:x.state,reason:x.reason,retryAt:x.retryAt||0,attempts:x.attempts}));
+  });
+  assert.deepEqual(missingState,[{state:'conflict',reason:'missing-match',retryAt:0,attempts:1}],
+    'Missing score must be retained as conflict, not retried forever');
+  let remoteMissing;
+  await environment.withSecurityRulesDisabled(async ctx=>{
+    remoteMissing=(await ctx.database('https://'+projectId+'-default-rtdb.firebaseio.com')
+      .ref('v2Trials/'+missingTrial+'/matches/demo').once('value')).val();
+  });
+  assert.equal(remoteMissing,null,'No remote match may be silently recreated');
   let actual;
   await environment.withSecurityRulesDisabled(async ctx=>{
     actual=(await ctx.database('https://'+projectId+'-default-rtdb.firebaseio.com').ref('v2Trials/'+trial+'/matches/demo').once('value')).val();

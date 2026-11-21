@@ -13,7 +13,7 @@ function updateUI(){
   $('signIn').hidden=!!state.user;$('signOut').hidden=!state.user;
   $('who').value=state.user?.uid||'Non connecté';
   $('role').textContent=state.role==='admin'?'Propriétaire':state.role==='editor'?'Autorisé à saisir':state.role==='viewer'?'Lecture seule':'Non autorisé';
-  $('send').disabled=!['admin','editor'].includes(state.role)||!state.match||!state.outbox||state.sending||state.enqueuing;
+  $('send').disabled=!['admin','editor'].includes(state.role)||!state.match||state.match.status!=='playing'||!state.outbox||state.sending||state.enqueuing;
   $('retry').disabled=!['admin','editor'].includes(state.role)||!state.outbox||state.sending;
   $('invite').disabled=state.role!=='admin';$('revoke').disabled=state.role!=='admin';
   $('copyUid').disabled=!state.user;
@@ -170,12 +170,12 @@ async function execute(command){
  try{
   unsubscribe=api.onValue(reference,()=>{},()=>{});
   const initial=await api.get(reference);
-  if(!initial.exists())return {status:'unavailable'};
+  if(!initial.exists())return {status:'missing-match'};
   const result=await api.runTransaction(reference,match=>{
-   if(!match||typeof match!=='object'){stateCode='unavailable';return;}
+   if(!match||typeof match!=='object'){stateCode='missing-match';return;}
    if(match.lastEventId===command.id){stateCode=match.lastEventFingerprint===fp?'duplicate':'id-collision';return;}
    if(match.version!==command.expectedVersion){stateCode='conflict';return;}
-   if(match.status!=='playing'){stateCode='invalid-transition';return;}
+   if(match.status!=='playing'){stateCode='closed-match';return;}
    const updated={...match,sets:{...match.sets,[String(command.setIndex)]:command.goals},version:match.version+1,
      updatedBy:uid,lastEventId:command.id,lastEventFingerprint:fp};
    stateCode='proposed';return updated;
@@ -202,13 +202,18 @@ async function transmit({manual=false}={}){
    if(!sameRoom()||!['admin','editor'].includes(state.role))break;
    const result=await execute(item.command);
    const outcome=result.status==='applied'||result.status==='duplicate'?result.status:
-    result.status==='conflict'?'conflict':
+    ['conflict','closed-match','missing-match','invalid-transition'].includes(result.status)?'conflict':
     result.status==='forbidden'||result.status==='id-collision'?'forbidden':'temporary-error';
    const retryAfterMs=outcome==='temporary-error'?Math.min(60000,2000*2**Math.min(item.attempts-1,5)):0;
    const saved=await outbox.finish(scope,item.command.id,item.leaseToken,outcome,{reason:result.status,retryAfterMs});
    if(!sameRoom())break;
    if(outcome==='temporary-error'){status('Envoi non confirmé. Score conservé localement ; nouvelle tentative automatique après délai.','error');break;}
-   if(outcome==='conflict'){status('Conflit : un autre appareil a modifié ce score. Brouillon conservé.','error');}
+   if(outcome==='conflict'){
+    const message=result.status==='closed-match'?'Match fictif terminé : score local conservé, aucun renvoi automatique.':
+     result.status==='missing-match'?'Match fictif introuvable : score local conservé, aucun renvoi automatique.':
+     'Conflit : un autre appareil a modifié ce score. Brouillon conservé.';
+    status(message,'error');
+   }
    if(outcome==='forbidden'){status('Accès refusé. Brouillon conservé, aucune modification distante.','error');break;}
    if(saved.status==='confirmed')status('Score fictif confirmé par Firebase.','good');
   }
@@ -217,7 +222,7 @@ async function transmit({manual=false}={}){
  finally{if(sameRoom()){state.sending=false;updateUI();void refreshQueue();}}
 }
 async function sendScore(){
- if(!state.match||!state.outbox||!['admin','editor'].includes(state.role)||!state.user||state.enqueuing||state.sending)return;
+ if(!state.match||state.match.status!=='playing'||!state.outbox||!['admin','editor'].includes(state.role)||!state.user||state.enqueuing||state.sending)return;
  const rawA=$('home').value.trim(),rawB=$('away').value.trim();
  if(!/^\d{1,2}$/.test(rawA)||!/^\d{1,2}$/.test(rawB)){status('Buts invalides : renseigner les deux scores entiers de 0 à 99.','error');return;}
  const a=Number(rawA),b=Number(rawB);
