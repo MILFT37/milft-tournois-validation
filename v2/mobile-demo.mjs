@@ -63,13 +63,16 @@ function syncScore(){
 }
 // Un bail « sending » ou une erreur réseau temporaire peut survivre à
 // la fermeture du navigateur. La reprise n'anticipe jamais les délais.
-function scheduleLeaseRecovery(items,context){
+function scheduleLeaseRecovery(items,context,{continueReady=false}={}){
  clearTimeout(state.recoveryTimer);state.recoveryTimer=null;
  if(state.roomGeneration!==context.generation||state.outbox!==context.outbox||
     !navigator.onLine||!['admin','editor'].includes(state.role)||state.sending)return;
  const head=items.find(item=>item.state==='pending'||item.state==='sending');
  if(!head)return;
- const deadline=head.state==='sending'?head.leaseUntil:head.retryAt;
+ // Après 15 commandes acceptées, continuer automatiquement le lot suivant
+ // sans relancer la tête qui attend un bail ou une temporisation réseau.
+ const deadline=head.state==='sending'?head.leaseUntil:
+  head.retryAt>0?head.retryAt:continueReady?Date.now():0;
  if(!Number.isFinite(deadline)||deadline<=0)return;
  const ms=Math.max(250,Math.min(300000,deadline-Date.now()+150));
  state.recoveryTimer=setTimeout(()=>{
@@ -79,7 +82,7 @@ function scheduleLeaseRecovery(items,context){
    void transmit();
  },ms);
 }
-async function refreshQueue(){
+async function refreshQueue({continueReady=false}={}){
  if(!state.outbox||!state.scope)return;
  const countsFromScope={outbox:state.outbox,scope:state.scope,generation:state.roomGeneration};
  const items=await countsFromScope.outbox.list(countsFromScope.scope);
@@ -90,9 +93,12 @@ async function refreshQueue(){
  const scheduled=head&&navigator.onLine&&['admin','editor'].includes(state.role)&&
    ((head.state==='sending'&&head.leaseUntil>Date.now())||
     (head.state==='pending'&&head.retryAt>Date.now()));
- $('queue').textContent='File locale persistante : '+counts.pending+' en attente, '+counts.sending+' en cours, '+counts.conflict+' conflit(s), '+counts.blocked+' refusé(s)'+(scheduled&&!state.sending?' · Reprise automatique après le délai de sécurité':'');
+ const moreReady=continueReady&&head?.state==='pending'&&!(head.retryAt>Date.now());
+ $('queue').textContent='File locale persistante : '+counts.pending+' en attente, '+counts.sending+' en cours, '+counts.conflict+' conflit(s), '+counts.blocked+' refusé(s)'+
+   (scheduled&&!state.sending?' · Reprise automatique après le délai de sécurité':
+    moreReady&&!state.sending?' · Suite des opérations automatique':'');
  $('conflicts').textContent=items.filter(x=>x.state==='conflict'||x.state==='blocked').map(x=>'Événement '+x.command.id+' conservé : '+x.state+' ('+(x.reason||'')+')').join(' · ');
- scheduleLeaseRecovery(items,countsFromScope);
+ scheduleLeaseRecovery(items,countsFromScope,{continueReady});
 }
 async function prepareRoom(trialId){
  if(!state.user||!valid.test(trialId)){status('Code de salle invalide.','error');return;}
@@ -194,11 +200,13 @@ async function transmit({manual=false}={}){
  const scope=state.scope,outbox=state.outbox,uid=state.user.uid,generation=state.roomGeneration;
  const sameRoom=()=>state.roomGeneration===generation&&state.outbox===outbox&&state.scope===scope&&state.user?.uid===uid;
  state.sending=true;updateUI();
+ let processed=0;
  try{
   for(let i=0;i<15;i++){
    if(!sameRoom()||!['admin','editor'].includes(state.role)||!navigator.onLine)break;
    const item=await outbox.claimNext(scope,{ignoreRetryAt:manual&&i===0});
    if(!item)break;
+   processed++;
    if(!sameRoom()||!['admin','editor'].includes(state.role))break;
    const result=await execute(item.command);
    const outcome=result.status==='applied'||result.status==='duplicate'?result.status:
@@ -217,9 +225,16 @@ async function transmit({manual=false}={}){
    if(outcome==='forbidden'){status('Accès refusé. Brouillon conservé, aucune modification distante.','error');break;}
    if(saved.status==='confirmed')status('Score fictif confirmé par Firebase.','good');
   }
-  if(sameRoom())await refreshQueue();
  }catch(e){if(sameRoom())status('Erreur de file locale : '+errorText(e)+' — aucune suppression automatique','error');}
- finally{if(sameRoom()){state.sending=false;updateUI();void refreshQueue();}}
+ finally{
+  if(sameRoom()){
+   state.sending=false;updateUI();
+   // Un lot de 15 ne peut pas bloquer à jamais les commandes suivantes.
+   // Le rafraîchissement programme la continuation uniquement si la tête
+   // est disponible ; il respecte les baux et les délais persistants.
+   void refreshQueue({continueReady:processed===15});
+  }
+ }
 }
 async function sendScore(){
  if(!state.match||state.match.status!=='playing'||!state.outbox||!['admin','editor'].includes(state.role)||!state.user||state.enqueuing||state.sending)return;

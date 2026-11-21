@@ -538,6 +538,51 @@ async function main(){
       .ref('v2Trials/'+missingTrial+'/matches/demo').once('value')).val();
   });
   assert.equal(remoteMissing,null,'No remote match may be silently recreated');
+  // MAJ86 : une file de plus de 15 opérations ne doit plus se figer
+  // après le premier lot, même sans interaction supplémentaire.
+  await retryPage.locator('#create').click();
+  await retryPage.waitForFunction(previous=>document.getElementById('trialId').value!==previous,missingTrial);
+  await retryPage.locator('#score').getByText('0 : 0').waitFor();
+  const bulkTrial=await retryPage.locator('#trialId').inputValue();
+  await androidA.setOffline(true);
+  const bulkQueued=await retryPage.evaluate(async()=>{
+    const db=await MILFTV2Outbox.open({indexedDB,dbName:'MILFT_V2_DEMO_OUTBOX_20261120'});
+    const s={tournamentId:document.getElementById('trialId').value,
+      actorId:document.getElementById('who').value,
+      deviceId:localStorage.getItem('MILFT_V2_DEMO_DEVICE_ID')};
+    const initial=Date.now();
+    for(let i=0;i<18;i++){
+      const cmd={...s,id:'eMAJ86_'+String(i+1).padStart(2,'0'),matchId:'demo',
+        type:'set.record',expectedVersion:0,setIndex:0,goals:{a:i+1,b:i}};
+      const result=await db.enqueue(s,cmd,initial+i,{chainLocalScore:true});
+      if(result.status!=='queued')throw Error('MAJ86 enqueue '+i+': '+result.status);
+    }
+    const entries=await db.list(s);db.close();
+    return entries.map(x=>({id:x.command.id,version:x.command.expectedVersion,state:x.state}));
+  });
+  assert.equal(bulkQueued.length,18,'At least 18 offline edits needed to test batch continuation');
+  assert.deepEqual(bulkQueued.map(x=>x.version),Array.from({length:18},(_,i)=>i));
+  assert.deepEqual(bulkQueued.map(x=>x.state),Array(18).fill('pending'));
+  await androidA.setOffline(false);
+  await retryPage.locator('#score').getByText('18 : 17').waitFor({timeout:75000});
+  await retryPage.locator('#version').getByText('Version distante 18',{exact:false}).waitFor({timeout:15000});
+  await retryPage.locator('#queue').getByText('0 en attente, 0 en cours',{exact:false}).waitFor({timeout:15000});
+  let bulkRemote;
+  await environment.withSecurityRulesDisabled(async ctx=>{
+    bulkRemote=(await ctx.database('https://'+projectId+'-default-rtdb.firebaseio.com')
+      .ref('v2Trials/'+bulkTrial+'/matches/demo').once('value')).val();
+  });
+  assert.equal(bulkRemote.version,18,'All 18 operations sent despite 15-item batch boundary');
+  assert.equal(bulkRemote.lastEventId,'eMAJ86_18','Last operation must be applied in FIFO order');
+  assert.deepEqual(bulkRemote.sets['0'],{a:18,b:17});
+  const bulkRemaining=await retryPage.evaluate(async()=>{
+    const db=await MILFTV2Outbox.open({indexedDB,dbName:'MILFT_V2_DEMO_OUTBOX_20261120'});
+    const s={tournamentId:document.getElementById('trialId').value,
+      actorId:document.getElementById('who').value,
+      deviceId:localStorage.getItem('MILFT_V2_DEMO_DEVICE_ID')};
+    const entries=await db.list(s);db.close();return entries.length;
+  });
+  assert.equal(bulkRemaining,0,'18 confirmations must clear the persistent local queue');
   let actual;
   await environment.withSecurityRulesDisabled(async ctx=>{
     actual=(await ctx.database('https://'+projectId+'-default-rtdb.firebaseio.com').ref('v2Trials/'+trial+'/matches/demo').once('value')).val();
