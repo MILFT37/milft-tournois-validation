@@ -50,5 +50,14 @@ jusqu'au prochain clic ou événement de reconnexion.
 - **Aucune action de l'utilisateur sur Samsung.**
 
 ## Clôture
-**En cours** — noter les commits, les workflows GitHub Actions et le
-contrôle de publication avant de déclarer cette MAJ validée.
+**MAJ86 VALIDÉE et publiée — 21 novembre 2026.**
+
+- Commit applicatif/tests/feuille de route : `78feb7fc93c7231fca05ee76c7ca34bd4a80ae75`. Fichiers changés : `v2/mobile-demo.mjs`, `tests/v2-mobile-demo-e2e.cjs` et ce document uniquement.
+- **Simulation partage V2** : GitHub Actions `44900011685` — **SUCCESS**.
+- **Interface Chromium et Safari/WebKit** : `44900011665` — **SUCCESS**.
+- **E2E deux Android simulés avec Firebase Auth/Realtime Database émulés** : `44900011670` — **SUCCESS**. Test de 18 événements locaux consécutifs sur la même salle fictive : après reconnexion, version distante 18, dernier ID `eMAJ86_18`, score final 18–17, file vide et poursuite automatique après les 15 premières transmissions.
+- **GitHub Pages et empreintes des fichiers publics** : `44900011672` — **SUCCESS**. Prototype V2 déployé séparément de la V1.1 officielle.
+- **IndexedDB, règles RTDB et Firebase réel** : fichiers inchangés, validations antérieures maintenues sans relance inutile.
+- Production officielle `MILFT37/milft-tournois`, V1.1, tournois, championnats, archives Google Drive, règles de sécurité Firebase et forfait Spark **inchangés**.
+- **Aucune manipulation sur Samsung**. Test inter-appareils réels avec deux identités Google distinctes **toujours en attente**.
+- Prochaine reprise : **MAJ87**, depuis cette feuille de route ; poursuivre la fiabilisation du prototype isolé, sans répéter les validations des versions inchangées ni intégrer V2 prématurément à V1.1.
