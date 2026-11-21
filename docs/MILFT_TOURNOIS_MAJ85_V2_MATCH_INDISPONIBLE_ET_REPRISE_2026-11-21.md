@@ -48,5 +48,15 @@ Le prototype risquait donc d'envoyer **indéfiniment** une commande impossible,
 - **Aucune intervention sur Samsung pour cette MAJ.**
 
 ## Clôture
-**Développement engagé.** Consigner les identifiants de commits et les
-résultats des workflows avant de déclarer la MAJ85 validée/publiée.
+**MAJ85 VALIDÉE et publiée — 21 novembre 2026.**
+
+- Commit applicatif/tests/feuille de route : `7c98e789b84c67e97a4c664f37e3c103fda9349f`. Modifications limitées à `v2/mobile-demo.mjs`, aux tests E2E émulés et à ce document.
+- **Simulation partage V2** : workflow `44899711804` — **SUCCESS**.
+- **Interface démonstration Android, Chromium et WebKit** : workflow `44899711831` — **SUCCESS**.
+- **E2E deux Android simulés, Firebase Auth + Realtime Database émulés** : workflow `44899711827` — **SUCCESS**. Vérification du refus définitif si match `finished` ou absent, de l'absence de nouvelles tentatives, de la conservation des brouillons et de l'absence d'écriture/récréation distante.
+- **GitHub Pages et contrôle des fichiers publics** : workflow `44899711819` — **SUCCESS**.
+- **IndexedDB MAJ84** : code inchangé ; validation précédente `44836351818` maintenue, aucun nouveau test nécessaire.
+- Le prototype V2 demeure **isolé** ; aucune intégration à l'application officielle `MILFT37/milft-tournois`, aucune modification des tournois/championnats/archives Drive, des règles Firebase ou du forfait Spark.
+- **Aucune action sur Samsung**. Le test réel entre deux appareils physiques avec deux comptes Google distincts reste non effectué.
+- **Reprise prochaine : MAJ86** depuis cette clôture ; préserver les acquis et ne pas répéter les tests sur une version inchangée.
+
