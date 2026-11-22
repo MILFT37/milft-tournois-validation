@@ -1,6 +1,6 @@
 # MILFT Tournois V2 — MAJ87 — Reprise au retour sur l'application Android
 
-**21 novembre 2026 — GO utilisateur.** Reprise depuis la clôture MAJ86 : `docs/MILFT_TOURNOIS_MAJ86_V2_FILE_LOTS_AUTOMATIQUES_2026-11-21.md`.
+**22 novembre 2026 — GO utilisateur.** Reprise depuis la clôture MAJ86 : `docs/MILFT_TOURNOIS_MAJ86_V2_FILE_LOTS_AUTOMATIQUES_2026-11-21.md`.
 
 ## Risque ciblé
 Lorsque Chrome ou un autre navigateur mobile met la page d'un tournoi en
@@ -47,5 +47,14 @@ la file risquait de ne pas repartir en revenant sur la page.
 - **Aucune manipulation demandée à l'utilisateur sur Samsung.**
 
 ## Clôture
-**En cours** : consigner commit(s), workflows GitHub Actions et validation
-de la publication avant déclaration MAJ87 validée et publiée.
+**MAJ87 VALIDÉE et publiée — 22 novembre 2026.**
+
+- Commit du développement V2 et des tests : `4cbb653c32233f6e8213d42e5e7525f9ca8dcf65`. Uniquement `v2/mobile-demo.mjs`, son test E2E émulé et ce document.
+- **Simulation partage V2** : GitHub Actions `45008066643` — **SUCCESS**.
+- **Interface Chromium et Safari/WebKit** : `45008066668` — **SUCCESS**.
+- **Deux Android simulés + Firebase Auth/RTDB émulateurs**, avec reprise d'un score 5–3 au retour au premier plan puis score 6–4 après respect du délai de reprise : `45008066625` — **SUCCESS**.
+- **Déploiement GitHub Pages et contrôle des empreintes des fichiers publics** : `45008066589` — **SUCCESS**. Prototype V2 publié séparément.
+- **IndexedDB et règles Firebase inchangés** : tests correspondants déjà acquis (MAJ84/86), aucune répétition inutile. Aucun test utilisant Firebase réel dans la CI.
+- V1.1 officielle, données locales, tournois, championnat annuel, archives Google Drive, règles de sécurité Firebase et plan Spark gratuit **inchangés**.
+- **Aucune action requise sur Samsung**. Le test physique entre deux appareils et deux comptes Google distincts demeure à effectuer lorsqu'un deuxième appareil sera disponible.
+- **Prochaine reprise : MAJ88** depuis cette clôture, sans intégration prématurée du partage V2 dans l'application officielle ni reprise des tests validés sur du code inchangé.
