@@ -671,6 +671,68 @@ async function main(){
   assert.equal(delayedRemote.version,1,'Only one accepted retry after visibility change');
   assert.equal(delayedRemote.lastEventId,'eMAJ87Backoff','Original ID must be retained');
   assert.deepEqual(delayedRemote.sets['0'],{a:6,b:4});
+  // MAJ88 : les opérations locales conservées pendant lecture seule
+  // doivent reprendre automatiquement si le propriétaire restaure editor.
+  // Vérifier aussi qu'aucun envoi ne passe tant que le compte est viewer.
+  await retryPage.locator('#create').click();
+  await retryPage.waitForFunction(previous=>document.getElementById('trialId').value!==previous,delayedTrial);
+  await retryPage.locator('#score').getByText('0 : 0').waitFor();
+  const rightsTrial=await retryPage.locator('#trialId').inputValue();
+  await retryPage.locator('#invited').fill(uidB);
+  await retryPage.locator('#permission').selectOption('editor');
+  await retryPage.locator('#invite').click();
+  await retryPage.locator('#status.good').getByText('Utilisateur autorisé',{exact:false}).waitFor();
+
+  await restored.locator('#trialId').fill(rightsTrial);
+  await restored.locator('#join').click();
+  await restored.locator('#role').getByText('Autorisé à saisir').waitFor();
+  const savedRoleDraft=await restored.evaluate(async()=>{
+    const db=await MILFTV2Outbox.open({indexedDB,dbName:'MILFT_V2_DEMO_OUTBOX_20261120'});
+    const scope={tournamentId:document.getElementById('trialId').value,
+      actorId:document.getElementById('who').value,
+      deviceId:localStorage.getItem('MILFT_V2_DEMO_DEVICE_ID')};
+    const command={...scope,id:'eMAJ88RoleRestored',matchId:'demo',type:'set.record',
+      expectedVersion:0,setIndex:0,goals:{a:7,b:5}};
+    const saved=await db.enqueue(scope,command,Date.now(),{chainLocalScore:true});
+    const items=await db.list(scope);db.close();
+    return {status:saved.status,items:items.map(x=>({id:x.command.id,state:x.state}))};
+  });
+  assert.equal(savedRoleDraft.status,'queued','Local score must be persisted before permission change');
+  assert.deepEqual(savedRoleDraft.items,[{id:'eMAJ88RoleRestored',state:'pending'}]);
+
+  await retryPage.locator('#permission').selectOption('viewer');
+  await retryPage.locator('#invite').click();
+  await restored.locator('#role').getByText('Lecture seule').waitFor({timeout:15000});
+  await restored.locator('#join').click();
+  await restored.locator('#role').getByText('Lecture seule').waitFor();
+  await restored.locator('#queue').getByText('1 en attente',{exact:false}).waitFor();
+  assert.equal(await restored.locator('#send').isDisabled(),true);
+  assert.equal(await restored.locator('#retry').isDisabled(),true);
+  assert.equal(await restored.locator('#score').innerText(),'0 : 0');
+  const whileViewer=await restored.evaluate(async()=>{
+    const db=await MILFTV2Outbox.open({indexedDB,dbName:'MILFT_V2_DEMO_OUTBOX_20261120'});
+    const scope={tournamentId:document.getElementById('trialId').value,
+      actorId:document.getElementById('who').value,
+      deviceId:localStorage.getItem('MILFT_V2_DEMO_DEVICE_ID')};
+    const rows=await db.list(scope);db.close();return rows.map(x=>({state:x.state,attempts:x.attempts}));
+  });
+  assert.deepEqual(whileViewer,[{state:'pending',attempts:0}],
+    'Downgraded viewer cannot transmit or consume a pending local score');
+  await restored.bringToFront();
+  await retryPage.locator('#permission').selectOption('editor');
+  await retryPage.locator('#invite').click();
+  await restored.locator('#role').getByText('Autorisé à saisir').waitFor({timeout:15000});
+  await restored.locator('#score').getByText('7 : 5').waitFor({timeout:20000});
+  await restored.locator('#version').getByText('Version distante 1',{exact:false}).waitFor();
+  await restored.locator('#queue').getByText('0 en attente, 0 en cours',{exact:false}).waitFor();
+  let rightsRemote;
+  await environment.withSecurityRulesDisabled(async ctx=>{
+    rightsRemote=(await ctx.database('https://'+projectId+'-default-rtdb.firebaseio.com')
+      .ref('v2Trials/'+rightsTrial+'/matches/demo').once('value')).val();
+  });
+  assert.equal(rightsRemote.version,1,'Restored editor sends only one score');
+  assert.equal(rightsRemote.lastEventId,'eMAJ88RoleRestored','Same pending event ID reused');
+  assert.deepEqual(rightsRemote.sets['0'],{a:7,b:5});
   let actual;
   await environment.withSecurityRulesDisabled(async ctx=>{
     actual=(await ctx.database('https://'+projectId+'-default-rtdb.firebaseio.com').ref('v2Trials/'+trial+'/matches/demo').once('value')).val();

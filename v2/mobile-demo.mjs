@@ -167,6 +167,10 @@ async function prepareRoom(trialId){
        if(fresh!==state.role){
          state.role=fresh;updateUI();
          status(fresh==='viewer'?'Accès passé en lecture seule. Saisie désactivée.':'Autorisation de saisie rétablie.','good');
+         // Le retour à editor doit réveiller une file restée en attente
+         // durant la lecture seule, sans attendre un nouvel événement online.
+         // La reprise MAJ87 respecte visibilité, scope, baux et retryAt.
+         if(fresh==='editor')void resumeForeground();
        }
      },e=>{
        if(!isCurrent()||state.trial!==trialId)return;
