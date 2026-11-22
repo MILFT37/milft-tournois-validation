@@ -82,6 +82,22 @@ function scheduleLeaseRecovery(items,context,{continueReady=false}={}){
    void transmit();
  },ms);
 }
+// Afficher la saisie exacte d'un brouillon refusé sans le renvoyer.
+// textContent (et jamais innerHTML) protège même si le motif contient du HTML.
+function describeLocalConflict(item){
+ const cmd=item.command||{};
+ const score=cmd.type==='set.record'&&
+   Number.isSafeInteger(cmd.goals?.a)&&Number.isSafeInteger(cmd.goals?.b)
+   ? 'Score local A '+cmd.goals.a+' : B '+cmd.goals.b+
+     ' · manche '+(Number.isSafeInteger(cmd.setIndex)?cmd.setIndex+1:'inconnue')
+   : 'Opération '+(cmd.type||'inconnue');
+ const version=Number.isSafeInteger(cmd.expectedVersion)?cmd.expectedVersion:'inconnue';
+ return 'Brouillon '+(cmd.id||'sans identifiant')+
+   ' · '+(item.state==='conflict'?'conflit':'accès refusé')+
+   ' · '+score+' · version de départ '+version+
+   (item.reason?' · motif : '+item.reason:'')+
+   ' · conservé sur cet appareil ; aucune correction automatique';
+}
 async function refreshQueue({continueReady=false}={}){
  if(!state.outbox||!state.scope)return;
  const countsFromScope={outbox:state.outbox,scope:state.scope,generation:state.roomGeneration};
@@ -97,7 +113,11 @@ async function refreshQueue({continueReady=false}={}){
  $('queue').textContent='File locale persistante : '+counts.pending+' en attente, '+counts.sending+' en cours, '+counts.conflict+' conflit(s), '+counts.blocked+' refusé(s)'+
    (scheduled&&!state.sending?' · Reprise automatique après le délai de sécurité':
     moreReady&&!state.sending?' · Suite des opérations automatique':'');
- $('conflicts').textContent=items.filter(x=>x.state==='conflict'||x.state==='blocked').map(x=>'Événement '+x.command.id+' conservé : '+x.state+' ('+(x.reason||'')+')').join(' · ');
+ const rejected=items.filter(x=>x.state==='conflict'||x.state==='blocked');
+ $('conflicts').textContent=rejected.length?
+   'Brouillons locaux à vérifier (ne remplacent pas le score distant) :\n'+
+   rejected.map(describeLocalConflict).join('\n'):
+   '';
  scheduleLeaseRecovery(items,countsFromScope,{continueReady});
 }
 // Un Android peut revenir au premier plan sans nouvel événement « online ».

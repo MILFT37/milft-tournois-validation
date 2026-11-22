@@ -169,6 +169,10 @@ async function main(){
   assert.equal(await pageB.locator('#home').inputValue(),'6','Draft on phone B must not be overwritten by live update');
   await pageB.locator('#send').click();
   await pageB.locator('#queue').getByText('1 conflit(s)',{exact:false}).waitFor({timeout:15000});
+  const visibleGuestConflict=await pageB.locator('#conflicts').innerText();
+  assert.match(visibleGuestConflict,/Score local A 6 : B 4/,'MAJ89: rejected guest score must be readable');
+  assert.match(visibleGuestConflict,/version de départ 1/,'MAJ89: local base version must be readable');
+  assert.match(visibleGuestConflict,/Brouillons locaux à vérifier/);
   assert.equal((await pageA.locator('#score').innerText()).trim(),'7 : 5','Conflicting edit cannot overwrite accepted score');
   const deviceBefore=await pageB.evaluate(()=>localStorage.getItem('MILFT_V2_DEMO_DEVICE_ID'));
   await androidB.setOffline(true);
@@ -388,8 +392,15 @@ async function main(){
   await androidA.setOffline(false);
   await recovered.locator('#score').getByText('6 : 5').waitFor({timeout:15000});
   await recovered.locator('#queue').getByText('2 conflit(s)',{exact:false}).waitFor({timeout:20000});
-  assert.match(await recovered.locator('#conflicts').innerText(),/Score précédent/,
+  const shownConflicts=await recovered.locator('#conflicts').innerText();
+  assert.match(shownConflicts,/Score précédent/,
     'Dependent draft must show preserved conflict and never silently disappear');
+  assert.match(shownConflicts,/Score local A 2 : B 1/,'MAJ89: first local score visible');
+  assert.match(shownConflicts,/Score local A 4 : B 2/,'MAJ89: dependent local score visible');
+  assert.match(shownConflicts,/version de départ 0/,'MAJ89: first expected version visible');
+  assert.match(shownConflicts,/version de départ 1/,'MAJ89: second expected version visible');
+  assert.equal((shownConflicts.match(/conservé sur cet appareil/g)||[]).length,2,
+    'MAJ89: two distinct preserved drafts visible');
   assert.match(await recovered.locator('#version').innerText(),/Version distante 1/);
   await recovered.locator('#home').fill('7');
   await recovered.locator('#away').fill('6');
@@ -413,6 +424,19 @@ async function main(){
   });
   assert.deepEqual(strandedEntries.map(x=>x.state),['conflict','conflict'],
     'Both original offline scores must remain for review');
+  // MAJ89 : rechargement du navigateur, les deux scores et motifs
+  // restent visibles sans demander de renvoi ni modifier Firebase.
+  await recovered.reload();
+  await recovered.locator('#rooms').waitFor({state:'visible',timeout:15000});
+  await recovered.locator('#trialId').fill(failedTrial);
+  await recovered.locator('#join').click();
+  await recovered.locator('#demo').waitFor({state:'visible'});
+  await recovered.locator('#queue').getByText('2 conflit(s)',{exact:false}).waitFor();
+  const restoredConflicts=await recovered.locator('#conflicts').innerText();
+  assert.match(restoredConflicts,/Score local A 2 : B 1/);
+  assert.match(restoredConflicts,/Score local A 4 : B 2/);
+  assert.equal(await recovered.locator('#score').innerText(),'7 : 6',
+    'MAJ89: reading local drafts must never overwrite accepted remote score');
   // MAJ84 : erreur réseau temporaire alors que le navigateur reste en ligne.
   // La file reprogramme une tentative sans clic et avec le même identifiant,
   // même après fermeture puis réouverture du navigateur avant l'échéance.
