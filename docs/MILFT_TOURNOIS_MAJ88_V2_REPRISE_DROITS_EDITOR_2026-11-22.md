@@ -48,5 +48,14 @@ attendaient inutilement.
 - **Aucune action utilisateur sur Samsung**.
 
 ## Clôture
-**Développement engagé.** Inscrire commit, workflows et résultat de publication
-avant validation définitive de la MAJ88.
+**MAJ88 VALIDÉE et publiée — 22 novembre 2026.**
+
+- Commit du correctif applicatif, du scénario E2E et de la feuille de route : `2f20ab250c8460c1064a02ed5ebf6e4341198f0f`.
+- **Simulation du partage V2** : GitHub Actions `45013695417` — **SUCCESS**.
+- **Interface Chromium et Safari/WebKit** : `45013695461` — **SUCCESS**.
+- **E2E Android simulé avec Firebase Auth et Realtime Database émulés** : `45013695479` — **SUCCESS**. Compte invité rétrogradé de `editor` à `viewer` : score 7–5 conservé localement sans transmission ; après restauration du rôle `editor`, envoi automatique d'un seul événement sous son ID d'origine, version distante 1, file vidée.
+- **GitHub Pages et contrôle des fichiers publics** : `45013695406` — **SUCCESS**. Prototype V2 publié dans son espace d'essai isolé.
+- Règles Firebase, base de production, `v2/outbox-idb.js` et schéma local inchangés : pas de nouvelles validations de composants identiques nécessaires.
+- V1.1 officielle, scores/tournois/championnats réels, sauvegardes et archives Google Drive intouchés. Firebase Spark gratuit et règles de sécurité inchangés.
+- **Aucune manipulation Samsung nécessaire**. Test entre deux appareils physiques et deux comptes Google distincts toujours non réalisé.
+- **Prochaine reprise : MAJ89**, en poursuivant la fiabilisation du prototype V2 uniquement, sans réexécuter les validations acquises pour du code inchangé.
