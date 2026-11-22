@@ -583,6 +583,94 @@ async function main(){
     const entries=await db.list(s);db.close();return entries.length;
   });
   assert.equal(bulkRemaining,0,'18 confirmations must clear the persistent local queue');
+  // MAJ87 : après un retour au premier plan, une commande persistante
+  // sans nouvel événement réseau doit repartir d'elle-même.
+  await retryPage.locator('#create').click();
+  await retryPage.waitForFunction(previous=>document.getElementById('trialId').value!==previous,bulkTrial);
+  await retryPage.locator('#score').getByText('0 : 0').waitFor();
+  await retryPage.bringToFront();
+  await retryPage.locator('#retry').waitFor({state:'visible'});
+  await retryPage.waitForFunction(()=>!document.getElementById('retry').disabled);
+  const foregroundTrial=await retryPage.locator('#trialId').inputValue();
+  const foregroundSaved=await retryPage.evaluate(async()=>{
+    const db=await MILFTV2Outbox.open({indexedDB,dbName:'MILFT_V2_DEMO_OUTBOX_20261120'});
+    const s={tournamentId:document.getElementById('trialId').value,
+      actorId:document.getElementById('who').value,
+      deviceId:localStorage.getItem('MILFT_V2_DEMO_DEVICE_ID')};
+    const result=await db.enqueue(s,{...s,id:'eMAJ87Foreground',matchId:'demo',
+      type:'set.record',expectedVersion:0,setIndex:0,goals:{a:5,b:3}});
+    const entries=await db.list(s);db.close();
+    return {result,entries:entries.map(x=>x.state)};
+  });
+  assert.equal(foregroundSaved.result.status,'queued');
+  assert.deepEqual(foregroundSaved.entries,['pending']);
+  assert.equal(await retryPage.locator('#score').innerText(),'0 : 0',
+    'Queued foreground score must not send before the lifecycle event');
+  await retryPage.evaluate(()=>document.dispatchEvent(new Event('visibilitychange')));
+  await retryPage.locator('#score').getByText('5 : 3').waitFor({timeout:20000});
+  await retryPage.locator('#version').getByText('Version distante 1',{exact:false}).waitFor();
+  await retryPage.locator('#queue').getByText('0 en attente, 0 en cours',{exact:false}).waitFor();
+  let foregroundRemote;
+  await environment.withSecurityRulesDisabled(async ctx=>{
+    foregroundRemote=(await ctx.database('https://'+projectId+'-default-rtdb.firebaseio.com')
+      .ref('v2Trials/'+foregroundTrial+'/matches/demo').once('value')).val();
+  });
+  assert.equal(foregroundRemote.version,1);
+  assert.equal(foregroundRemote.lastEventId,'eMAJ87Foreground');
+  assert.deepEqual(foregroundRemote.sets['0'],{a:5,b:3});
+
+  // Les événements de visibilité ne doivent PAS contourner la temporisation
+  // persistante de MAJ84. Une seule transmission après échéance.
+  await retryPage.locator('#create').click();
+  await retryPage.waitForFunction(previous=>document.getElementById('trialId').value!==previous,foregroundTrial);
+  await retryPage.locator('#score').getByText('0 : 0').waitFor();
+  await retryPage.waitForFunction(()=>!document.getElementById('retry').disabled);
+  const delayedTrial=await retryPage.locator('#trialId').inputValue();
+  const delayedSaved=await retryPage.evaluate(async()=>{
+    const db=await MILFTV2Outbox.open({indexedDB,dbName:'MILFT_V2_DEMO_OUTBOX_20261120'});
+    const s={tournamentId:document.getElementById('trialId').value,
+      actorId:document.getElementById('who').value,
+      deviceId:localStorage.getItem('MILFT_V2_DEMO_DEVICE_ID')};
+    const cmd={...s,id:'eMAJ87Backoff',matchId:'demo',type:'set.record',
+      expectedVersion:0,setIndex:0,goals:{a:6,b:4}};
+    const queued=await db.enqueue(s,cmd);
+    const lease=await db.claimNext(s,{leaseMs:1000});
+    const failure=await db.finish(s,lease.command.id,lease.leaseToken,'temporary-error',
+      {retryAfterMs:3000,reason:'simulated-temporary'});
+    const entries=await db.list(s);db.close();
+    return {queued:queued.status,failure:failure.status,
+      retryAt:entries[0].retryAt,attempts:entries[0].attempts};
+  });
+  assert.equal(delayedSaved.queued,'queued');
+  assert.equal(delayedSaved.failure,'pending');
+  assert.equal(delayedSaved.attempts,1);
+  await retryPage.evaluate(()=>{
+    document.dispatchEvent(new Event('visibilitychange'));
+    window.dispatchEvent(new Event('pageshow'));
+  });
+  await retryPage.waitForTimeout(450);
+  assert.equal(await retryPage.locator('#score').innerText(),'0 : 0',
+    'Foreground events must not bypass persisted retryAt');
+  const stillQueued=await retryPage.evaluate(async()=>{
+    const db=await MILFTV2Outbox.open({indexedDB,dbName:'MILFT_V2_DEMO_OUTBOX_20261120'});
+    const s={tournamentId:document.getElementById('trialId').value,
+      actorId:document.getElementById('who').value,
+      deviceId:localStorage.getItem('MILFT_V2_DEMO_DEVICE_ID')};
+    const entries=await db.list(s);db.close();
+    return entries.map(x=>({state:x.state,attempts:x.attempts}));
+  });
+  assert.deepEqual(stillQueued,[{state:'pending',attempts:1}]);
+  await retryPage.locator('#score').getByText('6 : 4').waitFor({timeout:12000});
+  await retryPage.locator('#version').getByText('Version distante 1',{exact:false}).waitFor();
+  await retryPage.locator('#queue').getByText('0 en attente, 0 en cours',{exact:false}).waitFor();
+  let delayedRemote;
+  await environment.withSecurityRulesDisabled(async ctx=>{
+    delayedRemote=(await ctx.database('https://'+projectId+'-default-rtdb.firebaseio.com')
+      .ref('v2Trials/'+delayedTrial+'/matches/demo').once('value')).val();
+  });
+  assert.equal(delayedRemote.version,1,'Only one accepted retry after visibility change');
+  assert.equal(delayedRemote.lastEventId,'eMAJ87Backoff','Original ID must be retained');
+  assert.deepEqual(delayedRemote.sets['0'],{a:6,b:4});
   let actual;
   await environment.withSecurityRulesDisabled(async ctx=>{
     actual=(await ctx.database('https://'+projectId+'-default-rtdb.firebaseio.com').ref('v2Trials/'+trial+'/matches/demo').once('value')).val();

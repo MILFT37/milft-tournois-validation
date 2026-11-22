@@ -100,6 +100,31 @@ async function refreshQueue({continueReady=false}={}){
  $('conflicts').textContent=items.filter(x=>x.state==='conflict'||x.state==='blocked').map(x=>'Événement '+x.command.id+' conservé : '+x.state+' ('+(x.reason||'')+')').join(' · ');
  scheduleLeaseRecovery(items,countsFromScope,{continueReady});
 }
+// Un Android peut revenir au premier plan sans nouvel événement « online ».
+// Reprendre les opérations locales mûres ; respecter toujours les baux et retryAt.
+async function resumeForeground(){
+ if(document.visibilityState!=='visible'||!navigator.onLine||!state.user||
+    !state.outbox||!state.scope||!['admin','editor'].includes(state.role)||state.sending)return;
+ const context={generation:state.roomGeneration,outbox:state.outbox,scope:state.scope,uid:state.user.uid};
+ const current=()=>state.roomGeneration===context.generation&&state.outbox===context.outbox&&
+   state.scope===context.scope&&state.user?.uid===context.uid&&document.visibilityState==='visible'&&
+   navigator.onLine&&['admin','editor'].includes(state.role);
+ try{
+  const items=await context.outbox.list(context.scope);
+  if(!current()||state.sending)return;
+  const head=items.find(item=>item.state==='pending'||item.state==='sending');
+  if(!head)return;
+  const now=Date.now();
+  if(head.state==='pending'&&!(head.retryAt>now)||
+     head.state==='sending'&&!(head.leaseUntil>now)){
+    void transmit(); // claimNext préserve les verrouillages atomiques IndexedDB
+  }else{
+    await refreshQueue(); // préparer la reprise à l'échéance, sans anticiper
+  }
+ }catch(e){
+  if(current())status('Vérification de la reprise au premier plan impossible : '+errorText(e),'error');
+ }
+}
 async function prepareRoom(trialId){
  if(!state.user||!valid.test(trialId)){status('Code de salle invalide.','error');return;}
  resetRoom();
@@ -286,6 +311,12 @@ async function initialize(){
  }catch(e){status('Stockage local V2 indisponible : sauvegarde des scores impossible. '+errorText(e),'error');return;}
  window.addEventListener('online',()=>{if(state.user&&state.scope&&['admin','editor'].includes(state.role))void transmit();});
  window.addEventListener('offline',()=>{clearTimeout(state.recoveryTimer);state.recoveryTimer=null;});
+ // Retour au premier plan après mise en veille / changement d'application.
+ // Ne pas envoyer depuis un onglet masqué, ni contourner un délai retryAt.
+ document.addEventListener('visibilitychange',()=>{
+   if(document.visibilityState==='visible')void resumeForeground();
+ });
+ window.addEventListener('pageshow',()=>{void resumeForeground();});
  for(const id of ['home','away'])$(''+id).addEventListener('input',()=>{if(!state.draftDirty){state.draftDirty=true;state.draftBaseVersion=state.match?.version??null;}});
  $('copyUid').onclick=()=>{if(state.user)void copyText(state.user.uid,'Identifiant',$('who'));};
  $('copyTrial').onclick=()=>{if(state.trial)void copyText(state.trial,'Code de salle',$('trialId'),'roomNotice');};
