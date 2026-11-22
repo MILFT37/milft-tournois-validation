@@ -45,5 +45,14 @@ les valeurs locales au score accepté sur un autre appareil.
 - **Aucune manipulation demandée sur Samsung.**
 
 ## Clôture
-**En cours** — ajouter commit, workflows GitHub Actions, verdicts et
-confirmation de publication avant de déclarer cette MAJ validée.
+**MAJ89 VALIDÉE et publiée — 22 novembre 2026.**
+
+- Commit applicatif, présentation, E2E et feuille de route : `4bb0ae0f85cbde2b4a18afc49436ca71aebee418`.
+- **Simulation du partage V2** : workflow `45014938220` — **SUCCESS**.
+- **Interface Chromium et Safari/WebKit** : `45014938303` — **SUCCESS**.
+- **E2E deux Android simulés, Auth et Firebase Realtime Database émulés** : `45014938203` — **SUCCESS**. Le score concurrent 6–4 reste lisible après refus ; les brouillons 2–1 et 4–2 gardent leurs versions distinctes, et restent consultables après rechargement ; le score distant accepté 7–6 n'est pas modifié par cette consultation.
+- **GitHub Pages + vérification des fichiers publics** : `45014938216` — **SUCCESS**. La démonstration V2 est publiée isolément.
+- Code IndexedDB et règles Firebase inchangés : acquis MAJ75–88 conservés, sans relancer les validations des fichiers identiques.
+- **Production V1.1 officielle, données réelles, championnats et archives Google Drive préservés**. Aucun changement des règles de sécurité Firebase ni du forfait Spark gratuit.
+- **Aucune action nécessaire sur Samsung**. Test entre deux appareils physiques avec deux comptes Google différents toujours non effectué.
+- **Prochaine reprise : MAJ90**, à partir de ce document sans refaire les tests validés sur une version inchangée et sans intégrer V2 prématurément à l'application officielle.
