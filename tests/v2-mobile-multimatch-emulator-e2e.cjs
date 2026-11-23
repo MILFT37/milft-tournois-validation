@@ -336,6 +336,9 @@ async function main(){
   // Le PC, pour draftB, n'avait ni brouillon ni transmission locale.
   await desktop.locator('#matchSelect').selectOption('draftB');
   assert.equal(await desktop.locator('#draftNotice').innerText(),'');
+  // Après reload la page a perdu les champs de formulaire non sauvegardés.
+  // Renseigner de nouveau le destinataire des droits, sans toucher aux brouillons.
+  await samsung.locator('#invited').fill(uidPc);
   await samsung.locator('#permission').selectOption('viewer');
   await samsung.locator('#invite').click();
   await desktop.locator('#role').getByText('Lecture seule').waitFor({timeout:15000});
