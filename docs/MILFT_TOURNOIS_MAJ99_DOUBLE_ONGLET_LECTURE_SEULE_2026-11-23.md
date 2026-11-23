@@ -16,5 +16,14 @@
 - Les tests physiques sur deux appareils et deux comptes Google distincts restent à programmer ultérieurement ; leur succès n'est pas présumé.
 - **Aucune action nécessaire depuis le Samsung.**
 
-## Vérifications et clôture
-Lancement automatique par modification du module émulé et du E2E. Inscrire ici les IDs et conclusions GitHub Actions. Ne déclarer VALIDÉ que si le parcours ciblé est SUCCESS. Pour tout problème, corriger uniquement les chemins de l'essai émulé.
+## Clôture MAJ99 — 23 novembre 2026
+**MAJ99 VALIDÉE ET CLÔTURÉE SUR ÉMULATEURS UNIQUEMENT.**
+- Commit de développement `158a8684a415392a962ea59d38ce4e3c0080ffac`.
+- GitHub Actions E2E multi-match / deux onglets / permissions `45165369219` : **SUCCESS**.
+- Simulation partage V2 isolée `45165369066` : **SUCCESS**.
+- Deux onglets même appareil : la saisie obsolète 5–2 est refusée, la saisie plus récente 5–3 est transmise seule ; la version distante et les droits sont contrôlés.
+- Passage `editor → viewer → editor` : les champs de saisie sont en lecture seule puis réactivés, et les boutons d'envoi suivent déjà les rôles.
+- Ni application V1.1, ni site public, ni Firebase réel, ni archives Drive ni données réelles modifiés.
+- **Action utilisateur : aucune.**
+- Suite potentielle MAJ100 : sécuriser une modification simultanée du brouillon *avant l'envoi* dans deux onglets (ne pas permettre à un onglet ancien d'écraser silencieusement un brouillon plus récent) ; poursuivre les tests de tolérance aux pannes sans déploiement réel.
+
