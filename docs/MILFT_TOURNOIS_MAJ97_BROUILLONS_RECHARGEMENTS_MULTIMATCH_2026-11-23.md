@@ -24,15 +24,15 @@ Conserver les chiffres **simplement saisis, mais pas encore placés dans la file
 - Aucun test V1.1 répété ; les seules vérifications déclenchées concernent les chemins V2 modifiés.
 
 ## Contrôle GitHub Actions
-- Workflow E2E multi-match (Firebase Auth/RTDB Emulator uniquement) : `45162107732`, **en cours** au relevé initial.
-- Workflow simulation partage V2 : `45162107588`, **en cours** au relevé initial.
+- Workflow E2E multi-match initial (Firebase Auth/RTDB Emulator uniquement) : `45162107732`, **FAILURE** (attente trop précoce ; corrigée, voir ci-dessous).
+- Workflow simulation partage V2 : `45162107588`, **SUCCESS**.
 - La clôture nécessite **SUCCESS** des deux exécutions concernées ; les autres règles candidates MAJ96 restent inchangées.
 
 ## Retours des premières exécutions
 - `45162107588` : **SUCCESS**, simulation partage sur les fichiers modifiés (le code officiel V1.1 reste absent du périmètre).
 - `45162107732` : **FAILURE** après parcours avancé, assertion E2E trop précoce : le nettoyage du brouillon doit être observé *après* l'acquittement de son insertion dans IndexedDB. Correction du test `c7567dd0`.
 - `45162357131` : **FAILURE** après validation des nouveaux scénarios de brouillons (le parcours a atteint le contrôle final des droits). Après rechargement de la page propriétaire, le formulaire `invited` ne contenait plus l'UID du PC : l'ancien test de déclassement en lecture seule ciblait un UID vide. Correction du test `6795a281`, avec remplissage explicite de l'UID.
-- `45162686681` : relance du parcours E2E après correction ; **en attente de résultat**.
+- `45162686681` : relance du parcours E2E après correction ; **SUCCESS**, tous les tests ciblés passés.
 - Aucun accès aux données ou aux comptes réels ; aucune publication Firebase.
 
 ## Sécurité / exclusions
@@ -41,5 +41,14 @@ Conserver les chiffres **simplement saisis, mais pas encore placés dans la file
 - Test physique deux appareils/deux comptes Google distincts toujours non réalisé.
 - **Action utilisateur : aucune**. Tous les tests sont effectués sur émulateurs, sans besoin d'intervenir depuis le Samsung.
 
-## Prochaine étape
-Contrôler les workflows, corriger les éventuels défauts ciblés ; avant clôture vérifier notamment le comportement au retour des droits et la protection contre les acquittements asynchrones.
+## Clôture MAJ97 — 23 novembre 2026
+**MAJ97 VALIDÉE ET CLÔTURÉE SUR ÉMULATEURS UNIQUEMENT.**
+- Commit initial : `f5051495`; corrections du scénario E2E : `c7567dd0`, `6795a281`.
+- **Github Actions E2E deux appareils : `45162686681` SUCCESS.** Les deux brouillons non envoyés restent distincts après un rechargement, même si le score distant a été modifié. L'envoi d'un brouillon au score déjà partagé n'ajoute aucune version ; il préserve le véritable auteur. Le deuxième match reste indépendant. Les vérifications finales de droits sont également réussies.
+- **Simulation partage : `45162107588` SUCCESS.**
+- Comparaison avec MAJ96 `a9a5b2f3` : uniquement les fichiers émulés `v2/mobile-multimatch-emulator.mjs`, `v2/mobile-multimatch-emulator.html`, `v2/draft-multimatch-emulator.mjs`, le test E2E, son workflow et cette feuille de route. Le module général IndexedDB `v2/outbox-idb.js`, les règles Firebase candidates/réelles, et tous les fichiers V1.1 restent inchangés.
+- Aucun déploiement Firebase réel ni GitHub Pages ; archives, données réelles et forfait Spark inchangés.
+- **Limite conservée** : test physique Samsung/PC avec deux comptes Google distincts à organiser plus tard.
+- **Reprise recommandée MAJ98 :** tester les cas extrêmes de persistance (refus/indisponibilité du stockage, changement de compte/salle, envoi asynchrone avec nouvelle modification durant l'attente) en restant sur Firebase Emulator.
+- **Action utilisateur : aucune.**
+
