@@ -39,5 +39,13 @@ La connexion Samsung et score fictif 5–3 sont déjà validés.
 **Action utilisateur : aucune.**
 
 ## Clôture
-**En cours de tests GitHub Actions et publication** — ajouter les numéros
-de runs et le commit de clôture avant d'annoncer validation.
+**MAJ90 VALIDÉE et publiée — 23 novembre 2026.**
+
+- Commit du correctif et tests : `b2920be8d670797f39c3564df6ea54459df02a7c`.
+- **Simulation partage V2** : GitHub Actions `45139629105` — **SUCCESS**.
+- **Interface Chromium et Safari/WebKit** : `45139629008` — **SUCCESS**.
+- **Deux Android simulés, Auth et Realtime Database émulés** : `45139628951` — **SUCCESS**. Vérifications du relevé copiable d'un score concurrent 6–4 contre 7–5, des deux brouillons 2–1 et 4–2 après rechargement, du champ de secours sans presse-papiers et de l'effacement de l'ancien relevé après changement de salle/révocation.
+- **Déploiement GitHub Pages et contrôles des fichiers publics** : `45139629026` — **SUCCESS** ; prototype V2 publié séparément de l'application officielle.
+- **Aucune modification des bases réelles ni de la production V1.1**, ni des championnats, archives Drive, règles Firebase ou forfait Spark. IndexedDB inchangé et validations précédentes conservées.
+- **Aucune action Samsung nécessaire**. Test sur deux appareils physiques avec deux comptes Google distincts non encore effectué.
+- **Prochaine reprise : MAJ91**, depuis cette feuille de route, sans refaire les tests acquis sur code inchangé.
