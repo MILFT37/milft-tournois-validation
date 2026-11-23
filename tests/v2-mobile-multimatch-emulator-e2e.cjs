@@ -471,7 +471,20 @@ async function main(){
   await desktop.locator('#draftNotice').getByText('Brouillon non envoyé',{exact:false}).waitFor();
   await reconnectTab.locator('#home').fill('5');
   await reconnectTab.locator('#away').fill('3');
-  await reconnectTab.locator('#draftNotice').getByText('Brouillon non envoyé',{exact:false}).waitFor();
+  try{
+   await reconnectTab.locator('#draftNotice').getByText('Brouillon non envoyé',{exact:false}).waitFor({timeout:10000});
+  }catch(error){
+   const diagnostics=await Promise.all([desktop,reconnectTab].map(page=>page.evaluate(()=>({
+    notice:document.querySelector('#draftNotice')?.textContent,
+    status:document.querySelector('#status')?.textContent,
+    role:document.querySelector('#role')?.textContent,
+    match:document.querySelector('#matchSelect')?.value,
+    scoreA:document.querySelector('#home')?.value,
+    scoreB:document.querySelector('#away')?.value,
+    local:Object.keys(localStorage).filter(k=>k.includes('reconnect102')).map(k=>({key:k,value:localStorage.getItem(k)}))
+   }))));
+   throw new Error('MAJ102 offline draft diagnostic '+JSON.stringify(diagnostics),{cause:error});
+  }
   await desktop.locator('#draftNotice').getByText('Conflit entre onglets',{exact:false}).waitFor();
   await reconnectTab.locator('#send').click();
   await reconnectTab.locator('#queue').getByText('1 en attente',{exact:false}).waitFor();
