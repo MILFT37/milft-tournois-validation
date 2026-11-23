@@ -63,6 +63,17 @@ encore été réalisé.
 - Pas d'intégration prématurée du prototype à la production.
 
 ## Clôture
-**En cours.** Noter commit, statuts des GitHub Actions et publication
-après vérification ; ne pas présenter la prise de relais multi-match
-réelle comme entièrement prête à cette étape.
+**MAJ92 VALIDÉE et publiée pour le prototype — 23 novembre 2026.**
+
+- Commit applicatif/tests/documentation : `d91ea254815ad04be80e84a05bf3a13b55744fa9`.
+- **Simulation du partage** GitHub Actions `45142958305` : **SUCCESS**.
+- **Interface Android Chromium et Safari/WebKit** `45142958359` : **SUCCESS**.
+- **IndexedDB Chromium et WebKit** `45142958362` : **SUCCESS**. File indépendante par match, A2 attendant A1, B progressant sous bail puis pause de A, redémarrage sûr.
+- **GitHub Pages et contrôle des fichiers publics** `45142958547` : **SUCCESS** ; prototype V2 isolé publié.
+- Premier E2E deux Android `45142958426` : **FAILURE de l'ordre des scénarios de test** (un ancien test des rôles attendait encore l'ancienne salle après une création de salle MAJ92). Aucun code applicatif modifié pour ce point.
+- Correctif **test uniquement** : commit `9a22e492dcfabb90af8df56ac3fd6f55d29784ad`, déplacement du scénario MAJ92 après les contrôles historiques des rôles.
+- **E2E Firebase Auth + RTDB émulés, deux Android simulés** `45143199968` : **SUCCESS**. Saisie 5–3 hors connexion sur B, score identique confirmé par A, retour de B sans version additionnelle, sans écraser l'auteur du résultat confirmé, sans conflit artificiel ; anciens cas de scores différents toujours testés.
+- Le prototype ne simule encore **qu'un chemin Firebase `matches/demo`** avec les règles publiques actuelles. Le multi-match bout en bout n'est **pas encore validé sur Firebase réel ni sur appareils physiques**. Toute nouvelle règle Firebase devra d'abord être conçue/testée en émulation et recevoir une autorisation spécifique avant publication.
+- **V1.1 officielle, tournois réels, championnats et archives Drive intouchés.** Règles Firebase réelles, données, comptes et forfait Spark inchangés.
+- **Aucune action Samsung nécessaire.** Le test inter-appareils physiques avec deux comptes Google distincts reste à réaliser.
+- **Prochaine reprise : MAJ93** — préparer les règles et scénarios multi-match en émulation uniquement, sans déployer de nouvelles règles Firebase ni intégrer V2 à la production, et sans répéter les validations inchangées.
