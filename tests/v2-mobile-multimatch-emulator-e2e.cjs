@@ -469,6 +469,12 @@ async function main(){
   await desktop.locator('#home').fill('5');
   await desktop.locator('#away').fill('2');
   await desktop.locator('#draftNotice').getByText('Brouillon non envoyé',{exact:false}).waitFor();
+  // Le deuxième onglet était ouvert avant l'enregistrement du premier :
+  // relire explicitement la dernière version locale avant de la modifier.
+  // Un onglet obsolète n'a jamais le droit de prendre la main tout seul.
+  await reconnectTab.locator('#matchSelect').selectOption('demo');
+  await reconnectTab.locator('#matchSelect').selectOption('reconnect102');
+  assert.equal(await reconnectTab.locator('#away').inputValue(),'2','Second tab reloads saved local version');
   await reconnectTab.locator('#home').fill('5');
   await reconnectTab.locator('#away').fill('3');
   try{
