@@ -9,7 +9,7 @@
 - Firebase Spark gratuit conservé ; aucune manipulation Samsung demandée.
 
 ## Développement MAJ96
-Commit initial : `59cf4804284a460d38c9b353b824fbf22fbf17b3`.
+Commit initial : `59cf4804284a460d38c9b353b824fbf22fbf17b3`. Corrections ciblées des tests : `2f729699`, `6984e01a`, `e27628ad`.
 - Chaque match fictif porte désormais un `format` configuré à la création, visible par les deux appareils et **immuable** côté règles RTDB candidates.
 - `v2/score-formats-emulator.mjs` distingue quatre cas :
   - `manche5` : une équipe atteint 5, adversaire au plus 4.
@@ -27,8 +27,8 @@ Commit initial : `59cf4804284a460d38c9b353b824fbf22fbf17b3`.
 
 ## Suivi GitHub Actions
 - `45160346025` — Simulation partage V2 : **SUCCESS** (commit `59cf4804`).
-- `45160346026` — Règles candidates RTDB : **EN COURS** au moment du présent relevé.
-- `45160346119` — Deux navigateurs simulés E2E : **EN COURS** au moment du présent relevé.
+- `45160346026` — Règles candidates RTDB : **FAILURE** (première erreur de syntaxe du scénario, corrigée).\n- `45160554055` — Règles candidates RTDB : **FAILURE** (bloc de test dupliqué, supprimé).\n- `45160695666` — Règles candidates RTDB : **SUCCESS**, validation côté serveur des quatre formats sportifs, sans Firebase réel.
+- `45160346119` — Deux navigateurs simulés E2E : **FAILURE** (premier score non confirmé, diagnostic ajouté).\n- `45160721731` — Deux navigateurs simulés E2E : **EN COURS** au moment du présent relevé.
 
 ## Suite
 1. Contrôler les deux workflows ciblés et corriger le cas échéant, sans retoucher V1.1 ni Firebase réel.
