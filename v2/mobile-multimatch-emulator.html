@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>MILFT — MAJ94 Multi-match (émulateur local seulement)</title>
+<title>MILFT — MAJ96 Formats sportifs (émulateur local seulement)</title>
 <style>
 :root{font-family:system-ui,-apple-system,Roboto,Arial,sans-serif;color-scheme:light;background:#f4f6f9;color:#172337}
 body{margin:0;padding:14px 14px 80px;max-width:740px;margin-inline:auto}header{padding:16px;border-radius:14px;background:#223653;color:white}
@@ -29,6 +29,7 @@ code{overflow-wrap:anywhere}strong{font-weight:750}.score{font-size:1.7rem;font-
 </section>
 <section id="rooms" hidden>
 <h2>1. Créer ou rejoindre un essai</h2>
+<div class="field"><label for="initialFormat">Format du premier match</label><select id="initialFormat"><option value="belle5">Belle (2 d’écart, max. 8–7)</option><option value="manche5">Manche 5 points</option><option value="partie7">Partie 7 points (6–6 possible)</option><option value="partie8">Partie 8 points (7–7 possible)</option></select></div>
 <div class="row"><button id="create">Créer un match fictif</button><button id="join" class="secondary">Ouvrir le code saisi</button></div>
 <div class="field"><label for="trialId">Code de la salle d'essai</label><input id="trialId" maxlength="80" autocomplete="off" placeholder="trial..."></div>
 <div class="row"><button id="copyTrial" class="link" disabled>Copier le code</button><button id="copyLink" class="link" disabled>Copier le lien</button></div>
@@ -40,7 +41,7 @@ code{overflow-wrap:anywhere}strong{font-weight:750}.score{font-size:1.7rem;font-
 <div class="field"><label for="matchSelect">Match actif (Samsung ou PC)</label><select id="matchSelect" aria-label="Sélectionner un match"></select></div>
 <p id="matchQueue" class="note" aria-live="polite"></p>
 <p><span id="role" class="tag">Accès à vérifier</span> <span id="net" class="tag">État distant inconnu</span></p>
-<div class="score" id="score">— : —</div>
+<p id="matchFormat" class="note">Format non configuré</p><div class="score" id="score">— : —</div>
 <p class="note" id="version">Version distante non connue</p>
 <div class="row"><div><label for="home">Buts A</label><input id="home" type="number" min="0" max="99" value="5" inputmode="numeric"></div><div><label for="away">Buts B</label><input id="away" type="number" min="0" max="99" value="3" inputmode="numeric"></div></div>
 <div class="row" style="margin-top:10px"><button id="send">Enregistrer le score fictif</button><button id="retry" class="secondary">Renvoyer les opérations en attente</button></div>
@@ -53,6 +54,7 @@ code{overflow-wrap:anywhere}strong{font-weight:750}.score{font-size:1.7rem;font-
 <section id="sharing" hidden>
 <h2>3. Créer un match et autoriser un autre compte émulé</h2>
 <div class="field"><label for="newMatch">Identifiant du nouveau match fictif</label><input id="newMatch" placeholder="courtB" maxlength="80"></div>
+<div class="field"><label for="newMatchFormat">Format du nouveau match</label><select id="newMatchFormat"><option value="belle5">Belle (2 d’écart, max. 8–7)</option><option value="manche5">Manche 5 points</option><option value="partie7">Partie 7 points (6–6 possible)</option><option value="partie8">Partie 8 points (7–7 possible)</option></select></div>
 <button id="createMatch" class="secondary" disabled>Ajouter un match fictif (propriétaire)</button>
 <div class="field"><label for="invited">Identifiant UID communiqué par l'autre appareil</label><input id="invited" autocomplete="off" placeholder="Identifiant Firebase du second appareil"></div>
 <div class="row"><select id="permission"><option value="editor">Saisie des scores</option><option value="viewer">Lecture seule</option></select><button id="invite">Autoriser</button><button id="revoke" class="danger">Retirer l'accès</button></div>

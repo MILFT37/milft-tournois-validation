@@ -37,7 +37,7 @@ async function main(){
   ['/v2/multimatch-emulator-config-test-only.mjs',cfg]
  ]);
  const allow=new Set(['/v2/mobile-multimatch-emulator.html',
-  '/v2/mobile-multimatch-emulator.mjs','/v2/outbox-idb.js']);
+  '/v2/mobile-multimatch-emulator.mjs','/v2/score-formats-emulator.mjs','/v2/outbox-idb.js']);
  const server=http.createServer((req,res)=>{
   const url=new URL(req.url,'http://127.0.0.1'),name=url.pathname;
   if(routes.has(name)){res.writeHead(200,{'Content-Type':'text/javascript','Cache-Control':'no-store'}).end(routes.get(name));return;}
@@ -80,6 +80,7 @@ async function main(){
   const room=await samsung.locator('#trialId').inputValue();
   assert.match(room,/^trial[a-f0-9]{24}$/);
   await samsung.locator('#newMatch').fill('courtB');
+  await samsung.locator('#newMatchFormat').selectOption('belle5');
   await samsung.locator('#createMatch').click();
   await samsung.locator('#matchSelect').locator('option[value="courtB"]').waitFor({state:'attached'});
   await samsung.locator('#matchSelect').selectOption('demo');
@@ -95,12 +96,12 @@ async function main(){
   await desktop.locator('#matchSelect').selectOption('courtB');
   await samsung.locator('#home').fill('5');
   await samsung.locator('#away').fill('3');
-  await desktop.locator('#home').fill('7');
-  await desktop.locator('#away').fill('6');
+  await desktop.locator('#home').fill('5');
+  await desktop.locator('#away').fill('3');
   await Promise.all([samsung.locator('#send').click(),desktop.locator('#send').click()]);
   await samsung.locator('#score').getByText('5 : 3').waitFor({timeout:20000});
   try{
-   await desktop.locator('#score').getByText('7 : 6').waitFor({timeout:16000});
+   await desktop.locator('#score').getByText('5 : 3').waitFor({timeout:16000});
   }catch(error){
    const diagnostic=await desktop.evaluate(async()=>{
     const db=await MILFTV2Outbox.open({indexedDB,dbName:'MILFT_V2_MULTIMATCH_EMULATOR_20261123'});
@@ -130,25 +131,25 @@ async function main(){
   });
   assert.equal(remote.demo.version,1);assert.equal(remote.courtB.version,1);
   assert.deepEqual(remote.demo.sets['0'],{a:5,b:3});
-  assert.deepEqual(remote.courtB.sets['0'],{a:7,b:6});
+  assert.deepEqual(remote.courtB.sets['0'],{a:5,b:3});
   assert.equal(remote.demo.updatedBy,uidMobile);
   assert.equal(remote.courtB.updatedBy,uidPc);
   // PC offline on demo, Samsung confirms a different demo score.
   await desktop.locator('#matchSelect').selectOption('demo');
   await pc.setOffline(true);
-  await desktop.locator('#home').fill('7');
+  await desktop.locator('#home').fill('6');
   await desktop.locator('#away').fill('4');
   await desktop.locator('#send').click();
   await desktop.locator('#queue').getByText('1 en attente',{exact:false}).waitFor();
-  await samsung.locator('#home').fill('8');
+  await samsung.locator('#home').fill('7');
   await samsung.locator('#away').fill('5');
   await samsung.locator('#send').click();
-  await samsung.locator('#score').getByText('8 : 5').waitFor({timeout:20000});
+  await samsung.locator('#score').getByText('7 : 5').waitFor({timeout:20000});
   await pc.setOffline(false);
-  await desktop.locator('#score').getByText('8 : 5').waitFor({timeout:20000});
+  await desktop.locator('#score').getByText('7 : 5').waitFor({timeout:20000});
   await desktop.locator('#queue').getByText('1 conflit(s)',{exact:false}).waitFor({timeout:20000});
   assert.match(await desktop.locator('#conflicts').innerText(),/Match demo/);
-  assert.match(await desktop.locator('#conflicts').innerText(),/Score local A 7 : B 4/);
+  assert.match(await desktop.locator('#conflicts').innerText(),/Score local A 6 : B 4/);
   // A conflict in demo must not block courtB.
   await desktop.locator('#matchSelect').selectOption('courtB');
   await desktop.locator('#home').fill('6');
@@ -160,7 +161,7 @@ async function main(){
    remote=(await ctx.database(databaseURL).ref('v2Trials/'+room+'/matches').once('value')).val();
   });
   assert.equal(remote.demo.version,2);
-  assert.deepEqual(remote.demo.sets['0'],{a:8,b:5});
+  assert.deepEqual(remote.demo.sets['0'],{a:7,b:5});
   assert.equal(remote.courtB.version,2);
   assert.deepEqual(remote.courtB.sets['0'],{a:6,b:4});
 
@@ -168,6 +169,10 @@ async function main(){
   // tandis que le PC poursuit demo sans verrou de tournoi.
   await samsung.locator('#matchSelect').selectOption('courtB');
   await phone.setOffline(true);
+  // MAJ96 : 5–4 échoue pour une belle (écart insuffisant).
+  await samsung.locator('#home').fill('5');await samsung.locator('#away').fill('4');
+  await samsung.locator('#send').click();
+  await samsung.locator('#status.error').getByText('Score impossible',{exact:false}).waitFor();
   // MAJ95 corrigée : rejet avant l'enregistrement local d'un score 9-7.
   await samsung.locator('#home').fill('9');
   await samsung.locator('#away').fill('7');
@@ -180,16 +185,16 @@ async function main(){
   await samsung.locator('#queue').getByText('1 en attente',{exact:false}).waitFor();
   assert.match(await samsung.locator('#matchQueue').innerText(),/courtB : 1 en attente/);
   await desktop.locator('#matchSelect').selectOption('demo');
-  await desktop.locator('#home').fill('4');
-  await desktop.locator('#away').fill('3');
+  await desktop.locator('#home').fill('8');
+  await desktop.locator('#away').fill('6');
   await desktop.locator('#send').click();
-  await desktop.locator('#score').getByText('4 : 3').waitFor({timeout:20000});
+  await desktop.locator('#score').getByText('8 : 6').waitFor({timeout:20000});
   await phone.setOffline(false);
   await samsung.locator('#score').getByText('8 : 7').waitFor({timeout:20000});
   await samsung.locator('#queue').getByText('0 en attente',{exact:false}).waitFor();
   await samsung.locator('#queue').getByText('0 conflit(s)',{exact:false}).waitFor();
   await samsung.locator('#matchSelect').selectOption('demo');
-  await samsung.locator('#score').getByText('4 : 3').waitFor({timeout:20000});
+  await samsung.locator('#score').getByText('8 : 6').waitFor({timeout:20000});
   await desktop.locator('#matchSelect').selectOption('courtB');
   await desktop.locator('#score').getByText('8 : 7').waitFor({timeout:20000});
   await env.withSecurityRulesDisabled(async ctx=>{
@@ -197,7 +202,7 @@ async function main(){
   });
   assert.equal(remote.demo.version,3,'PC sends demo during phone outage');
   assert.equal(remote.courtB.version,3,'Samsung resumes courtB after reconnect');
-  assert.deepEqual(remote.demo.sets['0'],{a:4,b:3});
+  assert.deepEqual(remote.demo.sets['0'],{a:8,b:6});
   assert.deepEqual(remote.courtB.sets['0'],{a:8,b:7});
   assert.equal(remote.demo.updatedBy,uidPc);
   assert.equal(remote.courtB.updatedBy,uidMobile);
@@ -206,16 +211,16 @@ async function main(){
   // est acquitté sans changer la version ni l'auteur confirmé sur PC.
   await phone.setOffline(true);
   await samsung.locator('#home').fill('5');
-  await samsung.locator('#away').fill('5');
+  await samsung.locator('#away').fill('3');
   await samsung.locator('#send').click();
   await samsung.locator('#queue').getByText('1 en attente',{exact:false}).waitFor();
   await desktop.locator('#matchSelect').selectOption('demo');
   await desktop.locator('#home').fill('5');
-  await desktop.locator('#away').fill('5');
+  await desktop.locator('#away').fill('3');
   await desktop.locator('#send').click();
-  await desktop.locator('#score').getByText('5 : 5').waitFor({timeout:20000});
+  await desktop.locator('#score').getByText('5 : 3').waitFor({timeout:20000});
   await phone.setOffline(false);
-  await samsung.locator('#score').getByText('5 : 5').waitFor({timeout:20000});
+  await samsung.locator('#score').getByText('5 : 3').waitFor({timeout:20000});
   await samsung.locator('#queue').getByText('0 en attente',{exact:false}).waitFor();
   await samsung.locator('#queue').getByText('0 conflit(s)',{exact:false}).waitFor();
   await env.withSecurityRulesDisabled(async ctx=>{
@@ -224,7 +229,7 @@ async function main(){
   assert.equal(remote.demo.version,4,'Identical score adds no second version');
   assert.equal(remote.demo.updatedBy,uidPc,'Existing PC score cannot be overwritten');
   assert.equal(remote.courtB.version,3,'Other match unaffected');
-  assert.deepEqual(remote.demo.sets['0'],{a:5,b:5});
+  assert.deepEqual(remote.demo.sets['0'],{a:5,b:3});
   await samsung.locator('#permission').selectOption('viewer');
   await samsung.locator('#invite').click();
   await desktop.locator('#role').getByText('Lecture seule').waitFor({timeout:15000});
@@ -237,7 +242,7 @@ async function main(){
   assert.equal(await desktop.locator('#conflicts').innerText(),'');
   assert.equal(await desktop.locator('#score').innerText(),'— : —');
   assert.deepEqual(errors,[],'No browser JavaScript errors');
-  console.log('OK MAJ94: two identities, two independent matches, PC network loss, conflict isolation and rights');
+  console.log('OK MAJ96: formats and two identities, two independent matches, PC network loss, conflict isolation and rights');
  }finally{
   await Promise.allSettled([phone.close(),pc.close()]);
   await browser.close();await env.cleanup();

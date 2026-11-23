@@ -1,6 +1,7 @@
 // MILFT Tournois V2 — MAJ94 : dérivé ISOLÉ, testé uniquement sur Firebase Emulator.
 // Ce fichier et sa page ne sont pas déployés sur GitHub Pages. Aucune configuration Firebase réelle.
 import {firebaseConfig} from './multimatch-emulator-config-test-only.mjs';
+import {validScore,formatLabels} from './score-formats-emulator.mjs';
 const $=id=>document.getElementById(id);
 const valid=/^[A-Za-z0-9][A-Za-z0-9_-]{0,79}$/;
 const uidValid=/^[A-Za-z0-9_-]{1,128}$/;
@@ -8,13 +9,13 @@ const state={api:null,auth:null,db:null,user:null,outbox:null,scope:null,trial:n
 function status(msg,tone=''){const e=$('status');e.textContent=msg;e.className=tone;}
 function log(s){const e=$('log');e.textContent=(new Date().toLocaleTimeString('fr-FR')+' · '+s+'\n'+e.textContent).slice(0,3000)}
 function errorText(e){return String(e?.code||e?.message||e||'Erreur').slice(0,200)}
-function resetRoom(){state.roomGeneration++;clearTimeout(state.recoveryTimer);state.recoveryTimer=null;state.sending=false;state.enqueuing=false;state.unsubscribe?.();state.unsubscribe=null;state.unsubscribeMember?.();state.unsubscribeMember=null;state.trial=null;state.match=null;state.role=null;state.scope=null;state.outbox?.close();state.outbox=null;state.draftDirty=false;state.draftBaseVersion=null;state.selectedMatch='demo';state.matches={};state.drafts.clear();$('matchSelect').replaceChildren();$('matchQueue').textContent='';$('score').textContent='— : —';$('version').textContent='Version distante inconnue';$('home').value=0;$('away').value=0;$('demo').hidden=true;$('sharing').hidden=true;$('roomNotice').textContent='';$('inviteNotice').textContent='';$('conflicts').textContent='';$('copyConflicts').disabled=true;$('conflictNotice').textContent='';$('conflictFallback').value='';$('conflictFallback').hidden=true;}
+function resetRoom(){state.roomGeneration++;clearTimeout(state.recoveryTimer);state.recoveryTimer=null;state.sending=false;state.enqueuing=false;state.unsubscribe?.();state.unsubscribe=null;state.unsubscribeMember?.();state.unsubscribeMember=null;state.trial=null;state.match=null;state.role=null;state.scope=null;state.outbox?.close();state.outbox=null;state.draftDirty=false;state.draftBaseVersion=null;state.selectedMatch='demo';state.matches={};state.drafts.clear();$('matchSelect').replaceChildren();$('matchQueue').textContent='';$('score').textContent='— : —';$('version').textContent='Version distante inconnue';$('matchFormat').textContent='Format inconnu';$('home').value=0;$('away').value=0;$('demo').hidden=true;$('sharing').hidden=true;$('roomNotice').textContent='';$('inviteNotice').textContent='';$('conflicts').textContent='';$('copyConflicts').disabled=true;$('conflictNotice').textContent='';$('conflictFallback').value='';$('conflictFallback').hidden=true;}
 function updateUI(){
   $('rooms').hidden=!state.user;
   $('signIn').hidden=!!state.user;$('signOut').hidden=!state.user;
   $('who').value=state.user?.uid||'Non connecté';
   $('role').textContent=state.role==='admin'?'Propriétaire':state.role==='editor'?'Autorisé à saisir':state.role==='viewer'?'Lecture seule':'Non autorisé';
-  $('send').disabled=!['admin','editor'].includes(state.role)||!state.match||state.match.status!=='playing'||!state.outbox||state.sending||state.enqueuing;
+  $('send').disabled=!['admin','editor'].includes(state.role)||!state.match||state.match.status!=='playing'||!formatLabels[state.match.format]||!state.outbox||state.sending||state.enqueuing;
   $('retry').disabled=!['admin','editor'].includes(state.role)||!state.outbox||state.sending;
   $('invite').disabled=state.role!=='admin';$('revoke').disabled=state.role!=='admin';
   $('copyUid').disabled=!state.user;
@@ -42,7 +43,7 @@ async function copyText(value,label,field,noticeId){
   if(noticeId){const e=$(noticeId);e.textContent='Copie automatique indisponible : utiliser Copier sur le texte sélectionné.';e.className='inline-status error';}
  }
 }
-function fingerprint(c){return JSON.stringify([c.tournamentId,c.matchId,c.actorId,c.deviceId,c.expectedVersion,c.setIndex,c.goals.a,c.goals.b]);}
+function fingerprint(c){return JSON.stringify([c.tournamentId,c.matchId,c.actorId,c.deviceId,c.expectedVersion,c.setIndex,c.format,c.goals.a,c.goals.b]);}
 // L'identifiant V2 doit survivre à la fermeture du navigateur : sessionStorage
 // seul rendrait les brouillons IndexedDB inaccessibles à la réouverture.
 const DEVICE_KEY='MILFT_V2_MULTI_EMULATOR_DEVICE_ID';
@@ -85,10 +86,11 @@ function renderMatches(){
  else {state.match=state.matches[next]||null;syncScore();$('matchSelect').value=next||'';updateUI();}
 }
 function syncScore(){
- if(!state.match){$('score').textContent='— : —';$('version').textContent='Version distante inconnue';return;}
+ if(!state.match){$('score').textContent='— : —';$('version').textContent='Version distante inconnue';$('matchFormat').textContent='Format inconnu';return;}
  const x=state.match.sets?.['0'];
  $('score').textContent=(x?.a??'—')+' : '+(x?.b??'—');
  $('version').textContent='Version distante '+state.match.version+' · Dernier événement '+(state.match.lastEventId||'inconnu');
+ $('matchFormat').textContent=formatLabels[state.match.format]||'Format non configuré';
  if(!state.draftDirty){
    $('home').value=x?.a??0;$('away').value=x?.b??0;state.draftBaseVersion=null;
  }
@@ -268,7 +270,7 @@ async function prepareRoom(trialId){
 async function createRoom(){
  if(!state.user)return;
  const id='trial'+newId(),uid=state.user.uid;
- const match={version:0,status:'playing',sets:{'0':{a:0,b:0}},updatedBy:uid,lastEventId:'seed',lastEventFingerprint:'seed'};
+ const match={version:0,status:'playing',format:$('initialFormat').value,sets:{'0':{a:0,b:0}},updatedBy:uid,lastEventId:'seed',lastEventFingerprint:'seed'};
  const trial={ownerUid:uid,demoOnly:true,createdAt:Date.now(),matches:{demo:match}};
  try{
   await state.api.set(state.api.ref(state.db,'v2Trials/'+id),trial);
@@ -282,7 +284,7 @@ async function createAdditionalMatch(){
  const mid=$('newMatch').value.trim();
  if(!valid.test(mid)||state.matches[mid]){status('Match déjà existant ou identifiant invalide.','error');return;}
  const id=state.trial,uid=state.user.uid,generation=state.roomGeneration;
- const seed={version:0,status:'playing',sets:{'0':{a:0,b:0}},
+ const seed={version:0,status:'playing',format:$('newMatchFormat').value,sets:{'0':{a:0,b:0}},
    updatedBy:uid,lastEventId:'seed',lastEventFingerprint:'seed'};
  try{
   await state.api.set(state.api.ref(state.db,'v2Trials/'+id+'/matches/'+mid),seed);
@@ -298,6 +300,7 @@ async function createAdditionalMatch(){
 async function execute(command){
  const api=state.api,db=state.db,uid=state.user?.uid;
  if(!uid||uid!==command.actorId)return {status:'forbidden'};
+ if(command.setIndex!==0||!validScore(command.format,command.goals?.a,command.goals?.b))return {status:'invalid-transition'};
  const path='v2Trials/'+command.tournamentId+'/matches/'+command.matchId;
  const reference=api.ref(db,path),fp=fingerprint(command);
  let stateCode='conflict';
@@ -310,6 +313,7 @@ async function execute(command){
    if(!match||typeof match!=='object'){stateCode='missing-match';return;}
    if(match.lastEventId===command.id){stateCode=match.lastEventFingerprint===fp?'duplicate':'id-collision';return;}
    if(match.status!=='playing'){stateCode='closed-match';return;}
+   if(match.format!==command.format){stateCode='invalid-transition';return;}
    if(match.version!==command.expectedVersion){
     // Deux appareils peuvent saisir le MÊME résultat pendant une coupure.
     // Le score distant est déjà identique : acquitter la copie locale sans
@@ -390,10 +394,10 @@ async function sendScore(){
  const rawA=$('home').value.trim(),rawB=$('away').value.trim();
  if(!/^\d{1,2}$/.test(rawA)||!/^\d{1,2}$/.test(rawB)){status('Buts invalides : saisir deux nombres entiers (0 à 8).','error');return;}
  const a=Number(rawA),b=Number(rawB);
- // Plafond de sécurité commun : aucune manche MILFT au-dessus de 8,
- // 8-8 non autorisé. Validation selon format à ajouter ultérieurement.
- if(a>8||b>8||(a===8&&b===8)){
-  status('Score impossible : aucun camp ne peut dépasser 8 buts et 8–8 est interdit. Vérifier le format de la manche.','error');
+ // Contrôle sportif avant toute conservation IndexedDB (le serveur recontrôle).
+ if(!validScore(state.match.format,a,b)){
+  status('Score impossible pour '+(formatLabels[state.match.format]||'ce format')+
+    ' : vérifier points, nul autorisé et écart de la belle (plafond 8–7).','error');
   return;
  }
  // Le numéro de génération et la portée empêchent un acquittement tardif de
@@ -401,7 +405,7 @@ async function sendScore(){
  const outbox=state.outbox,scope=state.scope,uid=state.user.uid,generation=state.roomGeneration;
  const sameRoom=()=>state.roomGeneration===generation&&state.outbox===outbox&&state.scope===scope&&state.user?.uid===uid;
  const matchId=state.selectedMatch;
- const command={...scope,id:'e'+newId(),matchId,type:'set.record',expectedVersion:state.draftDirty&&state.draftBaseVersion!==null?state.draftBaseVersion:state.match.version,setIndex:0,goals:{a,b}};
+ const command={...scope,id:'e'+newId(),matchId,type:'set.record',format:state.match.format,expectedVersion:state.draftDirty&&state.draftBaseVersion!==null?state.draftBaseVersion:state.match.version,setIndex:0,goals:{a,b}};
  state.enqueuing=true;updateUI();
  try{
   const result=await outbox.enqueue(scope,command,Date.now(),{chainLocalScore:true});
