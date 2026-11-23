@@ -29,3 +29,11 @@ Aucune modification de la V1.1 officielle, des règles Firebase réelles ou cand
 - Test physique Samsung/PC avec deux comptes Google distincts toujours non effectué.
 - **MAJ102 proposée :** compléter les cas de restauration et récupération de conflit lors d'une reconnexion avec plusieurs onglets, sans automatisme destructeur.
 - **Action utilisateur : aucune.**
+
+## Backlog non prioritaire — nouvelles demandes du 23 novembre 2026
+Deux améliorations **à prévoir ultérieurement**, sans impact sur la clôture MAJ101 ni sur la priorité MAJ102 :
+1. **Saisie en direct par boutons − / + de part et d'autre du score de chaque camp**, notamment pour l'arbitre et le capitaine en course aux points, avec distinction entre score en cours et score final.
+2. **Temps morts configurables dans les paramètres des formats**, préréglages : poules 0, tableaux 2 par manche, course aux points 1 par bloc. Le périmètre exact du quota (équipe ou rencontre) sera confirmé avant développement.
+
+Référence détaillée et durable : [Backlog V2 — améliorations non prioritaires](MILFT_TOURNOIS_V2_BACKLOG_AMELIORATIONS_NON_PRIORITAIRES.md).
+**Aucune implémentation engagée, aucune donnée ou version de production modifiée.**
