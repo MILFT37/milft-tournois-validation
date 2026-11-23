@@ -8,7 +8,7 @@ h1{font-size:1.35rem;margin:0 0 8px}h2{font-size:1.05rem;margin:0 0 12px}.sub{fo
 section{background:white;padding:16px;margin-top:12px;border-radius:14px;border:1px solid #dfe6ef}
 button,input,select{font:inherit;border-radius:9px;min-height:43px}button{padding:9px 14px;border:0;background:#1e559b;color:#fff;font-weight:700;cursor:pointer}button:disabled{opacity:.45;cursor:not-allowed}
 button.secondary{background:#576575}button.danger{background:#a33542}button.link{background:#e4eaf2;color:#172337}
-input,select{box-sizing:border-box;border:1px solid #b7c5d7;padding:8px;width:100%;background:white;color:#172337}
+input,select,textarea{box-sizing:border-box;border:1px solid #b7c5d7;padding:8px;width:100%;background:white;color:#172337}textarea{font:inherit;min-height:110px;resize:vertical}
 label{display:block;font-weight:650;font-size:.9rem;margin-bottom:6px}.field{margin:12px 0}
 .row{display:flex;gap:9px;flex-wrap:wrap;align-items:center}.row>*{flex:1;min-width:120px}
 .note{color:#526171;font-size:.86rem;line-height:1.4}.muted{color:#607181}
@@ -44,6 +44,9 @@ code{overflow-wrap:anywhere}strong{font-weight:750}.score{font-size:1.7rem;font-
 <div class="row" style="margin-top:10px"><button id="send">Enregistrer le score fictif</button><button id="retry" class="secondary">Renvoyer les opérations en attente</button></div>
 <p class="note" id="queue">File locale : non chargée</p>
 <div id="conflicts" class="note"></div>
+<button id="copyConflicts" class="link" disabled style="margin-top:9px">Copier les brouillons en conflit</button>
+<p id="conflictNotice" class="inline-status" role="status" aria-live="polite"></p>
+<textarea id="conflictFallback" readonly hidden aria-label="Relevé des brouillons à copier manuellement" rows="7"></textarea>
 </section>
 <section id="sharing" hidden>
 <h2>3. Autoriser un autre compte Google</h2>

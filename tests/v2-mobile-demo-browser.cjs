@@ -28,6 +28,8 @@ async function main(){
   assert.equal(await page.locator('#copyUid').isDisabled(),true);
   assert.equal(await page.locator('#copyTrial').isDisabled(),true);
   assert.equal(await page.locator('#copyLink').isDisabled(),true);
+  assert.equal(await page.locator('#copyConflicts').isDisabled(),true);
+  assert.equal(await page.locator('#conflictFallback').isHidden(),true);
   assert.equal(await page.locator('#rooms').isHidden(),true);
   assert.equal(await page.locator('#demo').isHidden(),true);
   assert.equal(await page.locator('#sharing').isHidden(),true);

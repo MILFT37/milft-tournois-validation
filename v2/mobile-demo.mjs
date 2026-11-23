@@ -7,7 +7,7 @@ const state={api:null,auth:null,db:null,user:null,outbox:null,scope:null,trial:n
 function status(msg,tone=''){const e=$('status');e.textContent=msg;e.className=tone;}
 function log(s){const e=$('log');e.textContent=(new Date().toLocaleTimeString('fr-FR')+' · '+s+'\n'+e.textContent).slice(0,3000)}
 function errorText(e){return String(e?.code||e?.message||e||'Erreur').slice(0,200)}
-function resetRoom(){state.roomGeneration++;clearTimeout(state.recoveryTimer);state.recoveryTimer=null;state.sending=false;state.enqueuing=false;state.unsubscribe?.();state.unsubscribe=null;state.unsubscribeMember?.();state.unsubscribeMember=null;state.trial=null;state.match=null;state.role=null;state.scope=null;state.outbox?.close();state.outbox=null;state.draftDirty=false;state.draftBaseVersion=null;$('score').textContent='— : —';$('version').textContent='Version distante inconnue';$('home').value=0;$('away').value=0;$('demo').hidden=true;$('sharing').hidden=true;$('roomNotice').textContent='';$('inviteNotice').textContent='';}
+function resetRoom(){state.roomGeneration++;clearTimeout(state.recoveryTimer);state.recoveryTimer=null;state.sending=false;state.enqueuing=false;state.unsubscribe?.();state.unsubscribe=null;state.unsubscribeMember?.();state.unsubscribeMember=null;state.trial=null;state.match=null;state.role=null;state.scope=null;state.outbox?.close();state.outbox=null;state.draftDirty=false;state.draftBaseVersion=null;$('score').textContent='— : —';$('version').textContent='Version distante inconnue';$('home').value=0;$('away').value=0;$('demo').hidden=true;$('sharing').hidden=true;$('roomNotice').textContent='';$('inviteNotice').textContent='';$('conflicts').textContent='';$('copyConflicts').disabled=true;$('conflictNotice').textContent='';$('conflictFallback').value='';$('conflictFallback').hidden=true;}
 function updateUI(){
   $('rooms').hidden=!state.user;
   $('signIn').hidden=!!state.user;$('signOut').hidden=!state.user;
@@ -19,6 +19,7 @@ function updateUI(){
   $('copyUid').disabled=!state.user;
   $('copyTrial').disabled=!state.trial;
   $('copyLink').disabled=!state.trial;
+  $('copyConflicts').disabled=!state.user||!state.scope||!state.outbox||!$('conflicts').textContent.trim();
 }
 function newId(){return Array.from(crypto.getRandomValues(new Uint8Array(12)),n=>n.toString(16).padStart(2,'0')).join('');}
 function trialLink(id){
@@ -114,10 +115,16 @@ async function refreshQueue({continueReady=false}={}){
    (scheduled&&!state.sending?' · Reprise automatique après le délai de sécurité':
     moreReady&&!state.sending?' · Suite des opérations automatique':'');
  const rejected=items.filter(x=>x.state==='conflict'||x.state==='blocked');
- $('conflicts').textContent=rejected.length?
+ const newConflicts=rejected.length?
    'Brouillons locaux à vérifier (ne remplacent pas le score distant) :\n'+
    rejected.map(describeLocalConflict).join('\n'):
    '';
+ if($('conflicts').textContent!==newConflicts){
+   $('conflictFallback').hidden=true;$('conflictFallback').value='';
+   $('conflictNotice').textContent='';
+ }
+ $('conflicts').textContent=newConflicts;
+ $('copyConflicts').disabled=!state.user||!state.scope||!state.outbox||!rejected.length;
  scheduleLeaseRecovery(items,countsFromScope,{continueReady});
 }
 // Un Android peut revenir au premier plan sans nouvel événement « online ».
@@ -325,6 +332,35 @@ async function manageUser(revoke=false){
   inviteFeedback(revoke?'Accès révoqué.':'Utilisateur autorisé. Il peut ouvrir le code de salle sur son appareil.','good');
  }catch(e){inviteFeedback('Modification des droits refusée : '+errorText(e),'error');}
 }
+// Copie demandée explicitement, en lecture seule : aucun renvoi des scores.
+async function copyConflictReport(){
+ if(!state.user||!state.trial||!state.outbox||!state.scope||
+    $('copyConflicts').disabled||!$('conflicts').textContent.trim())return;
+ const gen=state.roomGeneration,scope=state.scope,outbox=state.outbox,
+   trial=state.trial,uid=state.user.uid;
+ const current=()=>state.roomGeneration===gen&&state.scope===scope&&
+   state.outbox===outbox&&state.trial===trial&&state.user?.uid===uid;
+ const report='MILFT Tournois V2 — relevé local de brouillons fictifs\n'+
+   'Salle d’essai : '+trial+'\n'+
+   'Score distant affiché : '+$('score').textContent+'\n'+
+   $('version').textContent+'\n\n'+$('conflicts').textContent+
+   '\n\nRelevé pour vérification humaine — aucune modification automatique.';
+ try{
+  // Pas d'attente avant l'écriture : conserve le geste utilisateur sur Safari.
+  if(!navigator.clipboard?.writeText)throw Error('Presse-papiers indisponible');
+  await navigator.clipboard.writeText(report);
+  if(!current())return;
+  $('conflictFallback').hidden=true;$('conflictFallback').value='';
+  $('conflictNotice').textContent='Relevé des brouillons copié. Aucune modification des scores.';
+  $('conflictNotice').className='inline-status good';
+ }catch(e){
+  if(!current())return;
+  const area=$('conflictFallback');area.hidden=false;area.value=report;
+  area.focus();area.select();
+  $('conflictNotice').textContent='Copie automatique impossible : relevé sélectionné ci-dessous, utiliser Copier.';
+  $('conflictNotice').className='inline-status error';
+ }
+}
 async function initialize(){
  try{
   state.deviceId=persistentDeviceId();
@@ -345,6 +381,7 @@ async function initialize(){
  $('copyUid').onclick=()=>{if(state.user)void copyText(state.user.uid,'Identifiant',$('who'));};
  $('copyTrial').onclick=()=>{if(state.trial)void copyText(state.trial,'Code de salle',$('trialId'),'roomNotice');};
  $('copyLink').onclick=()=>{if(state.trial)void copyText(trialLink(state.trial),'Lien de partage',$('trialId'),'roomNotice');};
+ $('copyConflicts').onclick=()=>{void copyConflictReport();};
  $('create').onclick=createRoom;
  $('join').onclick=()=>prepareRoom($('trialId').value.trim());
  $('send').onclick=sendScore;

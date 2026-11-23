@@ -173,6 +173,12 @@ async function main(){
   assert.match(visibleGuestConflict,/Score local A 6 : B 4/,'MAJ89: rejected guest score must be readable');
   assert.match(visibleGuestConflict,/version de départ 1/,'MAJ89: local base version must be readable');
   assert.match(visibleGuestConflict,/Brouillons locaux à vérifier/);
+  await pageB.locator('#copyConflicts').click();
+  const copiedGuest=await pageB.evaluate(()=>window.__milftCopied);
+  assert.match(copiedGuest,/Score local A 6 : B 4/,'MAJ90: copy includes rejected score');
+  assert.match(copiedGuest,/Score distant affiché : 7 : 5/,'MAJ90: copy includes visible remote score');
+  assert.match(copiedGuest,/version de départ 1/);
+  assert.match(await pageB.locator('#conflictNotice').innerText(),/copié/);
   assert.equal((await pageA.locator('#score').innerText()).trim(),'7 : 5','Conflicting edit cannot overwrite accepted score');
   const deviceBefore=await pageB.evaluate(()=>localStorage.getItem('MILFT_V2_DEMO_DEVICE_ID'));
   await androidB.setOffline(true);
@@ -213,6 +219,8 @@ async function main(){
   await restored.locator('#demo').waitFor({state:'hidden',timeout:15000});
   assert.match(await restored.locator('#status.error').innerText(),/Accès retiré/,'Guest sees immediate revocation');
   assert.equal(await restored.locator('#copyLink').isDisabled(),true,'Revoked guest has no sharing controls');
+  assert.equal(await restored.locator('#copyConflicts').isDisabled(),true,'Revoked guest cannot export stale conflicts');
+  assert.equal(await restored.locator('#conflicts').innerText(),'','Revocation clears old local drafts from screen');
   assert.equal(await restored.locator('#score').innerText(),'— : —','Revocation redacts old score in DOM');
   // MAJ78 : l'ouverture ancienne, retardée artificiellement, ne reprend pas la main.
   await pageA.evaluate(id=>{window.__milftHoldOwnerFor=id;},trial);
@@ -437,12 +445,26 @@ async function main(){
   assert.match(restoredConflicts,/Score local A 4 : B 2/);
   assert.equal(await recovered.locator('#score').innerText(),'7 : 6',
     'MAJ89: reading local drafts must never overwrite accepted remote score');
+  await recovered.locator('#copyConflicts').click();
+  const copiedBoth=await recovered.evaluate(()=>window.__milftCopied);
+  assert.match(copiedBoth,/Score local A 2 : B 1/);
+  assert.match(copiedBoth,/Score local A 4 : B 2/);
+  assert.match(copiedBoth,/Score distant affiché : 7 : 6/);
+  assert.doesNotMatch(copiedBoth,/apiKey|MILFT_V2_DEMO_DEVICE_ID|UID du second compte/);
+  await recovered.evaluate(()=>Object.defineProperty(navigator,'clipboard',{configurable:true,value:undefined}));
+  await recovered.locator('#copyConflicts').click();
+  assert.equal(await recovered.locator('#conflictFallback').isVisible(),true);
+  assert.match(await recovered.locator('#conflictFallback').inputValue(),/Score local A 4 : B 2/);
+  assert.match(await recovered.locator('#conflictNotice').innerText(),/utiliser Copier/);
   // MAJ84 : erreur réseau temporaire alors que le navigateur reste en ligne.
   // La file reprogramme une tentative sans clic et avec le même identifiant,
   // même après fermeture puis réouverture du navigateur avant l'échéance.
   await recovered.locator('#create').click();
   await recovered.waitForFunction(previous=>document.getElementById('trialId').value!==previous,failedTrial);
   await recovered.locator('#score').getByText('0 : 0').waitFor();
+  assert.equal(await recovered.locator('#copyConflicts').isDisabled(),true);
+  assert.equal(await recovered.locator('#conflictFallback').isHidden(),true);
+  assert.equal(await recovered.locator('#conflictFallback').inputValue(),'');
   const retryTrial=await recovered.locator('#trialId').inputValue();
   await recovered.evaluate(()=>{window.__milftFailNextTransaction=true;});
   await recovered.locator('#home').fill('9');
