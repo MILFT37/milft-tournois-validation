@@ -288,9 +288,10 @@ async function createAdditionalMatch(){
   await state.api.set(state.api.ref(state.db,'v2Trials/'+id+'/matches/'+mid),seed);
   if(state.roomGeneration!==generation||state.trial!==id||state.user?.uid!==uid)return;
   // Attendre la notification RTDB si elle n'est pas encore arrivée.
-  state.selectedMatch=mid;state.draftDirty=false;state.draftBaseVersion=null;
-  state.drafts.delete(mid);state.match=state.matches[mid]||null;
-  renderMatches();
+  // Ne jamais écraser une sélection manuelle arrivée entre l'écriture
+  // Firebase et son accusé de réception. L'écoute onValue actualise la liste.
+  state.drafts.delete(mid);
+  if(state.matches[mid])renderMatches();
   status('Match fictif '+mid+' créé sur Firebase Emulator.','good');
  }catch(e){if(state.trial===id)status('Création du match refusée : '+errorText(e),'error');}
 }
