@@ -412,6 +412,12 @@ async function main(){
   assert.equal(remote.dual99.version,1,'Only latest-tab draft may be sent');
   assert.deepEqual(remote.dual99.sets['0'],{a:5,b:3});
   await tab2.close();
+  // L'onglet auteur a retiré son brouillon après insertion en file ; l'ancien
+  // onglet doit reconnaître la suppression comme un changement externe,
+  // puis demander un rechargement explicite avant toute navigation.
+  await desktop.locator('#draftNotice').getByText('Conflit entre onglets',{exact:false}).waitFor();
+  await desktop.locator('#restoreDraft').click();
+  assert.equal(await desktop.locator('#draftNotice').innerText(),'');
   // Vérifier aussi la saisie en lecture seule : les valeurs affichées
   // ne peuvent plus être modifiées tant que le propriétaire n'a pas
   // restauré le rôle éditeur (les autres brouillons locaux sont conservés).
