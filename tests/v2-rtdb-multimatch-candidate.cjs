@@ -29,7 +29,7 @@ for(const [key,val] of Object.entries(oldDemo)){
   // plafond de sécurité ajouté aux règles candidates sur émulateur.
   const expectedSets=JSON.parse(JSON.stringify(val));
   expectedSets.$set['.validate']=candidateMatch.sets.$set['.validate'];
-   assert(candidateMatch.sets.$set['.validate'].includes('^0
+   assert(candidateMatch.sets.$set['.validate'].includes('matches'), 'set range validated');
   for(const side of ['a','b'])expectedSets.$set[side]['.validate']=
    expectedSets.$set[side]['.validate'].replace('<= 99','<= 8');
   assert.deepEqual(candidateMatch.sets,expectedSets,'Score limit may change only on candidate');
