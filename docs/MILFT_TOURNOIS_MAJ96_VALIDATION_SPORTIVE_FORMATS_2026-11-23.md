@@ -34,11 +34,17 @@ Commit initial : `59cf4804284a460d38c9b353b824fbf22fbf17b3`. Corrections ciblée
 - E2E `45160721731` : **FAILURE** au premier score, mais diagnostic détaillé : les deux matchs restaient à 0–0 et chacun conservait un brouillon en conflit ; les formats étaient bien présents sur RTDB.
 - Cause vérifiée dans le code : le normaliseur générique `v2/outbox-idb.js` retire tous les champs inconnus et ne conservait pas `command.format`. L'émetteur refusait donc légitimement une commande privée de son format sportif.
 - Correctif `965e90ed` : création d'une **copie isolée** `v2/outbox-multimatch-emulator.js` qui exige et conserve le format sportif, sans modifier `v2/outbox-idb.js` déjà utilisé par le prototype public. HTML et workflow d'émulation ajustés ; aucun fichier de publication V1.1 modifié.
-- Workflows déclenchés : `45161011854` (E2E multi-match), `45161012014` (simulation partage) : état à contrôler.
+- **Workflow `45161011854` : SUCCESS** — scénario E2E Samsung/PC émulés complet, score validé, déconnexion dans les deux sens, brouillons/conflits/doublons et gestion des rôles.\n- **Workflow `45161012014` : SUCCESS** — simulation partage V2.
 
-## Suite
-1. Contrôler les deux workflows ciblés et corriger le cas échéant, sans retoucher V1.1 ni Firebase réel.
-2. Étendre le contrôle des brouillons distincts par match et des acquittements tardifs lors des rechargements navigateur, uniquement si un scénario non couvert apparaît.
-3. Clôturer la MAJ96 **uniquement après SUCCESS** des vérifications ciblées et mettre à jour ce document avec commits et exécutions exacts.
+## Clôture — 23 novembre 2026
+**MAJ96 VALIDÉE ET CLÔTURÉE SUR ÉMULATEURS UNIQUEMENT.**
+- Tests des règles candidates RTDB : `45160695666` **SUCCESS**.
+- Scénario E2E Samsung/PC émulés : `45161011854` **SUCCESS**.
+- Simulation partage V2 : `45161012014` **SUCCESS**.
+- Comparaison GitHub avec la clôture MAJ95 `d9a75f9a` : seuls le prototype multi-match émulé, ses règles candidates, ses tests, son workflow, la copie IndexedDB d'essai et ce document ont changé.
+- Les erreurs intermédiaires figurent plus haut pour traçabilité et sont corrigées ; il n'est pas nécessaire de recommencer les campagnes passées sur du code inchangé.
+- **Prochaine étape autonome : MAJ97** (rechargement navigateur avec brouillons non envoyés distincts par match, acquittements tardifs et éventuel stockage persistant des saisies non encore mises en file). Garder la protection des formats et la règle d'unicité des matchs.
+- **Aucun déploiement** de la nouvelle règle candidate dans Firebase réel. Aucun test physique sur deux comptes Google réels effectué. Aucun changement du site V1.1, des tournois, championnats ou archives Drive.
+
 
 **Action utilisateur : aucune pour les étapes émulées.**
