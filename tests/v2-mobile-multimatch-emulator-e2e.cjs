@@ -81,7 +81,7 @@ async function main(){
   assert.match(room,/^trial[a-f0-9]{24}$/);
   await samsung.locator('#newMatch').fill('courtB');
   await samsung.locator('#createMatch').click();
-  await samsung.locator('#matchSelect').locator('option[value="courtB"]').waitFor({timeout:10000});
+  await samsung.locator('#matchSelect').locator('option[value="courtB"]').waitFor({state:'attached'});
   await samsung.locator('#matchSelect').selectOption('demo');
   await samsung.locator('#invited').fill(uidPc);
   await samsung.locator('#permission').selectOption('editor');
@@ -90,7 +90,7 @@ async function main(){
   await desktop.locator('#trialId').fill(room);
   await desktop.locator('#join').click();
   await desktop.locator('#demo').waitFor({state:'visible',timeout:20000});
-  await desktop.locator('#matchSelect').locator('option[value="courtB"]').waitFor();
+  await desktop.locator('#matchSelect').locator('option[value="courtB"]').waitFor({state:'attached'});
   assert.equal(await desktop.locator('#role').innerText(),'Autorisé à saisir');
   await desktop.locator('#matchSelect').selectOption('courtB');
   await samsung.locator('#home').fill('5');
