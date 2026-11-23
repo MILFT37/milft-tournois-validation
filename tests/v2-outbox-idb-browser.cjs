@@ -311,7 +311,58 @@ async function main(){
   assert.equal(manual.forcedId,'evt84manual','Explicit retry can bypass only retry timeout');
   assert.equal(manual.confirmed,'confirmed');
   assert.equal(manual.replay,'already-confirmed','Manual retry preserves idempotency');
-  console.log('OK V2 MAJ84 '+engine.name+': durable retry deadline, FIFO, manual override and receipts');
+  // MAJ91 : une erreur temporaire répétée est mise en pause, sans
+  // empêcher la reprise manuelle avec le même identifiant de commande.
+  const pausedRetry=await reopened.evaluate(async()=>{
+    const db=await MILFTV2Outbox.open({indexedDB});
+    const s={tournamentId:'trial91pause',actorId:'samsung91',deviceId:'phone91'};
+    const mk=id=>({...s,id,matchId:'demo',type:'set.record',
+      expectedVersion:0,setIndex:0,goals:{a:5,b:3}});
+    await db.enqueue(s,mk('evt91first'),80000,{chainLocalScore:true});
+    await db.enqueue(s,mk('evt91second'),80001,{chainLocalScore:true});
+    let first,hold;
+    for(let n=0;n<8;n++){
+      const claimed=await db.claimNext(s,{now:80100+n*1000,leaseMs:1000,ignoreRetryAt:true});
+      if(n===0)first=claimed.command.id;
+      hold=await db.finish(s,claimed.command.id,claimed.leaseToken,'temporary-error',
+        {now:80101+n*1000,retryAfterMs:n===7?0:200,pauseRetry:n===7});
+    }
+    const blocked=await db.claimNext(s,{now:95000,leaseMs:1000});
+    const entries=(await db.list(s)).map(x=>({id:x.command.id,state:x.state,
+      attempts:x.attempts,retryAt:x.retryAt||0,retryPaused:x.retryPaused===true}));
+    db.close();return {first,hold,blocked,entries};
+  });
+  assert.equal(pausedRetry.first,'evt91first');
+  assert.equal(pausedRetry.hold.status,'pending');
+  assert.equal(pausedRetry.hold.retryPaused,true);
+  assert.equal(pausedRetry.blocked,null,'No automatic retry after eight failures');
+  assert.deepEqual(pausedRetry.entries,[
+    {id:'evt91first',state:'pending',attempts:8,retryAt:0,retryPaused:true},
+    {id:'evt91second',state:'pending',attempts:0,retryAt:0,retryPaused:false}
+  ],'Both commands must survive; FIFO cannot skip paused head');
+  await reopened.reload();
+  const resumed91=await reopened.evaluate(async()=>{
+    const db=await MILFTV2Outbox.open({indexedDB});
+    const s={tournamentId:'trial91pause',actorId:'samsung91',deviceId:'phone91'};
+    const auto=await db.claimNext(s,{now:96000,leaseMs:1000});
+    const manual=await db.claimNext(s,{now:96001,leaseMs:1000,ignoreRetryAt:true});
+    const early=await db.claimNext(s,{now:96002,leaseMs:1000});
+    const ack=await db.finish(s,manual.command.id,manual.leaseToken,'applied',{now:96003});
+    const next=await db.claimNext(s,{now:96004,leaseMs:1000});
+    const ack2=await db.finish(s,next.command.id,next.leaseToken,'applied',{now:96005});
+    const remaining=(await db.list(s)).length;db.close();
+    return {auto,manualId:manual.command.id,manualAttempts:manual.attempts,
+      early,ack:ack.status,nextId:next.command.id,ack2:ack2.status,remaining};
+  });
+  assert.equal(resumed91.auto,null,'Pause remains durable after browser reload');
+  assert.equal(resumed91.manualId,'evt91first','Explicit retry reuses original ID');
+  assert.equal(resumed91.manualAttempts,9);
+  assert.equal(resumed91.early,null,'Active lease is never bypassed by manual retry');
+  assert.equal(resumed91.ack,'confirmed');
+  assert.equal(resumed91.nextId,'evt91second');
+  assert.equal(resumed91.ack2,'confirmed');
+  assert.equal(resumed91.remaining,0,'No draft lost after explicit recovery');
+  console.log('OK V2 MAJ91 '+engine.name+': capped retries, persistent pause, manual resume and FIFO');
  }finally{
   if(context)await context.close();
   await new Promise(r=>server.close(r));

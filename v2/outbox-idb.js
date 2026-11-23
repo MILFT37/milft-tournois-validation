@@ -141,11 +141,13 @@ function open({indexedDB,dbName=DEFAULT_DB}={}){
        const item=waiting[position];
        if(!item||
           item.state==='sending'&&item.leaseUntil>now||
-          item.state==='pending'&&!ignoreRetryAt&&(item.retryAt||0)>now){done(null);return;}
+          item.state==='pending'&&!ignoreRetryAt&&
+            (item.retryPaused===true||(item.retryAt||0)>now)){done(null);return;}
        const reserve=()=>{
         item.state='sending';
         item.leaseToken=String(now)+'-'+Math.random().toString(36).slice(2)+'-'+item.attempts;
-        item.leaseUntil=now+leaseMs;item.updatedAt=now;item.attempts++;item.retryAt=0;
+        item.leaseUntil=now+leaseMs;item.updatedAt=now;item.attempts++;
+        item.retryAt=0;item.retryPaused=false;
         store.put(item);done(item);
        };
        if(!item.dependsOn){reserve();return;}
@@ -170,12 +172,14 @@ function open({indexedDB,dbName=DEFAULT_DB}={}){
      };
     });
    }
-   function finish(scope,eventId,leaseToken,outcome,{now=Date.now(),reason='',retryAfterMs=0}={}){
+   function finish(scope,eventId,leaseToken,outcome,{now=Date.now(),reason='',retryAfterMs=0,pauseRetry=false}={}){
     const key=itemKey(scope,eventId);
     if(typeof leaseToken!=='string'||leaseToken.length<5)throw Error('Bail absent');
     if(!['applied','duplicate','conflict','forbidden','temporary-error'].includes(outcome))throw Error('Statut distant inconnu : aucune suppression');
     if(!Number.isFinite(now)||now<0)throw Error('Horodatage invalide');
     if(!Number.isSafeInteger(retryAfterMs)||retryAfterMs<0||retryAfterMs>300000)throw Error('Délai de reprise invalide');
+    if(typeof pauseRetry!=='boolean'||pauseRetry&&outcome!=='temporary-error')
+     throw Error('Pause de reprise invalide');
     return tx([STORE,RECEIPTS],'readwrite',(tr,done)=>{
      const store=tr.objectStore(STORE),req=store.get(key);
      req.onsuccess=()=>{
@@ -188,10 +192,12 @@ function open({indexedDB,dbName=DEFAULT_DB}={}){
       }
       item.state=outcome==='conflict'?'conflict':outcome==='forbidden'?'blocked':'pending';
       item.reason=String(reason).slice(0,180)||outcome;item.leaseToken=null;item.leaseUntil=0;item.updatedAt=now;
-      // Ancien schéma compatible : retryAt est un champ optionnel, sans migration.
-      // Seules les erreurs temporaires retardent la tête de file ; jamais les conflits.
-      item.retryAt=outcome==='temporary-error'?now+retryAfterMs:0;
-      store.put(item);done({status:item.state,retryAt:item.retryAt});
+      // Attributs optionnels sur l'ancien schéma, sans migration ni perte.
+      // Après trop d'échecs temporaires, seul un geste explicite relance la
+      // même commande. Les conflits et refus ne deviennent jamais « paused ».
+      item.retryPaused=outcome==='temporary-error'&&pauseRetry;
+      item.retryAt=outcome==='temporary-error'&&!pauseRetry?now+retryAfterMs:0;
+      store.put(item);done({status:item.state,retryAt:item.retryAt,retryPaused:item.retryPaused});
      };
     });
    }

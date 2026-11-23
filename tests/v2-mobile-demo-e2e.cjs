@@ -501,6 +501,65 @@ async function main(){
   assert.equal(remoteRetry.version,1,'Temporary network error must be retried exactly once');
   assert.equal(remoteRetry.lastEventId,waitingRetry[0].id,'Retry reuses the original operation ID');
   assert.deepEqual(remoteRetry.sets['0'],{a:9,b:7});
+  // MAJ91 : huit erreurs temporaires sur le même score doivent
+  // suspendre la reprise automatique, sans effacer l'événement.
+  await retryPage.locator('#create').click();
+  await retryPage.waitForFunction(previous=>document.getElementById('trialId').value!==previous,retryTrial);
+  await retryPage.locator('#score').getByText('0 : 0').waitFor();
+  const pausedTrial=await retryPage.locator('#trialId').inputValue();
+  const preparedPause=await retryPage.evaluate(async()=>{
+    const db=await MILFTV2Outbox.open({indexedDB,dbName:'MILFT_V2_DEMO_OUTBOX_20261120'});
+    const s={tournamentId:document.getElementById('trialId').value,
+      actorId:document.getElementById('who').value,deviceId:localStorage.getItem('MILFT_V2_DEMO_DEVICE_ID')};
+    const cmd={...s,id:'eMAJ91Pause',matchId:'demo',type:'set.record',
+      expectedVersion:0,setIndex:0,goals:{a:5,b:3}};
+    const queued=await db.enqueue(s,cmd);
+    for(let i=0;i<7;i++){
+      const head=await db.claimNext(s,{ignoreRetryAt:true});
+      await db.finish(s,head.command.id,head.leaseToken,'temporary-error',
+        {retryAfterMs:0,reason:'simulated-network-repeat'});
+    }
+    const entries=await db.list(s);db.close();
+    return {queued:queued.status,attempts:entries[0].attempts,retryPaused:entries[0].retryPaused};
+  });
+  assert.equal(preparedPause.queued,'queued');
+  assert.equal(preparedPause.attempts,7);
+  assert.notEqual(preparedPause.retryPaused,true);
+  await retryPage.evaluate(()=>{window.__milftFailNextTransaction=true;});
+  await retryPage.locator('#retry').click();
+  await retryPage.locator('#status.error').getByText('8 tentatives',{exact:false}).waitFor({timeout:15000});
+  await retryPage.locator('#queue').getByText('envoi(s) en pause',{exact:false}).waitFor({timeout:15000});
+  const persistedPause=await retryPage.evaluate(async()=>{
+    const db=await MILFTV2Outbox.open({indexedDB,dbName:'MILFT_V2_DEMO_OUTBOX_20261120'});
+    const s={tournamentId:document.getElementById('trialId').value,
+      actorId:document.getElementById('who').value,deviceId:localStorage.getItem('MILFT_V2_DEMO_DEVICE_ID')};
+    const records=await db.list(s);db.close();
+    return records.map(x=>({id:x.command.id,state:x.state,attempts:x.attempts,
+      retryPaused:x.retryPaused,retryAt:x.retryAt}));
+  });
+  assert.deepEqual(persistedPause,[{id:'eMAJ91Pause',state:'pending',attempts:8,
+    retryPaused:true,retryAt:0}]);
+  await retryPage.reload();
+  await retryPage.locator('#rooms').waitFor({state:'visible',timeout:15000});
+  await retryPage.locator('#trialId').fill(pausedTrial);
+  await retryPage.locator('#join').click();
+  await retryPage.locator('#demo').waitFor({state:'visible'});
+  await retryPage.locator('#queue').getByText('envoi(s) en pause',{exact:false}).waitFor();
+  await retryPage.waitForTimeout(900);
+  assert.equal(await retryPage.locator('#score').innerText(),'0 : 0',
+    'Paused command must not retry automatically after reload');
+  await retryPage.locator('#retry').click();
+  await retryPage.locator('#score').getByText('5 : 3').waitFor({timeout:20000});
+  await retryPage.locator('#version').getByText('Version distante 1',{exact:false}).waitFor();
+  await retryPage.locator('#queue').getByText('0 en attente, 0 en cours',{exact:false}).waitFor();
+  let resumedRemote;
+  await environment.withSecurityRulesDisabled(async ctx=>{
+    resumedRemote=(await ctx.database('https://'+projectId+'-default-rtdb.firebaseio.com')
+      .ref('v2Trials/'+pausedTrial+'/matches/demo').once('value')).val();
+  });
+  assert.equal(resumedRemote.version,1,'Only one confirmed write after eight failures');
+  assert.equal(resumedRemote.lastEventId,'eMAJ91Pause','Manual retry preserves event ID');
+  assert.deepEqual(resumedRemote.sets['0'],{a:5,b:3});
   // MAJ85 : le statut d'un match fictif ne peut pas être confondu
   // avec une panne réseau transitoire. Injecter des états « terminé »
   // et « match supprimé » uniquement dans la base émulateur.

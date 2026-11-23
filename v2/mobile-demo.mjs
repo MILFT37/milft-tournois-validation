@@ -69,7 +69,7 @@ function scheduleLeaseRecovery(items,context,{continueReady=false}={}){
  if(state.roomGeneration!==context.generation||state.outbox!==context.outbox||
     !navigator.onLine||!['admin','editor'].includes(state.role)||state.sending)return;
  const head=items.find(item=>item.state==='pending'||item.state==='sending');
- if(!head)return;
+ if(!head||head.retryPaused===true)return;
  // Après 15 commandes acceptées, continuer automatiquement le lot suivant
  // sans relancer la tête qui attend un bail ou une temporisation réseau.
  const deadline=head.state==='sending'?head.leaseUntil:
@@ -110,10 +110,12 @@ async function refreshQueue({continueReady=false}={}){
  const scheduled=head&&navigator.onLine&&['admin','editor'].includes(state.role)&&
    ((head.state==='sending'&&head.leaseUntil>Date.now())||
     (head.state==='pending'&&head.retryAt>Date.now()));
- const moreReady=continueReady&&head?.state==='pending'&&!(head.retryAt>Date.now());
+ const moreReady=continueReady&&head?.state==='pending'&&head.retryPaused!==true&&!(head.retryAt>Date.now());
+ const paused=items.filter(x=>x.state==='pending'&&x.retryPaused===true).length;
  $('queue').textContent='File locale persistante : '+counts.pending+' en attente, '+counts.sending+' en cours, '+counts.conflict+' conflit(s), '+counts.blocked+' refusé(s)'+
    (scheduled&&!state.sending?' · Reprise automatique après le délai de sécurité':
-    moreReady&&!state.sending?' · Suite des opérations automatique':'');
+    moreReady&&!state.sending?' · Suite des opérations automatique':'')+
+   (paused?' · '+paused+' envoi(s) en pause après échecs répétés : utiliser Renvoyer pour réessayer':'');
  const rejected=items.filter(x=>x.state==='conflict'||x.state==='blocked');
  const newConflicts=rejected.length?
    'Brouillons locaux à vérifier (ne remplacent pas le score distant) :\n'+
@@ -142,7 +144,7 @@ async function resumeForeground(){
   const head=items.find(item=>item.state==='pending'||item.state==='sending');
   if(!head)return;
   const now=Date.now();
-  if(head.state==='pending'&&!(head.retryAt>now)||
+  if(head.state==='pending'&&head.retryPaused!==true&&!(head.retryAt>now)||
      head.state==='sending'&&!(head.leaseUntil>now)){
     void transmit(); // claimNext préserve les verrouillages atomiques IndexedDB
   }else{
@@ -268,10 +270,17 @@ async function transmit({manual=false}={}){
    const outcome=result.status==='applied'||result.status==='duplicate'?result.status:
     ['conflict','closed-match','missing-match','invalid-transition'].includes(result.status)?'conflict':
     result.status==='forbidden'||result.status==='id-collision'?'forbidden':'temporary-error';
-   const retryAfterMs=outcome==='temporary-error'?Math.min(60000,2000*2**Math.min(item.attempts-1,5)):0;
-   const saved=await outbox.finish(scope,item.command.id,item.leaseToken,outcome,{reason:result.status,retryAfterMs});
+   const pauseRetry=outcome==='temporary-error'&&item.attempts>=8;
+   const retryAfterMs=outcome==='temporary-error'&&!pauseRetry?Math.min(60000,2000*2**Math.min(item.attempts-1,5)):0;
+   const saved=await outbox.finish(scope,item.command.id,item.leaseToken,outcome,
+    {reason:result.status,retryAfterMs,pauseRetry});
    if(!sameRoom())break;
-   if(outcome==='temporary-error'){status('Envoi non confirmé. Score conservé localement ; nouvelle tentative automatique après délai.','error');break;}
+   if(outcome==='temporary-error'){
+    status(pauseRetry?
+      'Échecs réseau répétés (8 tentatives). Score conservé localement ; envoi automatique en pause. Utiliser Renvoyer lorsque la connexion est rétablie.':
+      'Envoi non confirmé. Score conservé localement ; nouvelle tentative automatique après délai.','error');
+    break;
+   }
    if(outcome==='conflict'){
     const message=result.status==='closed-match'?'Match fictif terminé : score local conservé, aucun renvoi automatique.':
      result.status==='missing-match'?'Match fictif introuvable : score local conservé, aucun renvoi automatique.':
