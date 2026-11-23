@@ -17,6 +17,9 @@ const expected=JSON.parse(JSON.stringify(published));
 const candidateMatch=JSON.parse(JSON.stringify(candidate.rules.v2Trials.$tid.matches.$mid));
 const oldDemo=JSON.parse(JSON.stringify(expected.rules.v2Trials.$tid.matches.demo));
 delete expected.rules.v2Trials.$tid.matches.demo;
+// RTDB n'autorise qu'un seul joker de nom : l'ancien $other est absorbé
+// par $mid et son contrôle strict d'identifiant/validation.
+delete expected.rules.v2Trials.$tid.matches.$other;
 expected.rules.v2Trials.$tid.matches.$mid=candidateMatch;
 assert.deepEqual(candidate,expected,'Candidate may modify only the isolated match branch');
 for(const [key,val] of Object.entries(oldDemo)){
