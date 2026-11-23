@@ -23,8 +23,16 @@ delete expected.rules.v2Trials.$tid.matches.$other;
 expected.rules.v2Trials.$tid.matches.$mid=candidateMatch;
 assert.deepEqual(candidate,expected,'Candidate may modify only the isolated match branch');
 for(const [key,val] of Object.entries(oldDemo)){
- if(key!=='.write'&&key!=='.validate')
-  assert.deepEqual(candidateMatch[key],val,'Existing match field validation must remain unchanged: '+key);
+ if(key==='.write'||key==='.validate')continue;
+ if(key==='sets'){
+  // La seule exception à la conservation des champs publiés est ce
+  // plafond de sécurité ajouté aux règles candidates sur émulateur.
+  const expectedSets=JSON.parse(JSON.stringify(val));
+  expectedSets.$set['.validate']+=" && (newData.child('a').val() !== 8 || newData.child('b').val() !== 8)";
+  for(const side of ['a','b'])expectedSets.$set[side]['.validate']=
+   expectedSets.$set[side]['.validate'].replace('<= 99','<= 8');
+  assert.deepEqual(candidateMatch.sets,expectedSets,'Score limit may change only on candidate');
+ }else assert.deepEqual(candidateMatch[key],val,'Existing field must remain unchanged: '+key);
 }
 const id='trial93abcdef1234567890', otherId='trial93otherabcdef123456';
 const seed=uid=>({version:0,status:'playing',sets:{'0':{a:0,b:0}},updatedBy:uid,
@@ -87,7 +95,7 @@ async function main(){
   ]);
   assert.equal((await assertSucceeds(editor.ref(b).once('value'))).val().version,1);
   assert.equal((await assertSucceeds(owner.ref(a).once('value'))).val().version,1);
-  await assertFails(owner.ref(b).set(update(seed('owner93'),'owner93','evtBstale',9,9)),
+  await assertFails(owner.ref(b).set(update(seed('owner93'),'owner93','evtBstale',5,4)),
    'Stale same-match score cannot overwrite');
   await assertFails(editor.ref(a).set(update(seed('owner93'),'editor93','evtAstale',4,2)),
    'Same score with stale version cannot rewrite (client-side receipt only)');
@@ -95,6 +103,11 @@ async function main(){
   await assertFails(editor.ref(b).set({...update(b1,'editor93','evtBAD',6,4),sets:{'0':{a:-1,b:4}}}));
   await assertFails(editor.ref(b).set({...update(b1,'editor93','evtBAD2',6,4),sets:{'0':{a:5.5,b:4}}}));
   await assertFails(editor.ref(b).set({...update(b1,'editor93','evtBAD3',6,4),sets:{'0':{a:5,b:100}}}));
+  await assertFails(editor.ref(b).set(update(b1,'editor93','evtImpossible97',9,7)),
+   '9-7 is not an allowed MILFT score even through direct Firebase write');
+  await assertFails(editor.ref(b).set(update(b1,'editor93','evtImpossible88',8,8)),
+   '8-8 is impossible even in an extended belle');
+
   await assertFails(editor.ref(b).set({...update(b1,'editor93','evtBAD4',6,4),sets:{'0':{a:6,b:4,extra:1}}}));
   await assertFails(editor.ref(b).set({...update(b1,'editor93','evtBAD5',6,4),status:'done'}));
   await assertFails(editor.ref(b).set({...update(b1,'editor93','evtBAD6',6,4),injected:'bad'}));
@@ -125,6 +138,11 @@ async function main(){
   const lastA=(await assertSucceeds(owner.ref(a).once('value'))).val();
   const lastB=(await assertSucceeds(owner.ref(b).once('value'))).val();
   assert.equal(lastA.version,2);assert.equal(lastB.version,3);
+  const belle=root+'/matches/limitBelle';
+  await assertSucceeds(owner.ref(belle).set(seed('owner93')));
+  await assertSucceeds(owner.ref(belle).set(update(seed('owner93'),'owner93','evtLimit87',8,7)));
+  assert.deepEqual((await assertSucceeds(owner.ref(belle).once('value'))).val().sets['0'],{a:8,b:7});
+
   assert.deepEqual(lastA.sets['0'],{a:7,b:5});
   assert.deepEqual(lastB.sets['0'],{a:6,b:5});
   console.log('OK V2 MAJ93 EMULATOR: candidate multi-match create by owner, concurrent independent scores, strictly per-match version, viewer/editor/revoke, isolated rooms, invalid writes blocked');

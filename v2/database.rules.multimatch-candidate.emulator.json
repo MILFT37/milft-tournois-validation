@@ -43,12 +43,12 @@
             "sets": {
               ".validate": "newData.hasChildren(['0'])",
               "$set": {
-                ".validate": "$set.matches(/^[0-4]$/) && newData.hasChildren(['a','b'])",
+                ".validate": "$set.matches(/^[0-4]$/) && newData.hasChildren(['a','b']) && (newData.child('a').val() !== 8 || newData.child('b').val() !== 8)",
                 "a": {
-                  ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0 && newData.val() <= 99"
+                  ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0 && newData.val() <= 8"
                 },
                 "b": {
-                  ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0 && newData.val() <= 99"
+                  ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0 && newData.val() <= 8"
                 },
                 "$other": {
                   ".validate": false

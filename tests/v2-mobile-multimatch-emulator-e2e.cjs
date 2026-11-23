@@ -136,7 +136,7 @@ async function main(){
   // PC offline on demo, Samsung confirms a different demo score.
   await desktop.locator('#matchSelect').selectOption('demo');
   await pc.setOffline(true);
-  await desktop.locator('#home').fill('9');
+  await desktop.locator('#home').fill('7');
   await desktop.locator('#away').fill('4');
   await desktop.locator('#send').click();
   await desktop.locator('#queue').getByText('1 en attente',{exact:false}).waitFor();
@@ -148,7 +148,7 @@ async function main(){
   await desktop.locator('#score').getByText('8 : 5').waitFor({timeout:20000});
   await desktop.locator('#queue').getByText('1 conflit(s)',{exact:false}).waitFor({timeout:20000});
   assert.match(await desktop.locator('#conflicts').innerText(),/Match demo/);
-  assert.match(await desktop.locator('#conflicts').innerText(),/Score local A 9 : B 4/);
+  assert.match(await desktop.locator('#conflicts').innerText(),/Score local A 7 : B 4/);
   // A conflict in demo must not block courtB.
   await desktop.locator('#matchSelect').selectOption('courtB');
   await desktop.locator('#home').fill('6');
@@ -168,7 +168,13 @@ async function main(){
   // tandis que le PC poursuit demo sans verrou de tournoi.
   await samsung.locator('#matchSelect').selectOption('courtB');
   await phone.setOffline(true);
+  // MAJ95 corrigée : rejet avant l'enregistrement local d'un score 9-7.
   await samsung.locator('#home').fill('9');
+  await samsung.locator('#away').fill('7');
+  await samsung.locator('#send').click();
+  await samsung.locator('#status.error').getByText('Score impossible',{exact:false}).waitFor();
+  await samsung.locator('#queue').getByText('0 en attente',{exact:false}).waitFor();
+  await samsung.locator('#home').fill('8');
   await samsung.locator('#away').fill('7');
   await samsung.locator('#send').click();
   await samsung.locator('#queue').getByText('1 en attente',{exact:false}).waitFor();
@@ -179,20 +185,20 @@ async function main(){
   await desktop.locator('#send').click();
   await desktop.locator('#score').getByText('4 : 3').waitFor({timeout:20000});
   await phone.setOffline(false);
-  await samsung.locator('#score').getByText('9 : 7').waitFor({timeout:20000});
+  await samsung.locator('#score').getByText('8 : 7').waitFor({timeout:20000});
   await samsung.locator('#queue').getByText('0 en attente',{exact:false}).waitFor();
   await samsung.locator('#queue').getByText('0 conflit(s)',{exact:false}).waitFor();
   await samsung.locator('#matchSelect').selectOption('demo');
   await samsung.locator('#score').getByText('4 : 3').waitFor({timeout:20000});
   await desktop.locator('#matchSelect').selectOption('courtB');
-  await desktop.locator('#score').getByText('9 : 7').waitFor({timeout:20000});
+  await desktop.locator('#score').getByText('8 : 7').waitFor({timeout:20000});
   await env.withSecurityRulesDisabled(async ctx=>{
    remote=(await ctx.database(databaseURL).ref('v2Trials/'+room+'/matches').once('value')).val();
   });
   assert.equal(remote.demo.version,3,'PC sends demo during phone outage');
   assert.equal(remote.courtB.version,3,'Samsung resumes courtB after reconnect');
   assert.deepEqual(remote.demo.sets['0'],{a:4,b:3});
-  assert.deepEqual(remote.courtB.sets['0'],{a:9,b:7});
+  assert.deepEqual(remote.courtB.sets['0'],{a:8,b:7});
   assert.equal(remote.demo.updatedBy,uidPc);
   assert.equal(remote.courtB.updatedBy,uidMobile);
 

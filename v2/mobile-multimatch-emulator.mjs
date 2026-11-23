@@ -388,8 +388,14 @@ async function transmit({manual=false}={}){
 async function sendScore(){
  if(!state.match||state.match.status!=='playing'||!state.outbox||!['admin','editor'].includes(state.role)||!state.user||state.enqueuing||state.sending)return;
  const rawA=$('home').value.trim(),rawB=$('away').value.trim();
- if(!/^\d{1,2}$/.test(rawA)||!/^\d{1,2}$/.test(rawB)){status('Buts invalides : renseigner les deux scores entiers de 0 à 99.','error');return;}
+ if(!/^\d{1,2}$/.test(rawA)||!/^\d{1,2}$/.test(rawB)){status('Buts invalides : saisir deux nombres entiers (0 à 8).','error');return;}
  const a=Number(rawA),b=Number(rawB);
+ // Plafond de sécurité commun : aucune manche MILFT au-dessus de 8,
+ // 8-8 non autorisé. Validation selon format à ajouter ultérieurement.
+ if(a>8||b>8||(a===8&&b===8)){
+  status('Score impossible : aucun camp ne peut dépasser 8 buts et 8–8 est interdit. Vérifier le format de la manche.','error');
+  return;
+ }
  // Le numéro de génération et la portée empêchent un acquittement tardif de
  // modifier l'interface d'une autre salle ou d'un autre compte Google.
  const outbox=state.outbox,scope=state.scope,uid=state.user.uid,generation=state.roomGeneration;
