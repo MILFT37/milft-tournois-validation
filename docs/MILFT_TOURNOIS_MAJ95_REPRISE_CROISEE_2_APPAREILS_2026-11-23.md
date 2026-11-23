@@ -19,4 +19,14 @@ Le test **physique** Samsung/PC avec deux comptes Google distincts reste à effe
 **Action utilisateur : aucune.**
 
 ## Clôture
-**En cours — attendre la vérification GitHub Actions MAJ94 déclenchée par la modification du test E2E.**
+**MAJ95 VALIDÉE SUR ÉMULATEURS — 23 novembre 2026. Pas de déploiement Firebase réel.**
+
+- Commit du test étendu et de la feuille de route : `993307c43dbddcf8fc9c6876f950bca41ca0f818`.
+- Workflow **V2.0 — MAJ94 interface multi-match sur émulateurs isolés**, exécution GitHub Actions `45156762148` : **SUCCESS**.
+- Parcours MAJ94 conservé : deux identités et deux matchs simultanés, PC hors connexion, conflit sur `demo`, maintien des écritures sur `courtB`, contrôle des rôles et révocation.
+- Parcours MAJ95 ajouté et validé : **Samsung hors connexion sur `courtB`**, PC toujours actif sur `demo`, puis reconnexion. Résultats confirmés `courtB=9–7` et `demo=4–3`, versions indépendantes toutes deux à 3.
+- **Convergence même résultat** : Samsung prépare `demo=5–5` hors connexion, PC confirme `5–5`. À la reconnexion, brouillon Samsung acquitté sans doublon, version de `demo` restant à 4 et auteur PC conservé. `courtB` demeure inchangé.
+- Modifications limitées au **test E2E** et à cette feuille de route. Interface publique, règles Firebase réelles/candidates, IndexedDB, production V1.1, championnats et archives Google Drive **inchangés**. Tests antérieurs sur fichiers inchangés non répétés manuellement.
+- Le vrai essai inter-appareils sur deux appareils physiques et deux comptes Google distincts **reste à effectuer** ; il n'est pas remplacé par la simulation.
+- **Aucune action Samsung nécessaire maintenant.** Firebase Spark gratuit maintenu.
+- **Reprise MAJ96 :** analyser plus profondément les cas de rechargement navigateur, brouillons distincts par match et éventuel acquittement tardif, toujours sous émulateurs, avant toute demande séparée d'autorisation pour publier de nouvelles règles sur Firebase réel.
