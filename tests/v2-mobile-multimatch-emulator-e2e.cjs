@@ -99,7 +99,28 @@ async function main(){
   await desktop.locator('#away').fill('6');
   await Promise.all([samsung.locator('#send').click(),desktop.locator('#send').click()]);
   await samsung.locator('#score').getByText('5 : 3').waitFor({timeout:20000});
-  await desktop.locator('#score').getByText('7 : 6').waitFor({timeout:20000});
+  try{
+   await desktop.locator('#score').getByText('7 : 6').waitFor({timeout:16000});
+  }catch(error){
+   const diagnostic=await desktop.evaluate(async()=>{
+    const db=await MILFTV2Outbox.open({indexedDB,dbName:'MILFT_V2_MULTIMATCH_EMULATOR_20261123'});
+    const scope={tournamentId:document.getElementById('trialId').value,
+      actorId:document.getElementById('who').value,
+      deviceId:localStorage.getItem('MILFT_V2_MULTI_EMULATOR_DEVICE_ID')};
+    const list=await db.list(scope);db.close();
+    return {role:document.getElementById('role').textContent,
+      active:document.getElementById('matchSelect').value,
+      score:document.getElementById('score').textContent,
+      status:document.getElementById('status').textContent,
+      queue:document.getElementById('queue').textContent,
+      events:list.map(x=>({match:x.command.matchId,state:x.state,reason:x.reason,version:x.command.expectedVersion}))};
+   });
+   let remoteDiagnostic;
+   await env.withSecurityRulesDisabled(async ctx=>{
+    remoteDiagnostic=(await ctx.database(databaseURL).ref('v2Trials/'+room+'/matches').once('value')).val();
+   });
+   throw new Error('MAJ94 second-match diagnostic '+JSON.stringify({diagnostic,remoteDiagnostic,errors}),{cause:error});
+  }
   await samsung.locator('#queue').getByText('0 en attente',{exact:false}).waitFor();
   await desktop.locator('#queue').getByText('0 en attente',{exact:false}).waitFor();
   assert.match(await desktop.locator('#matchQueue').innerText(),/courtB/);
