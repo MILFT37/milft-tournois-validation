@@ -15,8 +15,8 @@ Commit `dedf9529ffab6fff17ac47628aebdec9ec4c543c`.
 - Extension du test E2E Samsung/PC avec `Storage.prototype.setItem` défaillant uniquement sur les clés fictives de brouillons : l'utilisateur reste sur le match pendant l'échec, puis récupère un brouillon fiable quand le stockage redevient disponible.
 
 ## Vérifications ciblées
-- Workflow émulateur E2E `45164963584` : déclenché.
-- Workflow simulation partage isolée `45164963604` : déclenché.
+- Workflow émulateur E2E `45164963584` : **SUCCESS**.
+- Workflow simulation partage isolée `45164963604` : **SUCCESS**.
 - Aucune reprise manuelle des tests acquis sur code inchangé.
 
 ## Protections impératives
@@ -25,5 +25,13 @@ Commit `dedf9529ffab6fff17ac47628aebdec9ec4c543c`.
 - Test physique à deux appareils et deux comptes Google distincts toujours non effectué.
 - Aucune intervention requise depuis le Samsung.
 
-## Suite
-Contrôler les deux workflows et corriger tout défaut identifié ; consigner les commits et exécutions avant clôture. Ne jamais déclarer la MAJ98 validée si le E2E est en échec.
+## Clôture MAJ98 — 23 novembre 2026
+**MAJ98 VALIDÉE SUR ÉMULATEURS UNIQUEMENT.**
+- Code et tests : `dedf9529ffab6fff17ac47628aebdec9ec4c543c`.
+- Validation des fonctions de stockage et parcours E2E multi-match sur Firebase Emulator : **`45164963584` SUCCESS**.
+- Validation de la simulation partage V2 isolée : **`45164963604` SUCCESS**.
+- L'interface refuse le changement de match, de salle et la déconnexion pendant une saisie locale non sauvegardée. Après restauration du stockage, l'édition peut être sauvée puis transmise.
+- Les scénarios unitaires vérifient la séparation entre salles, comptes, appareils et matchs, les jetons périmés, les échecs de lecture, écriture et suppression, et la non-suppression des enregistrements corrompus.
+- **Aucun changement des règles Firebase réelles ou candidates ; aucune intervention Samsung.**
+- **Reprise MAJ99** : approfondir les doubles onglets/rechargements concurrents, vérifier le refus d'une saisie éditable lorsque l'appareil passe en lecture seule et renforcer les chemins où une confirmation arrive après changement de match.
+
