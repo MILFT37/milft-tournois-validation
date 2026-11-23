@@ -28,6 +28,13 @@ Conserver les chiffres **simplement saisis, mais pas encore placés dans la file
 - Workflow simulation partage V2 : `45162107588`, **en cours** au relevé initial.
 - La clôture nécessite **SUCCESS** des deux exécutions concernées ; les autres règles candidates MAJ96 restent inchangées.
 
+## Retours des premières exécutions
+- `45162107588` : **SUCCESS**, simulation partage sur les fichiers modifiés (le code officiel V1.1 reste absent du périmètre).
+- `45162107732` : **FAILURE** après parcours avancé, assertion E2E trop précoce : le nettoyage du brouillon doit être observé *après* l'acquittement de son insertion dans IndexedDB. Correction du test `c7567dd0`.
+- `45162357131` : **FAILURE** après validation des nouveaux scénarios de brouillons (le parcours a atteint le contrôle final des droits). Après rechargement de la page propriétaire, le formulaire `invited` ne contenait plus l'UID du PC : l'ancien test de déclassement en lecture seule ciblait un UID vide. Correction du test `6795a281`, avec remplissage explicite de l'UID.
+- `45162686681` : relance du parcours E2E après correction ; **en attente de résultat**.
+- Aucun accès aux données ou aux comptes réels ; aucune publication Firebase.
+
 ## Sécurité / exclusions
 - **Firebase réel, Firebase Spark, règles publiées, production V1.1, site public, tournois, championnats et archives Google Drive inchangés**.
 - Aucune intégration prématurée à l'application officielle.
