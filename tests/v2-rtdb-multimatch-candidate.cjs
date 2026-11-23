@@ -59,7 +59,7 @@ async function main(){
   await assertFails(editor.ref(b).set(seed('editor93')),'Editor cannot create a match');
   await assertFails(viewer.ref(b).set(seed('viewer93')),'Viewer cannot create');
   await assertFails(stranger.ref(b).set(seed('stranger93')));
-  await assertFails(owner.ref(root+'/matches/invalid.match').set(seed('owner93')),'Invalid match ID');
+  await assertFails(owner.ref(root+'/matches/match é').set(seed('owner93')),'Invalid match ID');
   await assertFails(owner.ref(b).set({...seed('owner93'),version:1}),'Seed must have version 0');
   await assertFails(owner.ref(b).set({...seed('owner93'),status:'done'}),'Seed must be playing');
   await assertFails(owner.ref(b).set({...seed('owner93'),sets:{'0':{a:5,b:3}}}),'No unconfirmed score injection at seed');
