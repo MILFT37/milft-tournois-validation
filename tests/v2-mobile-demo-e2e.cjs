@@ -201,6 +201,27 @@ async function main(){
   await pageA.locator('#score').getByText('8 : 6').waitFor({timeout:20000});
   await restored.locator('#queue').getByText('0 en attente',{exact:false}).waitFor();
   assert.equal(await pageA.locator('#score').innerText(),'8 : 6');
+  // MAJ77 : changement de droits à chaud sans que l'invité actualise la page.
+  await pageA.locator('#permission').selectOption('viewer');
+  await pageA.locator('#invite').click();
+  await restored.locator('#role').getByText('Lecture seule').waitFor({timeout:15000});
+  assert.equal(await restored.locator('#send').isDisabled(),true,'Downgrade disables score entry in guest UI');
+  assert.equal(await restored.locator('#retry').isDisabled(),true,'Downgrade disables queue retry');
+  assert.equal(await restored.locator('#score').innerText(),'8 : 6','Viewer still sees authorized score');
+  await pageA.locator('#permission').selectOption('editor');
+  await pageA.locator('#invite').click();
+  await restored.locator('#role').getByText('Autorisé à saisir').waitFor({timeout:15000});
+  assert.equal(await restored.locator('#send').isEnabled(),true,'Editor permission restored dynamically');
+  // Révocation en direct : plus d'accès à l'écran score sans rafraîchissement.
+  await pageA.locator('#revoke').click();
+  await pageA.locator('#status.good').getByText('Accès révoqué',{exact:false}).waitFor();
+  assert.match(await pageA.locator('#inviteNotice').innerText(),/Accès révoqué/,'Revocation feedback visible next to controls');
+  await restored.locator('#demo').waitFor({state:'hidden',timeout:15000});
+  assert.match(await restored.locator('#status.error').innerText(),/Accès retiré/,'Guest sees immediate revocation');
+  assert.equal(await restored.locator('#copyLink').isDisabled(),true,'Revoked guest has no sharing controls');
+  assert.equal(await restored.locator('#copyConflicts').isDisabled(),true,'Revoked guest cannot export stale conflicts');
+  assert.equal(await restored.locator('#conflicts').innerText(),'','Revocation clears old local drafts from screen');
+  assert.equal(await restored.locator('#score').innerText(),'— : —','Revocation redacts old score in DOM');
   // MAJ92 : deux appareils saisissent le MÊME résultat.
   // Le deuxième acquitte son brouillon sans augmenter la version distante.
   await pageA.locator('#create').click();
@@ -235,27 +256,6 @@ async function main(){
   assert.equal(acceptedSame.version,1,'Same score must be acknowledged, not re-sent');
   assert.deepEqual(acceptedSame.sets['0'],{a:5,b:3});
   assert.equal(acceptedSame.updatedBy,uidA,'Owner confirmed score must not be rewritten by guest');
-  // MAJ77 : changement de droits à chaud sans que l'invité actualise la page.
-  await pageA.locator('#permission').selectOption('viewer');
-  await pageA.locator('#invite').click();
-  await restored.locator('#role').getByText('Lecture seule').waitFor({timeout:15000});
-  assert.equal(await restored.locator('#send').isDisabled(),true,'Downgrade disables score entry in guest UI');
-  assert.equal(await restored.locator('#retry').isDisabled(),true,'Downgrade disables queue retry');
-  assert.equal(await restored.locator('#score').innerText(),'8 : 6','Viewer still sees authorized score');
-  await pageA.locator('#permission').selectOption('editor');
-  await pageA.locator('#invite').click();
-  await restored.locator('#role').getByText('Autorisé à saisir').waitFor({timeout:15000});
-  assert.equal(await restored.locator('#send').isEnabled(),true,'Editor permission restored dynamically');
-  // Révocation en direct : plus d'accès à l'écran score sans rafraîchissement.
-  await pageA.locator('#revoke').click();
-  await pageA.locator('#status.good').getByText('Accès révoqué',{exact:false}).waitFor();
-  assert.match(await pageA.locator('#inviteNotice').innerText(),/Accès révoqué/,'Revocation feedback visible next to controls');
-  await restored.locator('#demo').waitFor({state:'hidden',timeout:15000});
-  assert.match(await restored.locator('#status.error').innerText(),/Accès retiré/,'Guest sees immediate revocation');
-  assert.equal(await restored.locator('#copyLink').isDisabled(),true,'Revoked guest has no sharing controls');
-  assert.equal(await restored.locator('#copyConflicts').isDisabled(),true,'Revoked guest cannot export stale conflicts');
-  assert.equal(await restored.locator('#conflicts').innerText(),'','Revocation clears old local drafts from screen');
-  assert.equal(await restored.locator('#score').innerText(),'— : —','Revocation redacts old score in DOM');
   // MAJ78 : l'ouverture ancienne, retardée artificiellement, ne reprend pas la main.
   await pageA.evaluate(id=>{window.__milftHoldOwnerFor=id;},trial);
   await pageA.locator('#trialId').fill(trial);
