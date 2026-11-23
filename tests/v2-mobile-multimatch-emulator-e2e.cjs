@@ -503,7 +503,7 @@ async function main(){
   await reconnectTab.locator('#score').getByText('5 : 3').waitFor({timeout:20000});
   await reconnectTab.locator('#queue').getByText('0 en attente',{exact:false}).waitFor({timeout:20000});
   // Un conflit ancien sur demo reste volontairement conservé : vérifier uniquement reconnect102.
-  assert((await reconnectTab.locator('#matchQueue').innerText()).includes('reconnect102 : 0 en attente, 0 en cours, 0 conflit(s)'), 'No conflict introduced on reconnect102');
+  await reconnectTab.locator('#matchQueue').getByText('reconnect102 : 0 en attente, 0 en cours, 0 conflit(s)',{exact:false}).waitFor({timeout:20000});
   await env.withSecurityRulesDisabled(async ctx=>{
    remote=(await ctx.database(databaseURL).ref('v2Trials/'+room+'/matches/reconnect102').once('value')).val();
   });
