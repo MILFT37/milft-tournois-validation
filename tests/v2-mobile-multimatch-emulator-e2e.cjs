@@ -163,6 +163,62 @@ async function main(){
   assert.deepEqual(remote.demo.sets['0'],{a:8,b:5});
   assert.equal(remote.courtB.version,2);
   assert.deepEqual(remote.courtB.sets['0'],{a:6,b:4});
+
+  // MAJ95 : panne dans l'autre sens. Le Samsung conserve courtB hors ligne
+  // tandis que le PC poursuit demo sans verrou de tournoi.
+  await samsung.locator('#matchSelect').selectOption('courtB');
+  await phone.setOffline(true);
+  await samsung.locator('#home').fill('9');
+  await samsung.locator('#away').fill('7');
+  await samsung.locator('#send').click();
+  await samsung.locator('#queue').getByText('1 en attente',{exact:false}).waitFor();
+  assert.match(await samsung.locator('#matchQueue').innerText(),/courtB : 1 en attente/);
+  await desktop.locator('#matchSelect').selectOption('demo');
+  await desktop.locator('#home').fill('4');
+  await desktop.locator('#away').fill('3');
+  await desktop.locator('#send').click();
+  await desktop.locator('#score').getByText('4 : 3').waitFor({timeout:20000});
+  await phone.setOffline(false);
+  await samsung.locator('#score').getByText('9 : 7').waitFor({timeout:20000});
+  await samsung.locator('#queue').getByText('0 en attente',{exact:false}).waitFor();
+  await samsung.locator('#queue').getByText('0 conflit(s)',{exact:false}).waitFor();
+  await samsung.locator('#matchSelect').selectOption('demo');
+  await samsung.locator('#score').getByText('4 : 3').waitFor({timeout:20000});
+  await desktop.locator('#matchSelect').selectOption('courtB');
+  await desktop.locator('#score').getByText('9 : 7').waitFor({timeout:20000});
+  await env.withSecurityRulesDisabled(async ctx=>{
+   remote=(await ctx.database(databaseURL).ref('v2Trials/'+room+'/matches').once('value')).val();
+  });
+  assert.equal(remote.demo.version,3,'PC sends demo during phone outage');
+  assert.equal(remote.courtB.version,3,'Samsung resumes courtB after reconnect');
+  assert.deepEqual(remote.demo.sets['0'],{a:4,b:3});
+  assert.deepEqual(remote.courtB.sets['0'],{a:9,b:7});
+  assert.equal(remote.demo.updatedBy,uidPc);
+  assert.equal(remote.courtB.updatedBy,uidMobile);
+
+  // MAJ95 : même score déposé par les deux appareils. Le brouillon local
+  // est acquitté sans changer la version ni l'auteur confirmé sur PC.
+  await phone.setOffline(true);
+  await samsung.locator('#home').fill('5');
+  await samsung.locator('#away').fill('5');
+  await samsung.locator('#send').click();
+  await samsung.locator('#queue').getByText('1 en attente',{exact:false}).waitFor();
+  await desktop.locator('#matchSelect').selectOption('demo');
+  await desktop.locator('#home').fill('5');
+  await desktop.locator('#away').fill('5');
+  await desktop.locator('#send').click();
+  await desktop.locator('#score').getByText('5 : 5').waitFor({timeout:20000});
+  await phone.setOffline(false);
+  await samsung.locator('#score').getByText('5 : 5').waitFor({timeout:20000});
+  await samsung.locator('#queue').getByText('0 en attente',{exact:false}).waitFor();
+  await samsung.locator('#queue').getByText('0 conflit(s)',{exact:false}).waitFor();
+  await env.withSecurityRulesDisabled(async ctx=>{
+   remote=(await ctx.database(databaseURL).ref('v2Trials/'+room+'/matches').once('value')).val();
+  });
+  assert.equal(remote.demo.version,4,'Identical score adds no second version');
+  assert.equal(remote.demo.updatedBy,uidPc,'Existing PC score cannot be overwritten');
+  assert.equal(remote.courtB.version,3,'Other match unaffected');
+  assert.deepEqual(remote.demo.sets['0'],{a:5,b:5});
   await samsung.locator('#permission').selectOption('viewer');
   await samsung.locator('#invite').click();
   await desktop.locator('#role').getByText('Lecture seule').waitFor({timeout:15000});
