@@ -28,4 +28,16 @@
 - **Aucune intervention Samsung** pour cette étape.
 
 ## Clôture
-**Tests GitHub Actions à confirmer**. Inscrire ici commit et verdicts avant de déclarer MAJ94 validée.
+**MAJ94 VALIDÉE SUR ÉMULATEURS — 23 novembre 2026. AUCUN déploiement Firebase réel ni Pages.**
+
+- Commit initial des nouveaux fichiers isolés, test automatisé et workflow : `839ead3417b5eca435c079945484f0aa9aa89554`.
+- Premier test E2E `45154173294` : **FAILURE de test**. Playwright attendait la visibilité d'un élément `option` non visible par définition ; correction du scénario `03c384a24cb12039aa1e412012dd0d15f8ccb830`.
+- Deuxième test `45154463801` : **FAILURE** après création des matchs. Diagnostic ajouté dans le scénario `6c9b28ba7f4af110cf402cc3e883a4e89463152b`.
+- Troisième test `45154789285` : **FAILURE**, cause identifiée : la confirmation asynchrone de création de `courtB` remettait ce match au premier plan après une sélection manuelle de `demo`. Le score 5–3 était donc dirigé vers le mauvais match fictif dans le test. **Correction applicative réelle** `480ec2241a19c466095cbe0870b9e2f271ae2929` : ne plus écraser le match sélectionné pendant la réponse asynchrone.
+- **E2E deux appareils simulés avec Firebase Auth/RTDB Emulator, workflow `45155181901` : SUCCESS.** Deux identités indépendantes, matchs `demo` et `courtB` ; saisies simultanées 5–3 et 7–6 sur leurs matchs respectifs, versions distinctes ; panne réseau du PC, conflit 9–4 contre 8–5 sur `demo` sans écrasement ; `courtB` continue avec 6–4 ; lecture seule, retour des droits et révocation testés.
+- **Simulation de partage V2 préexistante, workflow `45155182052` : SUCCESS.** Tests MAJ75–93 sur composants inchangés non répétés manuellement.
+- Vérification du dépôt après succès : le dernier commit `480ec224` change **uniquement** `v2/mobile-multimatch-emulator.mjs`. Les règles candidates, la démonstration publique `v2/mobile-demo.mjs` et les règles réellement publiées `v2/database.rules.console-v2-only.json` sont inchangées.
+- Le nouveau module `v2/mobile-multimatch-emulator.mjs` et sa page test **ne figurent pas dans la liste de déploiement GitHub Pages**. Le workflow de la MAJ94 ne publie rien vers Firebase réel : il fournit les modules d'authentification et de base **uniquement via un serveur local émulé**.
+- Production V1.1 officielle, tournois, championnats, archives Drive, règles Firebase réelles, comptes et forfait Spark intouchés.
+- **Aucune action sur Samsung.** Test physique avec deux appareils et deux comptes Google distincts encore non effectué.
+- **Reprise recommandée MAJ95 :** renforcer les tests d'aller-retour hors connexion sur plusieurs matchs et préparer une version d'essai compatible avec les règles candidates, toujours **sans publication sur Firebase réel** tant qu'une autorisation séparée n'a pas été donnée.
