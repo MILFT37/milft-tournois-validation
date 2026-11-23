@@ -28,4 +28,15 @@ Préparer et vérifier le partage multi-match entre un Samsung et le PC de la ta
 **Action requise sur Samsung : aucune pour cette MAJ.**
 
 ## Clôture
-**En cours.** Ajouter les commits et verdicts GitHub Actions, sans prétendre que les règles candidates sont déjà en production.
+**MAJ93 VALIDÉE sur émulateur — 23 novembre 2026. Règles réelles NON déployées.**
+
+- Commit initial candidat, tests et workflow dédié : `7d784269c56a46c22d7959b811d4e8b991825730`.
+- **Simulation de partage V2 existante** : workflow `45147237841` — **SUCCESS**, inchangée.
+- Première exécution du nouveau workflow `45147237785` : **FAILURE**, deux jokers RTDB au même niveau (`$other`/`$mid`). Correction dans le fichier candidat uniquement : `94e8134208e4015d397c5828ac3837f11ea37ab0`.
+- Deuxième exécution `45147394389` : **FAILURE d'assertion structurelle du test** : le nouveau joker remplace l'ancien. Correction du test `0dfb398379ddf1af01dd00a6c7a84935e4cd30eb`. Simulation existante `45147394150` : **SUCCESS**.
+- Troisième exécution `45147561637` : **FAILURE du test d'identifiant invalide** : `invalid.match` était refusé directement par le SDK Firebase avant consultation des règles. Correction du seul test avec un chemin admissible par le SDK mais refusé par nos règles : `65ac0ecc3f1488ee928c088fa2915d892dfce748`.
+- **Sécurité multi-match Firebase Emulator — workflow `45147782302` : SUCCESS.** Vérification création de deux matchs fictifs, score indépendant A/B, concurrence/versions périmées, statuts `admin/editor/viewer`, révocation, isolation entre salles, validation des valeurs/IDs, aucune suppression, aucun champ arbitraire ni écriture partielle.
+- **Aucune publication du candidat sur Firebase réel.** Le fichier `v2/database.rules.multimatch-candidate.emulator.json` est un artefact de validation GitHub, utilisé uniquement par le test dédié. `v2/database.rules.console-v2-only.json`, `v2/database.rules.json`, les workflows existants, l'interface V2 et l'application V1.1 sont inchangés. Pas de campagne de tests V1.1 relancée.
+- **Aucune manipulation Samsung** et aucun usage de comptes ou données Firebase réels. Les archives Google Drive et championnats restent préservés. Forfait Spark gratuit maintenu.
+- **Prochaine reprise : MAJ94** — préparation d'un essai d'interface multi-match **sur émulateurs uniquement**, avec sélection explicite du match et test des deux appareils sur matchs distincts ; conserver la V1.1 et demander une autorisation séparée avant tout déploiement de nouvelles règles Firebase réelles.
+
