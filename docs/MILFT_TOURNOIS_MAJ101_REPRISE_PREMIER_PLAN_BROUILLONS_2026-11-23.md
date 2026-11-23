@@ -18,4 +18,14 @@ Aucune modification de la V1.1 officielle, des règles Firebase réelles ou cand
 **Action utilisateur : aucune.**
 
 ## Tests et clôture
-Suivre GitHub Actions sur le commit MAJ101, corriger les éventuels défauts et noter les identifiants d'exécution avant clôture.
+## Clôture MAJ101 — 23 novembre 2026
+**MAJ101 VALIDÉE ET CLÔTURÉE SUR ÉMULATEURS UNIQUEMENT.**
+- Commit initial `8ed5a7db33b09977eb6e3621924af72ea20a3105`.
+- GitHub Actions deux appareils / multi-match E2E `45170600162` : **SUCCESS**.
+- GitHub Actions simulation partage `45170600174` : **SUCCESS**.
+- Le recontrôle à `pageshow` / au retour de visibilité détecte un jeton local remplacé même sans événement `storage` ; l'ancienne saisie reste affichée et bloquée, puis l'utilisateur peut recharger explicitement le brouillon de référence.
+- Comparaison depuis MAJ100 : seuls le module multi-match émulé, son E2E, et ce document sont modifiés.
+- **V1.1, règles Firebase réelles/candidates, données, championnats et archives Drive intacts.**
+- Test physique Samsung/PC avec deux comptes Google distincts toujours non effectué.
+- **MAJ102 proposée :** compléter les cas de restauration et récupération de conflit lors d'une reconnexion avec plusieurs onglets, sans automatisme destructeur.
+- **Action utilisateur : aucune.**
