@@ -332,6 +332,42 @@ async function main(){
   assert.equal(remote.draftB.version,1,'DraftB confirmed exactly once');
   assert.equal(remote.draftB.updatedBy,uidMobile,'DraftB author preserved');
   assert.equal(await desktop.locator('#matchQueue').innerText().then(x=>x.includes('draftB')),true);
+  // MAJ98 : simuler quota localStorage atteint (sans toucher aux vraies données).
+  // Le changement de match/salle et la déconnexion sont bloqués tant que la
+  // dernière édition n'a pas été durablement sauvée.
+  await samsung.locator('#newMatch').fill('storage98');
+  await samsung.locator('#newMatchFormat').selectOption('belle5');
+  await samsung.locator('#createMatch').click();
+  await samsung.locator('#matchSelect').locator('option[value="storage98"]').waitFor({state:'attached'});
+  await samsung.locator('#matchSelect').selectOption('storage98');
+  await samsung.evaluate(()=>{
+    window.__draftStoreSet=Storage.prototype.setItem;
+    Storage.prototype.setItem=function(k,value){
+      if(typeof k==='string'&&k.startsWith('MILFT_V2_MULTI_EMULATOR_DRAFT97_'))throw new DOMException('Quota dépassé','QuotaExceededError');
+      return window.__draftStoreSet.call(this,k,value);
+    };
+  });
+  await samsung.locator('#home').fill('5');
+  await samsung.locator('#away').fill('3');
+  await samsung.locator('#draftNotice').getByText('saisie non sauvegardée',{exact:false}).waitFor();
+  await samsung.locator('#matchSelect').selectOption('draftB');
+  assert.equal(await samsung.locator('#matchSelect').inputValue(),'storage98','Cannot switch with unsaved input');
+  assert.equal(await samsung.locator('#home').inputValue(),'5');
+  await samsung.locator('#create').click();
+  assert.equal(await samsung.locator('#trialId').inputValue(),room,'Cannot create room while data unsaved');
+  await samsung.locator('#signOut').click();
+  assert.equal(await samsung.locator('#who').inputValue(),uidMobile,'Cannot sign out with unsaved input');
+  await samsung.evaluate(()=>{
+    Storage.prototype.setItem=window.__draftStoreSet;
+    delete window.__draftStoreSet;
+  });
+  await samsung.locator('#away').fill('2');
+  await samsung.locator('#draftNotice').getByText('Brouillon non envoyé',{exact:false}).waitFor();
+  await samsung.locator('#matchSelect').selectOption('draftB');
+  await samsung.locator('#matchSelect').selectOption('storage98');
+  assert.equal(await samsung.locator('#away').inputValue(),'2','Recovered draft after quota restored');
+  await samsung.locator('#send').click();
+  await samsung.locator('#score').getByText('5 : 2').waitFor({timeout:20000});
   // Le Samsung et le PC ne doivent jamais partager leurs brouillons non envoyés.
   // Le PC, pour draftB, n'avait ni brouillon ni transmission locale.
   await desktop.locator('#matchSelect').selectOption('draftB');

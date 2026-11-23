@@ -11,6 +11,7 @@ on:
       - 'v2/database.rules.multimatch-candidate.emulator.json'
       - 'firebase.v2.multimatch.emulator.json'
       - 'tests/v2-mobile-multimatch-emulator-e2e.cjs'
+      - 'tests/v2-multimatch-draft-safety.cjs'
       - '.github/workflows/v2-mobile-multimatch-emulator.yml'
   workflow_dispatch:
 permissions:
@@ -37,6 +38,8 @@ jobs:
           node --check tests/v2-mobile-multimatch-emulator-e2e.cjs
           node --check v2/mobile-multimatch-emulator.mjs
           node --check v2/draft-multimatch-emulator.mjs
+          node --check tests/v2-multimatch-draft-safety.cjs
+          node tests/v2-multimatch-draft-safety.cjs
           node -e "const c=require('./firebase.v2.multimatch.emulator.json');if(c.database.rules!=='v2/database.rules.multimatch-candidate.emulator.json')process.exit(1)"
       - name: Deux appareils simulés, deux matchs, conflits, rôles et réseau
         run: npx firebase --config firebase.v2.multimatch.emulator.json --project demo-milft-v2-94 emulators:exec --only auth,database "node tests/v2-mobile-multimatch-emulator-e2e.cjs"
