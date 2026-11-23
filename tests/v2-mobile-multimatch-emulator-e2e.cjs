@@ -448,6 +448,54 @@ async function main(){
   });
   assert.equal(remote.foreground101.version,1);
   assert.deepEqual(remote.foreground101.sets['0'],{a:5,b:3});
+  // MAJ102 : reconnexion simultanée de deux onglets du même PC.
+  // Le second onglet conserve une saisie valide hors connexion ; l'onglet
+  // ancien ne peut ni écraser le stockage ni injecter un deuxième score.
+  await samsung.locator('#newMatch').fill('reconnect102');
+  await samsung.locator('#newMatchFormat').selectOption('belle5');
+  await samsung.locator('#createMatch').click();
+  await desktop.locator('#matchSelect').locator('option[value="reconnect102"]').waitFor({state:'attached'});
+  const reconnectTab=await pc.newPage();
+  reconnectTab.on('pageerror',err=>errors.push(err.message));
+  await reconnectTab.goto(url);
+  await reconnectTab.locator('#rooms').waitFor({state:'visible',timeout:20000});
+  await reconnectTab.locator('#trialId').fill(room);
+  await reconnectTab.locator('#join').click();
+  await reconnectTab.locator('#demo').waitFor({state:'visible',timeout:20000});
+  await reconnectTab.locator('#matchSelect').locator('option[value="reconnect102"]').waitFor({state:'attached'});
+  await desktop.locator('#matchSelect').selectOption('reconnect102');
+  await reconnectTab.locator('#matchSelect').selectOption('reconnect102');
+  await pc.setOffline(true);
+  await desktop.locator('#home').fill('5');
+  await desktop.locator('#away').fill('2');
+  await desktop.locator('#draftNotice').getByText('Brouillon non envoyé',{exact:false}).waitFor();
+  await reconnectTab.locator('#home').fill('5');
+  await reconnectTab.locator('#away').fill('3');
+  await reconnectTab.locator('#draftNotice').getByText('Brouillon non envoyé',{exact:false}).waitFor();
+  await desktop.locator('#draftNotice').getByText('Conflit entre onglets',{exact:false}).waitFor();
+  await reconnectTab.locator('#send').click();
+  await reconnectTab.locator('#queue').getByText('1 en attente',{exact:false}).waitFor();
+  assert.equal(await desktop.locator('#send').isDisabled(),true,'Stale offline tab cannot send');
+  await env.withSecurityRulesDisabled(async ctx=>{
+   remote=(await ctx.database(databaseURL).ref('v2Trials/'+room+'/matches/reconnect102').once('value')).val();
+  });
+  assert.equal(remote.version,0,'Offline score not yet transmitted');
+  await pc.setOffline(false);
+  await reconnectTab.locator('#score').getByText('5 : 3').waitFor({timeout:20000});
+  await reconnectTab.locator('#queue').getByText('0 en attente',{exact:false}).waitFor({timeout:20000});
+  await reconnectTab.locator('#queue').getByText('0 conflit(s)',{exact:false}).waitFor();
+  await env.withSecurityRulesDisabled(async ctx=>{
+   remote=(await ctx.database(databaseURL).ref('v2Trials/'+room+'/matches/reconnect102').once('value')).val();
+  });
+  assert.equal(remote.version,1,'Two tabs resumed: exactly one confirmed event');
+  assert.deepEqual(remote.sets['0'],{a:5,b:3},'Only latest saved draft sent');
+  assert.equal(remote.updatedBy,uidPc,'PC author preserved');
+  await desktop.locator('#draftNotice').getByText('Conflit entre onglets',{exact:false}).waitFor();
+  assert.equal(await desktop.locator('#away').inputValue(),'2','Stale draft remains readable after reconnect');
+  await desktop.locator('#restoreDraft').click();
+  assert.equal(await desktop.locator('#draftNotice').innerText(),'','Explicit recovery clears stale state');
+  await desktop.locator('#score').getByText('5 : 3').waitFor({timeout:20000});
+  await reconnectTab.close();
   // Vérifier aussi la saisie en lecture seule : les valeurs affichées
   // ne peuvent plus être modifiées tant que le propriétaire n'a pas
   // restauré le rôle éditeur (les autres brouillons locaux sont conservés).
