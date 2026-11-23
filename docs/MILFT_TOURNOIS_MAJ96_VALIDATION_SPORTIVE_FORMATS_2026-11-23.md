@@ -30,6 +30,12 @@ Commit initial : `59cf4804284a460d38c9b353b824fbf22fbf17b3`. Corrections ciblée
 - `45160346026` — Règles candidates RTDB : **FAILURE** (première erreur de syntaxe du scénario, corrigée).\n- `45160554055` — Règles candidates RTDB : **FAILURE** (bloc de test dupliqué, supprimé).\n- `45160695666` — Règles candidates RTDB : **SUCCESS**, validation côté serveur des quatre formats sportifs, sans Firebase réel.
 - `45160346119` — Deux navigateurs simulés E2E : **FAILURE** (premier score non confirmé, diagnostic ajouté).\n- `45160721731` — Deux navigateurs simulés E2E : **EN COURS** au moment du présent relevé.
 
+## Diagnostic et correction du stockage local (suite MAJ96)
+- E2E `45160721731` : **FAILURE** au premier score, mais diagnostic détaillé : les deux matchs restaient à 0–0 et chacun conservait un brouillon en conflit ; les formats étaient bien présents sur RTDB.
+- Cause vérifiée dans le code : le normaliseur générique `v2/outbox-idb.js` retire tous les champs inconnus et ne conservait pas `command.format`. L'émetteur refusait donc légitimement une commande privée de son format sportif.
+- Correctif `965e90ed` : création d'une **copie isolée** `v2/outbox-multimatch-emulator.js` qui exige et conserve le format sportif, sans modifier `v2/outbox-idb.js` déjà utilisé par le prototype public. HTML et workflow d'émulation ajustés ; aucun fichier de publication V1.1 modifié.
+- Workflows déclenchés : `45161011854` (E2E multi-match), `45161012014` (simulation partage) : état à contrôler.
+
 ## Suite
 1. Contrôler les deux workflows ciblés et corriger le cas échéant, sans retoucher V1.1 ni Firebase réel.
 2. Étendre le contrôle des brouillons distincts par match et des acquittements tardifs lors des rechargements navigateur, uniquement si un scénario non couvert apparaît.
