@@ -99,7 +99,28 @@ async function main(){
   await desktop.locator('#home').fill('5');
   await desktop.locator('#away').fill('3');
   await Promise.all([samsung.locator('#send').click(),desktop.locator('#send').click()]);
-  await samsung.locator('#score').getByText('5 : 3').waitFor({timeout:20000});
+  try{await samsung.locator('#score').getByText('5 : 3').waitFor({timeout:15000});}
+  catch(e){
+    const phoneDetails=await samsung.evaluate(()=>({
+      score:document.getElementById('score').textContent,
+      format:document.getElementById('matchFormat').textContent,
+      status:document.getElementById('status').textContent,
+      queue:document.getElementById('queue').textContent,
+      match:document.getElementById('matchSelect').value
+    }));
+    const pcDetails=await desktop.evaluate(()=>({
+      score:document.getElementById('score').textContent,
+      format:document.getElementById('matchFormat').textContent,
+      status:document.getElementById('status').textContent,
+      queue:document.getElementById('queue').textContent,
+      match:document.getElementById('matchSelect').value
+    }));
+    let remote;
+    await env.withSecurityRulesDisabled(async c=>{
+      remote=(await c.database(databaseURL).ref('v2Trials/'+room+'/matches').once('value')).val();
+    });
+    throw new Error('MAJ96 premier score diagnostic '+JSON.stringify({phoneDetails,pcDetails,remote,errors}),{cause:e});
+  }
   try{
    await desktop.locator('#score').getByText('5 : 3').waitFor({timeout:16000});
   }catch(error){
