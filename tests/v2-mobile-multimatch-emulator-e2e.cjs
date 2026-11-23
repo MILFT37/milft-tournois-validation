@@ -37,7 +37,7 @@ async function main(){
   ['/v2/multimatch-emulator-config-test-only.mjs',cfg]
  ]);
  const allow=new Set(['/v2/mobile-multimatch-emulator.html',
-  '/v2/mobile-multimatch-emulator.mjs','/v2/score-formats-emulator.mjs','/v2/outbox-idb.js']);
+  '/v2/mobile-multimatch-emulator.mjs','/v2/score-formats-emulator.mjs','/v2/outbox-multimatch-emulator.js']);
  const server=http.createServer((req,res)=>{
   const url=new URL(req.url,'http://127.0.0.1'),name=url.pathname;
   if(routes.has(name)){res.writeHead(200,{'Content-Type':'text/javascript','Cache-Control':'no-store'}).end(routes.get(name));return;}

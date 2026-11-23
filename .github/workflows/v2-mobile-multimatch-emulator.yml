@@ -5,7 +5,8 @@ on:
     paths:
       - 'v2/mobile-multimatch-emulator.html'
       - 'v2/mobile-multimatch-emulator.mjs'
-      - 'v2/outbox-idb.js'
+      - 'v2/outbox-multimatch-emulator.js'
+      - 'v2/score-formats-emulator.mjs'
       - 'v2/database.rules.multimatch-candidate.emulator.json'
       - 'firebase.v2.multimatch.emulator.json'
       - 'tests/v2-mobile-multimatch-emulator-e2e.cjs'
