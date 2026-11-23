@@ -503,7 +503,18 @@ async function main(){
   await reconnectTab.locator('#score').getByText('5 : 3').waitFor({timeout:20000});
   await reconnectTab.locator('#queue').getByText('0 en attente',{exact:false}).waitFor({timeout:20000});
   // Un conflit ancien sur demo reste volontairement conservé : vérifier uniquement reconnect102.
-  await reconnectTab.locator('#matchQueue').getByText('reconnect102 : 0 en attente, 0 en cours, 0 conflit(s)',{exact:false}).waitFor({timeout:20000});
+  // Contrôler la file persistante directement plutôt que l'affichage dérivé,
+  // qui peut être en retard par rapport à l'acquittement du match.
+  await reconnectTab.waitForFunction(async()=>{
+    const db=await window.MILFTV2Outbox.open({indexedDB,dbName:'MILFT_V2_MULTIMATCH_EMULATOR_20261123'});
+    try{
+      const scope={tournamentId:document.querySelector('#trialId').value,
+        actorId:document.querySelector('#who').value,
+        deviceId:localStorage.getItem('MILFT_V2_MULTI_EMULATOR_DEVICE_ID')};
+      const items=(await db.list(scope)).filter(x=>x.command.matchId==='reconnect102');
+      return items.length>0&&!items.some(x=>['pending','sending','conflict','blocked'].includes(x.state));
+    }finally{db.close();}
+  },null,{timeout:20000});
   await env.withSecurityRulesDisabled(async ctx=>{
    remote=(await ctx.database(databaseURL).ref('v2Trials/'+room+'/matches/reconnect102').once('value')).val();
   });
