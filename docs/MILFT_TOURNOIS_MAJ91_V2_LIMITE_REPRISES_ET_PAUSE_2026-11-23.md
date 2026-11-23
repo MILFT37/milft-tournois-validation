@@ -52,5 +52,14 @@ C'est inutile, notamment avec un forfait Firebase Spark gratuit.
 - **Aucune manipulation demandée sur Samsung pour MAJ91.**
 
 ## Clôture
-**En cours** — consigner les commits, runs Actions, verdicts et
-publication avant validation finale.
+**MAJ91 VALIDÉE et publiée — 23 novembre 2026.**
+
+- Commit application, file IndexedDB, nouveaux tests et feuille de route : `ecd5265379da3e5d4823ffdf1c15d87990a9822e`.
+- **Simulation partage V2** : GitHub Actions `45140197467` — **SUCCESS**.
+- **Interface Chromium et Safari/WebKit** : `45140197548` — **SUCCESS**.
+- **IndexedDB Chromium et WebKit** : `45140197528` — **SUCCESS**. Huit échecs puis pause persistante après rechargement, FIFO strict, reprise manuelle avec l'ID inchangé et libération de la commande suivante.
+- **Deux Android simulés avec Firebase Auth et Realtime Database émulés** : `45140197480` — **SUCCESS**. Le huitième échec du score 5–3 suspend les renvois automatiques ; la commande survit à la réouverture et n'est confirmée qu'après un clic explicite, version distante 1, aucun doublon.
+- **GitHub Pages et vérification des fichiers publics** : `45140197543` — **SUCCESS**. Publication du prototype isolé confirmée.
+- Production officielle `MILFT37/milft-tournois` V1.1, tournois/championnats réels et archives Drive inchangés. Règles Firebase, données réelles, forfait Spark gratuit et comptes Google inchangés.
+- **Aucune manipulation nécessaire sur Samsung**. Test inter-appareils physiques avec deux comptes Google différents toujours non réalisé.
+- **Prochaine reprise : MAJ92** depuis ce document ; préserver les acquis et ne pas intégrer prématurément le prototype à l'application officielle.
