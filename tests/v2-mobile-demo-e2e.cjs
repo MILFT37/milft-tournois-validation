@@ -201,6 +201,40 @@ async function main(){
   await pageA.locator('#score').getByText('8 : 6').waitFor({timeout:20000});
   await restored.locator('#queue').getByText('0 en attente',{exact:false}).waitFor();
   assert.equal(await pageA.locator('#score').innerText(),'8 : 6');
+  // MAJ92 : deux appareils saisissent le MÊME résultat.
+  // Le deuxième acquitte son brouillon sans augmenter la version distante.
+  await pageA.locator('#create').click();
+  await pageA.waitForFunction(previous=>document.getElementById('trialId').value!==previous,trial);
+  await pageA.locator('#score').getByText('0 : 0').waitFor();
+  const sameTrial=await pageA.locator('#trialId').inputValue();
+  await pageA.locator('#invited').fill(uidB);
+  await pageA.locator('#permission').selectOption('editor');
+  await pageA.locator('#invite').click();
+  await pageA.locator('#status.good').getByText('Utilisateur autorisé',{exact:false}).waitFor();
+  await restored.locator('#trialId').fill(sameTrial);
+  await restored.locator('#join').click();
+  await restored.locator('#role').getByText('Autorisé à saisir').waitFor();
+  await androidB.setOffline(true);
+  await restored.locator('#home').fill('5');
+  await restored.locator('#away').fill('3');
+  await restored.locator('#send').click();
+  await restored.locator('#queue').getByText('1 en attente',{exact:false}).waitFor();
+  await pageA.locator('#home').fill('5');
+  await pageA.locator('#away').fill('3');
+  await pageA.locator('#send').click();
+  await pageA.locator('#score').getByText('5 : 3').waitFor({timeout:15000});
+  await androidB.setOffline(false);
+  await restored.locator('#score').getByText('5 : 3').waitFor({timeout:15000});
+  await restored.locator('#queue').getByText('0 en attente, 0 en cours',{exact:false}).waitFor({timeout:20000});
+  await restored.locator('#queue').getByText('0 conflit(s)',{exact:false}).waitFor();
+  let acceptedSame;
+  await environment.withSecurityRulesDisabled(async ctx=>{
+    acceptedSame=(await ctx.database('https://'+projectId+'-default-rtdb.firebaseio.com')
+      .ref('v2Trials/'+sameTrial+'/matches/demo').once('value')).val();
+  });
+  assert.equal(acceptedSame.version,1,'Same score must be acknowledged, not re-sent');
+  assert.deepEqual(acceptedSame.sets['0'],{a:5,b:3});
+  assert.equal(acceptedSame.updatedBy,uidA,'Owner confirmed score must not be rewritten by guest');
   // MAJ77 : changement de droits à chaud sans que l'invité actualise la page.
   await pageA.locator('#permission').selectOption('viewer');
   await pageA.locator('#invite').click();

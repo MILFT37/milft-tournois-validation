@@ -62,20 +62,28 @@ function syncScore(){
    $('home').value=x?.a??0;$('away').value=x?.b??0;state.draftBaseVersion=null;
  }
 }
+// Les premières opérations de chaque match peuvent avoir des délais distincts.
+ // Le blocage d'un match n'empêche pas la reprise indépendante d'un autre.
+function matchQueueHeads(items){
+ const visited=new Set(),heads=[];
+ for(const item of items){
+  if(!['pending','sending'].includes(item.state)||visited.has(item.command.matchId))continue;
+  visited.add(item.command.matchId);heads.push(item);
+ }
+ return heads;
+}
 // Un bail « sending » ou une erreur réseau temporaire peut survivre à
 // la fermeture du navigateur. La reprise n'anticipe jamais les délais.
 function scheduleLeaseRecovery(items,context,{continueReady=false}={}){
  clearTimeout(state.recoveryTimer);state.recoveryTimer=null;
  if(state.roomGeneration!==context.generation||state.outbox!==context.outbox||
     !navigator.onLine||!['admin','editor'].includes(state.role)||state.sending)return;
- const head=items.find(item=>item.state==='pending'||item.state==='sending');
- if(!head||head.retryPaused===true)return;
- // Après 15 commandes acceptées, continuer automatiquement le lot suivant
- // sans relancer la tête qui attend un bail ou une temporisation réseau.
- const deadline=head.state==='sending'?head.leaseUntil:
-  head.retryAt>0?head.retryAt:continueReady?Date.now():0;
- if(!Number.isFinite(deadline)||deadline<=0)return;
- const ms=Math.max(250,Math.min(300000,deadline-Date.now()+150));
+ const deadlines=matchQueueHeads(items).filter(x=>x.retryPaused!==true).map(x=>
+   x.state==='sending'?x.leaseUntil:
+   x.retryAt>0?x.retryAt:continueReady?Date.now():0
+ ).filter(n=>Number.isFinite(n)&&n>0);
+ if(!deadlines.length)return;
+ const ms=Math.max(250,Math.min(300000,Math.min(...deadlines)-Date.now()+150));
  state.recoveryTimer=setTimeout(()=>{
    state.recoveryTimer=null;
    if(state.roomGeneration!==context.generation||state.outbox!==context.outbox||
@@ -106,11 +114,13 @@ async function refreshQueue({continueReady=false}={}){
  if(state.roomGeneration!==countsFromScope.generation||state.outbox!==countsFromScope.outbox)return;
  const counts={pending:0,sending:0,conflict:0,blocked:0};
  for(const x of items)counts[x.state]=(counts[x.state]||0)+1;
- const head=items.find(x=>x.state==='pending'||x.state==='sending');
- const scheduled=head&&navigator.onLine&&['admin','editor'].includes(state.role)&&
+ const heads=matchQueueHeads(items);
+ const scheduled=navigator.onLine&&['admin','editor'].includes(state.role)&&heads.some(head=>
+   head.retryPaused!==true&&
    ((head.state==='sending'&&head.leaseUntil>Date.now())||
-    (head.state==='pending'&&head.retryAt>Date.now()));
- const moreReady=continueReady&&head?.state==='pending'&&head.retryPaused!==true&&!(head.retryAt>Date.now());
+    (head.state==='pending'&&head.retryAt>Date.now())));
+ const moreReady=continueReady&&heads.some(head=>head.state==='pending'&&
+   head.retryPaused!==true&&!(head.retryAt>Date.now()));
  const paused=items.filter(x=>x.state==='pending'&&x.retryPaused===true).length;
  $('queue').textContent='File locale persistante : '+counts.pending+' en attente, '+counts.sending+' en cours, '+counts.conflict+' conflit(s), '+counts.blocked+' refusé(s)'+
    (scheduled&&!state.sending?' · Reprise automatique après le délai de sécurité':
@@ -141,14 +151,14 @@ async function resumeForeground(){
  try{
   const items=await context.outbox.list(context.scope);
   if(!current()||state.sending)return;
-  const head=items.find(item=>item.state==='pending'||item.state==='sending');
-  if(!head)return;
+  const heads=matchQueueHeads(items);
+  if(!heads.length)return;
   const now=Date.now();
-  if(head.state==='pending'&&head.retryPaused!==true&&!(head.retryAt>now)||
-     head.state==='sending'&&!(head.leaseUntil>now)){
-    void transmit(); // claimNext préserve les verrouillages atomiques IndexedDB
+  if(heads.some(head=>head.state==='pending'&&head.retryPaused!==true&&
+      !(head.retryAt>now)||head.state==='sending'&&!(head.leaseUntil>now))){
+    void transmit(); // claimNext préserve le FIFO atomique par match
   }else{
-    await refreshQueue(); // préparer la reprise à l'échéance, sans anticiper
+    await refreshQueue(); // chaque match attend uniquement son propre délai
   }
  }catch(e){
   if(current())status('Vérification de la reprise au premier plan impossible : '+errorText(e),'error');
@@ -238,8 +248,17 @@ async function execute(command){
   const result=await api.runTransaction(reference,match=>{
    if(!match||typeof match!=='object'){stateCode='missing-match';return;}
    if(match.lastEventId===command.id){stateCode=match.lastEventFingerprint===fp?'duplicate':'id-collision';return;}
-   if(match.version!==command.expectedVersion){stateCode='conflict';return;}
    if(match.status!=='playing'){stateCode='closed-match';return;}
+   if(match.version!==command.expectedVersion){
+    // Deux appareils peuvent saisir le MÊME résultat pendant une coupure.
+    // Le score distant est déjà identique : acquitter la copie locale sans
+    // augmenter la version ni réécrire le match (aucun écrasement).
+    const score=match.sets?.[String(command.setIndex)];
+    stateCode=match.version>command.expectedVersion&&
+      score?.a===command.goals.a&&score?.b===command.goals.b?
+      'already-same-score':'conflict';
+    return;
+   }
    const updated={...match,sets:{...match.sets,[String(command.setIndex)]:command.goals},version:match.version+1,
      updatedBy:uid,lastEventId:command.id,lastEventFingerprint:fp};
    stateCode='proposed';return updated;
@@ -267,7 +286,8 @@ async function transmit({manual=false}={}){
    processed++;
    if(!sameRoom()||!['admin','editor'].includes(state.role))break;
    const result=await execute(item.command);
-   const outcome=result.status==='applied'||result.status==='duplicate'?result.status:
+   const outcome=result.status==='applied'||result.status==='duplicate'||result.status==='already-same-score'?
+    result.status==='already-same-score'?'duplicate':result.status:
     ['conflict','closed-match','missing-match','invalid-transition'].includes(result.status)?'conflict':
     result.status==='forbidden'||result.status==='id-collision'?'forbidden':'temporary-error';
    const pauseRetry=outcome==='temporary-error'&&item.attempts>=8;
@@ -279,7 +299,7 @@ async function transmit({manual=false}={}){
     status(pauseRetry?
       'Échecs réseau répétés (8 tentatives). Score conservé localement ; envoi automatique en pause. Utiliser Renvoyer lorsque la connexion est rétablie.':
       'Envoi non confirmé. Score conservé localement ; nouvelle tentative automatique après délai.','error');
-    break;
+    continue; // MAJ92 : un autre match prêt peut avancer malgré cette panne.
    }
    if(outcome==='conflict'){
     const message=result.status==='closed-match'?'Match fictif terminé : score local conservé, aucun renvoi automatique.':
@@ -288,7 +308,10 @@ async function transmit({manual=false}={}){
     status(message,'error');
    }
    if(outcome==='forbidden'){status('Accès refusé. Brouillon conservé, aucune modification distante.','error');break;}
-   if(saved.status==='confirmed')status('Score fictif confirmé par Firebase.','good');
+   if(saved.status==='confirmed')status(
+    result.status==='already-same-score'?
+      'Score déjà partagé par un autre appareil : brouillon local acquitté sans modifier Firebase.':
+      'Score fictif confirmé par Firebase.','good');
   }
  }catch(e){if(sameRoom())status('Erreur de file locale : '+errorText(e)+' — aucune suppression automatique','error');}
  finally{

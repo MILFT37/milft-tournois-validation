@@ -362,7 +362,67 @@ async function main(){
   assert.equal(resumed91.nextId,'evt91second');
   assert.equal(resumed91.ack2,'confirmed');
   assert.equal(resumed91.remaining,0,'No draft lost after explicit recovery');
-  console.log('OK V2 MAJ91 '+engine.name+': capped retries, persistent pause, manual resume and FIFO');
+  // MAJ92 : le même tournoi peut contenir des opérations indépendantes
+  // pour plusieurs matchs. La panne d'un match ne bloque pas l'autre,
+  // même avec bail actif, pause persistante et dépendance locale.
+  const independent=await reopened.evaluate(async()=>{
+    const db=await MILFTV2Outbox.open({indexedDB});
+    const s={tournamentId:'trial92multi',actorId:'samsung92',deviceId:'phone92'};
+    const mk=(id,matchId,a)=>({...s,id,matchId,type:'set.record',
+      expectedVersion:0,setIndex:0,goals:{a,b:1}});
+    await db.enqueue(s,mk('evt92A1','matchA',2),120000,{chainLocalScore:true});
+    await db.enqueue(s,mk('evt92A2','matchA',3),120001,{chainLocalScore:true});
+    await db.enqueue(s,mk('evt92B1','matchB',4),120002,{chainLocalScore:true});
+    const a=await db.claimNext(s,{now:120100,leaseMs:2000});
+    const bWhileALeased=await db.claimNext(s,{now:120101,leaseMs:2000});
+    const blocked=await db.claimNext(s,{now:120102,leaseMs:2000});
+    const doneB=await db.finish(s,bWhileALeased.command.id,bWhileALeased.leaseToken,'applied',{now:120103});
+    const pauseA=await db.finish(s,a.command.id,a.leaseToken,'temporary-error',
+      {now:120104,pauseRetry:true,reason:'network match A'});
+    const newB=await db.enqueue(s,mk('evt92B2','matchB',5),120105,{chainLocalScore:true});
+    const bAgain=await db.claimNext(s,{now:120106,leaseMs:2000});
+    const ackB=await db.finish(s,bAgain.command.id,bAgain.leaseToken,'applied',{now:120107});
+    const paused=await db.claimNext(s,{now:120108,leaseMs:2000});
+    const entries=(await db.list(s)).map(x=>({id:x.command.id,state:x.state,
+      version:x.command.expectedVersion,dependsOn:x.dependsOn}));
+    db.close();return {a:a.command.id,bWhileALeased:bWhileALeased.command.id,
+      blocked,doneB:doneB.status,pauseA:pauseA.retryPaused,newB:newB.status,
+      bAgain:bAgain.command.id,ackB:ackB.status,paused,entries};
+  });
+  assert.equal(independent.a,'evt92A1');
+  assert.equal(independent.bWhileALeased,'evt92B1','B progresses during A lease');
+  assert.equal(independent.blocked,null,'A2 cannot bypass its predecessor');
+  assert.equal(independent.doneB,'confirmed');
+  assert.equal(independent.pauseA,true);
+  assert.equal(independent.newB,'queued');
+  assert.equal(independent.bAgain,'evt92B2','Independent B progresses while A paused');
+  assert.equal(independent.ackB,'confirmed');
+  assert.equal(independent.paused,null);
+  assert.deepEqual(independent.entries,[
+    {id:'evt92A1',state:'pending',version:0,dependsOn:null},
+    {id:'evt92A2',state:'pending',version:1,dependsOn:'evt92A1'}
+  ]);
+  await reopened.reload();
+  const recovery=await reopened.evaluate(async()=>{
+    const db=await MILFTV2Outbox.open({indexedDB});
+    const s={tournamentId:'trial92multi',actorId:'samsung92',deviceId:'phone92'};
+    const auto=await db.claimNext(s,{now:130000,leaseMs:1000});
+    const manual=await db.claimNext(s,{now:130001,leaseMs:1000,ignoreRetryAt:true});
+    const first=await db.finish(s,manual.command.id,manual.leaseToken,'applied',{now:130002});
+    const second=await db.claimNext(s,{now:130003,leaseMs:1000});
+    const ack=await db.finish(s,second.command.id,second.leaseToken,'applied',{now:130004});
+    const left=await db.list(s);db.close();
+    return {auto,manual:manual.command.id,first:first.status,second:second.command.id,
+      secondVersion:second.command.expectedVersion,ack:ack.status,left:left.length};
+  });
+  assert.equal(recovery.auto,null,'Paused A is durable');
+  assert.equal(recovery.manual,'evt92A1');
+  assert.equal(recovery.first,'confirmed');
+  assert.equal(recovery.second,'evt92A2');
+  assert.equal(recovery.secondVersion,1);
+  assert.equal(recovery.ack,'confirmed');
+  assert.equal(recovery.left,0);
+  console.log('OK V2 MAJ92 '+engine.name+': multi-match independent progression, FIFO and recovery');
  }finally{
   if(context)await context.close();
   await new Promise(r=>server.close(r));

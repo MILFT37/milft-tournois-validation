@@ -137,12 +137,21 @@ function open({indexedDB,dbName=DEFAULT_DB}={}){
       // Résoudre une chaîne dont un parent est en conflit dans cette MÊME
       // transaction : chaque descendant devient « conflict » (jamais supprimé).
       // Les saisies indépendantes plus récentes peuvent ensuite être envoyées.
+      // FIFO strict À L'INTÉRIEUR de chaque match, sans bloquer les
+      // autres matchs quand une seule tête est en pause/temporisée/avec bail.
+      // Réservation et inspection restent dans la même transaction atomique.
+      const blockedMatches=new Set();
       function tryNext(position){
        const item=waiting[position];
-       if(!item||
-          item.state==='sending'&&item.leaseUntil>now||
+       if(!item){done(null);return;}
+       const matchId=item.command.matchId;
+       if(blockedMatches.has(matchId)){tryNext(position+1);return;}
+       if(item.state==='sending'&&item.leaseUntil>now||
           item.state==='pending'&&!ignoreRetryAt&&
-            (item.retryPaused===true||(item.retryAt||0)>now)){done(null);return;}
+            (item.retryPaused===true||(item.retryAt||0)>now)){
+        blockedMatches.add(matchId);
+        tryNext(position+1);return;
+       }
        const reserve=()=>{
         item.state='sending';
         item.leaseToken=String(now)+'-'+Math.random().toString(36).slice(2)+'-'+item.attempts;
@@ -160,12 +169,12 @@ function open({indexedDB,dbName=DEFAULT_DB}={}){
          item.reason='Score précédent '+item.dependsOn+' non confirmé : brouillon conservé';
          item.leaseToken=null;item.leaseUntil=0;item.updatedAt=now;
          store.put(item);
-         tryNext(position+1);
-         return;
+         tryNext(position+1);return;
         }
-        // Bail en cours, parent indéterminé ou reçu manquant :
-        // ne jamais sauter une opération dont l'état reste incertain.
-        done(null);
+        // Parent non confirmé : interdire les descendants du même match,
+        // mais les opérations d'autres matchs restent disponibles.
+        blockedMatches.add(matchId);
+        tryNext(position+1);
        };
       }
       tryNext(0);
