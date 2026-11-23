@@ -14,11 +14,21 @@ Empêcher un ancien onglet du même appareil de **remplacer le brouillon sauvega
 - L'E2E du même appareil (deux onglets PC) tente d'écraser 5–3 par 5–1 depuis un onglet ancien : il doit conserver 5–3 dans le stockage, bloquer le 5–1 et permettre une récupération explicite.
 
 ## Tests GitHub Actions
-- E2E Firebase Auth + RTDB Emulator `45169959535` — en cours au relevé initial.
-- Simulation partage V2 `45169959574` — en cours au relevé initial.
-- Pas de répétition des tests V1.1 inchangés. Statut **non clôturé** tant que les tests ciblés ne sont pas tous réussis.
+- E2E initial `45169959535` — **FAILURE** : l’ancien test ne traitait pas l'avertissement dû à la suppression du brouillon par l'onglet qui venait de confirmer son score. Correction **du scénario**, commit `06ee2951` : rechargement explicite avant navigation.\n- E2E final Firebase Auth + RTDB Emulator `45170209298` — **SUCCESS**.
+- Simulation partage V2 `45169959574` — **SUCCESS**.
+- Pas de répétition des tests V1.1 inchangés. Tous les contrôles ciblés sont réussis après correction.
 
 ## Protections
 - Aucune mise à jour des règles Firebase réelles ou candidates, aucun déploiement GitHub Pages, aucune modification V1.1, tournoi/championnat/donnée réelle ni archive Drive.
 - Firebase Spark gratuit, pas d'intervention du Samsung.
 - Test physique à deux appareils et deux comptes Google distincts toujours ultérieur.
+
+## Clôture MAJ100 — 23 novembre 2026
+**MAJ100 VALIDÉE ET CLÔTURÉE SUR ÉMULATEURS UNIQUEMENT.**
+- Développement initial `8906a27b`, test E2E ajusté `06ee2951`.
+- **GitHub Actions E2E `45170209298` : SUCCESS.** Le test couvre l'écriture refusée d'un ancien onglet, les valeurs conservées, le rechargement explicite après conflit, l'envoi unique du score récent, le partage et les permissions.
+- **Simulation du partage V2 `45169959574` : SUCCESS.**
+- Les règles Firebase réelles et candidates, les fichiers V1.1, les données et archives Drive n'ont pas été modifiés.
+- Les tests physiques à deux appareils et deux comptes Google distincts restent à faire ultérieurement.
+- **Prochaine étape MAJ101 :** vérifier les pertes de visibilité, la reprise multi-onglets et la cohérence d'un brouillon après retour d'arrière-plan sans restaurer ni effacer automatiquement.
+- **Action utilisateur : aucune.**
