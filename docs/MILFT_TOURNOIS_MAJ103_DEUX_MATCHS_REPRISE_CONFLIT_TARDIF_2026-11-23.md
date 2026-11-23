@@ -14,4 +14,19 @@ Sur Firebase Emulator uniquement, vérifier une panne Samsung sur **deux matchs 
 - **Action utilisateur : aucune.**
 
 ## Vérification GitHub Actions
-À compléter après exécution. Ne pas clôturer avant SUCCESS.
+- Premier commit du scénario : `a7bdb3fc`.
+- `45246824870` : **FAILURE** sur une attente textuelle héritée de la MAJ102, sans exécution du nouveau scénario.
+- Correctif `3f6b34a0` : contrôle direct de la file IndexedDB, sans dépendre du délai d'affichage du tableau de synthèse.
+- `45247256495` : **SUCCESS** sur Firebase Auth/RTDB Emulator ; parcours multi-match comprenant la MAJ103 réussi.
+
+## Clôture MAJ103 — 23 novembre 2026
+
+**MAJ103 VALIDÉE ET CLÔTURÉE SUR ÉMULATEURS UNIQUEMENT.**
+
+Deux matchs fictifs A et B ont des commandes distinctes dans la file du Samsung hors connexion. Le PC confirme A à un score divergent ; après reconnexion, A conserve un brouillon local en conflit sans écraser la version du PC, tandis que B est confirmé avec sa propre version et son auteur. Le retour au premier plan ne rejoue pas A. Les tests antérieurs du parcours E2E restent inclus dans le workflow.
+
+**Aucun changement du code applicatif, des règles Firebase réelles/candidates, de la V1.1, des données réelles ou des archives Drive.** Tests physiques Samsung/PC avec deux comptes Google distincts toujours à effectuer plus tard.
+
+**Suite proposée MAJ104 :** durcir les vérifications de reprise en cas de pertes réseau répétées, sans doublons, en ciblant les cas non encore couverts. Le backlog saisie +/− et temps morts reste non prioritaire.
+
+**Action utilisateur : aucune.**
