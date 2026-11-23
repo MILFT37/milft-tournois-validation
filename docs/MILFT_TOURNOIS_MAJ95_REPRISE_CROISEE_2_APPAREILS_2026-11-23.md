@@ -38,4 +38,11 @@ Le test **physique** Samsung/PC avec deux comptes Google distincts reste à effe
 - Ce plafond est une garde commune, **pas encore une validation complète du format sportif** : manche à 5, partie en 7 ou 8, ou belle avec 2 buts d'écart (maximum 8–7) devront être contrôlées selon le format configuré. Le prototype actuel ne décrit pas encore ces formats par match.
 - Les **règles Firebase réellement publiées**, le démonstrateur public, la V1.1 officielle, les championnats et les archives Drive restent intouchés.
 
-**Résultat des tests après rectification : en attente de GitHub Actions.**
+**Rectificatif validé sur émulateurs — 23 novembre 2026.**
+
+- Commit de correction `c5526fc0d15b6b12327f9ffebdad5b19a8faf668`.
+- GitHub Actions **règles multi-match candidates** `45158842984` : **SUCCESS** ; score 9–7 et 8–8 rejetés par Firebase Emulator ; 8–7 accepté dans le test du plafond générique.
+- GitHub Actions **interface Samsung / PC simulés** `45158842833` : **SUCCESS** ; 9–7 refusé avant enregistrement local, reprise de scénario avec 8–7.
+- GitHub Actions **simulation partage V2** `45158842773` : **SUCCESS**.
+- Ce contrôle générique ne remplace **pas** la validation sportive par format : manches en 5, jeu en 7/8 et belle avec écart de deux points selon les règles consolidées.
+- Aucun nouveau déploiement sur Firebase réel ni sur la V1.1 officielle ; règles réellement publiées, données réelles et archives Drive inchangées.
