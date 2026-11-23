@@ -368,6 +368,40 @@ async function main(){
   assert.equal(await samsung.locator('#away').inputValue(),'2','Recovered draft after quota restored');
   await samsung.locator('#send').click();
   await samsung.locator('#score').getByText('5 : 2').waitFor({timeout:20000});
+  // MAJ99 : deux onglets du MÊME PC partagent le stockage, mais le plus
+  // ancien ne doit jamais émettre le brouillon remplacé par le nouveau.
+  await samsung.locator('#newMatch').fill('dual99');
+  await samsung.locator('#newMatchFormat').selectOption('belle5');
+  await samsung.locator('#createMatch').click();
+  await desktop.locator('#matchSelect').locator('option[value="dual99"]').waitFor({state:'attached'});
+  await desktop.locator('#matchSelect').selectOption('dual99');
+  await desktop.locator('#home').fill('5');
+  await desktop.locator('#away').fill('2');
+  const tab2=await pc.newPage();
+  tab2.on('pageerror',e=>errors.push(e.message));
+  await tab2.goto(url);
+  await tab2.locator('#rooms').waitFor({state:'visible',timeout:20000});
+  await tab2.locator('#trialId').fill(room);
+  await tab2.locator('#join').click();
+  await tab2.locator('#demo').waitFor({state:'visible',timeout:20000});
+  await tab2.locator('#matchSelect').selectOption('dual99');
+  await tab2.locator('#home').fill('5');
+  await tab2.locator('#away').fill('3');
+  // L'ancien onglet tente d'envoyer 5–2 tandis que le second a sauvé 5–3.
+  await desktop.locator('#send').click();
+  await desktop.locator('#status.error').getByText('modifié dans un autre onglet',{exact:false}).waitFor();
+  await desktop.locator('#queue').getByText('0 en attente',{exact:false}).waitFor();
+  await tab2.locator('#send').click();
+  await tab2.locator('#score').getByText('5 : 3').waitFor({timeout:20000});
+  await env.withSecurityRulesDisabled(async ctx=>{
+   remote=(await ctx.database(databaseURL).ref('v2Trials/'+room+'/matches').once('value')).val();
+  });
+  assert.equal(remote.dual99.version,1,'Only latest-tab draft may be sent');
+  assert.deepEqual(remote.dual99.sets['0'],{a:5,b:3});
+  await tab2.close();
+  // Vérifier aussi la saisie en lecture seule : les valeurs affichées
+  // ne peuvent plus être modifiées tant que le propriétaire n'a pas
+  // restauré le rôle éditeur (les autres brouillons locaux sont conservés).
   // Le Samsung et le PC ne doivent jamais partager leurs brouillons non envoyés.
   // Le PC, pour draftB, n'avait ni brouillon ni transmission locale.
   await desktop.locator('#matchSelect').selectOption('draftB');
@@ -379,9 +413,13 @@ async function main(){
   await samsung.locator('#invite').click();
   await desktop.locator('#role').getByText('Lecture seule').waitFor({timeout:15000});
   assert.equal(await desktop.locator('#send').isDisabled(),true);
+  assert.equal(await desktop.locator('#home').getAttribute('readonly'),'');
+  assert.equal(await desktop.locator('#away').getAttribute('readonly'),'');
   await samsung.locator('#permission').selectOption('editor');
   await samsung.locator('#invite').click();
   await desktop.locator('#role').getByText('Autorisé à saisir').waitFor();
+  assert.equal(await desktop.locator('#home').getAttribute('readonly'),null);
+  assert.equal(await desktop.locator('#away').getAttribute('readonly'),null);
   await samsung.locator('#revoke').click();
   await desktop.locator('#demo').waitFor({state:'hidden',timeout:15000});
   assert.equal(await desktop.locator('#conflicts').innerText(),'');

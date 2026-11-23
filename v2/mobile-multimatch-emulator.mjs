@@ -18,6 +18,9 @@ function updateUI(){
   $('role').textContent=state.role==='admin'?'Propriétaire':state.role==='editor'?'Autorisé à saisir':state.role==='viewer'?'Lecture seule':'Non autorisé';
   $('send').disabled=!['admin','editor'].includes(state.role)||!state.match||state.match.status!=='playing'||!formatLabels[state.match.format]||!state.outbox||state.sending||state.enqueuing;
   $('retry').disabled=!['admin','editor'].includes(state.role)||!state.outbox||state.sending;
+  // Lecture seule : aucun score ne peut être édité même localement.
+  $('home').readOnly=!['admin','editor'].includes(state.role);
+  $('away').readOnly=!['admin','editor'].includes(state.role);
   $('invite').disabled=state.role!=='admin';$('revoke').disabled=state.role!=='admin';
   $('copyUid').disabled=!state.user;
   $('copyTrial').disabled=!state.trial;
@@ -453,6 +456,17 @@ async function sendScore(){
  const outbox=state.outbox,scope=state.scope,uid=state.user.uid,generation=state.roomGeneration;
  const sameRoom=()=>state.roomGeneration===generation&&state.outbox===outbox&&state.scope===scope&&state.user?.uid===uid;
  const matchId=state.selectedMatch,draftTokenAtSend=state.draftToken,revisionAtSend=state.draftRevision;
+ // Un second onglet du même appareil peut avoir sauvegardé une nouvelle version
+ // de ce brouillon. Le premier onglet ne doit PAS émettre sa copie périmée.
+ if(draftTokenAtSend){
+  try{
+   const fresh=readDraft(localStorage,scope,matchId,state.match.format);
+   if(!fresh||fresh.token!==draftTokenAtSend){
+    status('Brouillon modifié dans un autre onglet : envoi annulé. Changer de match puis revenir pour charger la dernière version.','error');
+    return;
+   }
+  }catch(e){status('Contrôle du brouillon impossible : envoi bloqué. '+errorText(e),'error');return;}
+ }
  const command={...scope,id:'e'+newId(),matchId,type:'set.record',format:state.match.format,expectedVersion:state.draftDirty&&state.draftBaseVersion!==null?state.draftBaseVersion:state.match.version,setIndex:0,goals:{a,b}};
  state.enqueuing=true;updateUI();
  try{
