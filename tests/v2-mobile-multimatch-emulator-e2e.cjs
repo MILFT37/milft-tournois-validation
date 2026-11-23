@@ -37,7 +37,7 @@ async function main(){
   ['/v2/multimatch-emulator-config-test-only.mjs',cfg]
  ]);
  const allow=new Set(['/v2/mobile-multimatch-emulator.html',
-  '/v2/mobile-multimatch-emulator.mjs','/v2/score-formats-emulator.mjs','/v2/outbox-multimatch-emulator.js']);
+  '/v2/mobile-multimatch-emulator.mjs','/v2/score-formats-emulator.mjs','/v2/draft-multimatch-emulator.mjs','/v2/outbox-multimatch-emulator.js']);
  const server=http.createServer((req,res)=>{
   const url=new URL(req.url,'http://127.0.0.1'),name=url.pathname;
   if(routes.has(name)){res.writeHead(200,{'Content-Type':'text/javascript','Cache-Control':'no-store'}).end(routes.get(name));return;}
@@ -251,6 +251,90 @@ async function main(){
   assert.equal(remote.demo.updatedBy,uidPc,'Existing PC score cannot be overwritten');
   assert.equal(remote.courtB.version,3,'Other match unaffected');
   assert.deepEqual(remote.demo.sets['0'],{a:5,b:3});
+  // MAJ97 : deux brouillons NON envoyés doivent survivre au rechargement et
+  // rester attachés uniquement au match / UID / appareil qui les a saisis.
+  await samsung.locator('#newMatch').fill('draftA');
+  await samsung.locator('#newMatchFormat').selectOption('belle5');
+  await samsung.locator('#createMatch').click();
+  await samsung.locator('#matchSelect').locator('option[value="draftA"]').waitFor({state:'attached'});
+  await samsung.locator('#newMatch').fill('draftB');
+  await samsung.locator('#newMatchFormat').selectOption('partie7');
+  await samsung.locator('#createMatch').click();
+  await samsung.locator('#matchSelect').locator('option[value="draftB"]').waitFor({state:'attached'});
+  await desktop.locator('#matchSelect').locator('option[value="draftA"]').waitFor({state:'attached'});
+  await samsung.locator('#matchSelect').selectOption('draftA');
+  await samsung.locator('#home').fill('5');
+  await samsung.locator('#away').fill('3');
+  await samsung.locator('#draftNotice').getByText('Brouillon non envoyé',{exact:false}).waitFor();
+  await samsung.locator('#matchSelect').selectOption('draftB');
+  await samsung.locator('#home').fill('7');
+  await samsung.locator('#away').fill('6');
+  assert.equal(await samsung.locator('#home').inputValue(),'7');
+  await samsung.locator('#matchSelect').selectOption('draftA');
+  assert.equal(await samsung.locator('#home').inputValue(),'5');
+  assert.equal(await samsung.locator('#away').inputValue(),'3');
+  await env.withSecurityRulesDisabled(async ctx=>{
+   remote=(await ctx.database(databaseURL).ref('v2Trials/'+room+'/matches').once('value')).val();
+  });
+  assert.equal(remote.draftA.version,0,'Unsent draftA must not update Firebase');
+  assert.equal(remote.draftB.version,0,'Unsent draftB must not update Firebase');
+  // La page est rechargée ; les identités Auth sont persistées par le SDK de test.
+  await samsung.reload();
+  await samsung.locator('#rooms').waitFor({state:'visible',timeout:20000});
+  await samsung.locator('#trialId').fill(room);
+  await samsung.locator('#join').click();
+  await samsung.locator('#demo').waitFor({state:'visible',timeout:20000});
+  await samsung.locator('#matchSelect').locator('option[value="draftA"]').waitFor({state:'attached'});
+  await samsung.locator('#matchSelect').selectOption('draftA');
+  assert.equal(await samsung.locator('#home').inputValue(),'5','DraftA home persists');
+  assert.equal(await samsung.locator('#away').inputValue(),'3','DraftA away persists');
+  await samsung.locator('#matchSelect').selectOption('draftB');
+  assert.equal(await samsung.locator('#home').inputValue(),'7','DraftB home persists');
+  assert.equal(await samsung.locator('#away').inputValue(),'6','DraftB away persists');
+  // Le PC confirme draftA avant la transmission Samsung : aucune suppression
+  // spontanée du brouillon local, ni deuxième version lors de son envoi.
+  await desktop.locator('#matchSelect').selectOption('draftA');
+  await desktop.locator('#home').fill('5');
+  await desktop.locator('#away').fill('3');
+  await desktop.locator('#send').click();
+  await desktop.locator('#score').getByText('5 : 3').waitFor({timeout:20000});
+  await samsung.locator('#matchSelect').selectOption('draftA');
+  await samsung.locator('#draftNotice').getByText('score distant a changé',{exact:false}).waitFor({timeout:20000});
+  assert.equal(await samsung.locator('#home').inputValue(),'5','Remote update must preserve draft inputs');
+  await samsung.locator('#send').click();
+  await samsung.locator('#queue').getByText('0 en attente',{exact:false}).waitFor({timeout:20000});
+  await samsung.locator('#queue').getByText('0 conflit(s)',{exact:false}).waitFor({timeout:20000});
+  assert.equal(await samsung.locator('#draftNotice').innerText(),'','Acknowledged draft should not remain in editable inputs');
+  await env.withSecurityRulesDisabled(async ctx=>{
+   remote=(await ctx.database(databaseURL).ref('v2Trials/'+room+'/matches').once('value')).val();
+  });
+  assert.equal(remote.draftA.version,1,'Same-score late acknowledgment must not duplicate version');
+  assert.equal(remote.draftA.updatedBy,uidPc,'Remote PC authorship preserved');
+  assert.equal(remote.draftB.version,0,'DraftB remains independent');
+  await samsung.locator('#matchSelect').selectOption('draftB');
+  assert.equal(await samsung.locator('#home').inputValue(),'7','DraftB remains after acknowledgment of draftA');
+  assert.equal(await samsung.locator('#away').inputValue(),'6');
+  await samsung.reload();
+  await samsung.locator('#rooms').waitFor({state:'visible',timeout:20000});
+  await samsung.locator('#trialId').fill(room);
+  await samsung.locator('#join').click();
+  await samsung.locator('#demo').waitFor({state:'visible',timeout:20000});
+  await samsung.locator('#matchSelect').selectOption('draftA');
+  assert.equal(await samsung.locator('#draftNotice').innerText(),'','Acknowledged draftA cannot reappear after reload');
+  await samsung.locator('#matchSelect').selectOption('draftB');
+  assert.equal(await samsung.locator('#home').inputValue(),'7','Untouched draftB survives repeated reload');
+  await samsung.locator('#send').click();
+  await samsung.locator('#score').getByText('7 : 6').waitFor({timeout:20000});
+  await env.withSecurityRulesDisabled(async ctx=>{
+   remote=(await ctx.database(databaseURL).ref('v2Trials/'+room+'/matches').once('value')).val();
+  });
+  assert.equal(remote.draftB.version,1,'DraftB confirmed exactly once');
+  assert.equal(remote.draftB.updatedBy,uidMobile,'DraftB author preserved');
+  assert.equal(await desktop.locator('#matchQueue').innerText().then(x=>x.includes('draftB')),true);
+  // Le Samsung et le PC ne doivent jamais partager leurs brouillons non envoyés.
+  // Le PC, pour draftB, n'avait ni brouillon ni transmission locale.
+  await desktop.locator('#matchSelect').selectOption('draftB');
+  assert.equal(await desktop.locator('#draftNotice').innerText(),'');
   await samsung.locator('#permission').selectOption('viewer');
   await samsung.locator('#invite').click();
   await desktop.locator('#role').getByText('Lecture seule').waitFor({timeout:15000});

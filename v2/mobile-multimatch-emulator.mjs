@@ -2,14 +2,15 @@
 // Ce fichier et sa page ne sont pas déployés sur GitHub Pages. Aucune configuration Firebase réelle.
 import {firebaseConfig} from './multimatch-emulator-config-test-only.mjs';
 import {validScore,formatLabels} from './score-formats-emulator.mjs';
+import {readDraft,saveDraft,discardDraftIfSame} from './draft-multimatch-emulator.mjs';
 const $=id=>document.getElementById(id);
 const valid=/^[A-Za-z0-9][A-Za-z0-9_-]{0,79}$/;
 const uidValid=/^[A-Za-z0-9_-]{1,128}$/;
-const state={api:null,auth:null,db:null,user:null,outbox:null,scope:null,trial:null,role:null,match:null,unsubscribe:null,unsubscribeMember:null,deviceId:null,sending:false,enqueuing:false,roomGeneration:0,recoveryTimer:null,draftDirty:false,draftBaseVersion:null,selectedMatch:'demo',matches:{},drafts:new Map()};
+const state={api:null,auth:null,db:null,user:null,outbox:null,scope:null,trial:null,role:null,match:null,unsubscribe:null,unsubscribeMember:null,deviceId:null,sending:false,enqueuing:false,roomGeneration:0,recoveryTimer:null,draftDirty:false,draftBaseVersion:null,selectedMatch:'demo',matches:{},draftToken:null};
 function status(msg,tone=''){const e=$('status');e.textContent=msg;e.className=tone;}
 function log(s){const e=$('log');e.textContent=(new Date().toLocaleTimeString('fr-FR')+' · '+s+'\n'+e.textContent).slice(0,3000)}
 function errorText(e){return String(e?.code||e?.message||e||'Erreur').slice(0,200)}
-function resetRoom(){state.roomGeneration++;clearTimeout(state.recoveryTimer);state.recoveryTimer=null;state.sending=false;state.enqueuing=false;state.unsubscribe?.();state.unsubscribe=null;state.unsubscribeMember?.();state.unsubscribeMember=null;state.trial=null;state.match=null;state.role=null;state.scope=null;state.outbox?.close();state.outbox=null;state.draftDirty=false;state.draftBaseVersion=null;state.selectedMatch='demo';state.matches={};state.drafts.clear();$('matchSelect').replaceChildren();$('matchQueue').textContent='';$('score').textContent='— : —';$('version').textContent='Version distante inconnue';$('matchFormat').textContent='Format inconnu';$('home').value=0;$('away').value=0;$('demo').hidden=true;$('sharing').hidden=true;$('roomNotice').textContent='';$('inviteNotice').textContent='';$('conflicts').textContent='';$('copyConflicts').disabled=true;$('conflictNotice').textContent='';$('conflictFallback').value='';$('conflictFallback').hidden=true;}
+function resetRoom(){state.roomGeneration++;clearTimeout(state.recoveryTimer);state.recoveryTimer=null;state.sending=false;state.enqueuing=false;state.unsubscribe?.();state.unsubscribe=null;state.unsubscribeMember?.();state.unsubscribeMember=null;state.trial=null;state.match=null;state.role=null;state.scope=null;state.outbox?.close();state.outbox=null;state.draftDirty=false;state.draftBaseVersion=null;state.draftToken=null;state.selectedMatch='demo';state.matches={};$('draftNotice').textContent='';$('matchSelect').replaceChildren();$('matchQueue').textContent='';$('score').textContent='— : —';$('version').textContent='Version distante inconnue';$('matchFormat').textContent='Format inconnu';$('home').value=0;$('away').value=0;$('demo').hidden=true;$('sharing').hidden=true;$('roomNotice').textContent='';$('inviteNotice').textContent='';$('conflicts').textContent='';$('copyConflicts').disabled=true;$('conflictNotice').textContent='';$('conflictFallback').value='';$('conflictFallback').hidden=true;}
 function updateUI(){
   $('rooms').hidden=!state.user;
   $('signIn').hidden=!!state.user;$('signOut').hidden=!state.user;
@@ -57,22 +58,50 @@ function persistentDeviceId(){
   if(localStorage.getItem(DEVICE_KEY)!==value)throw Error('Stockage local V2 non fiable');
   return value;
 }
-// Les brouillons non encore enregistrés restent distincts pour chaque match.
-function switchMatch(mid){
- if(state.selectedMatch&&state.draftDirty){
-  state.drafts.set(state.selectedMatch,{a:$('home').value,b:$('away').value,
-    baseVersion:state.draftBaseVersion});
+// Chaque saisie non transmise est écrite SYNCHRONEMENT avant toute navigation.
+// Ne jamais effacer un brouillon sur simple réception Firebase, changement de salle
+// ou modification des droits. La clef contient la salle + l'UID + l'appareil + le match.
+function showDraftNotice(){
+ const el=$('draftNotice');
+ if(!state.draftDirty||!state.match){el.textContent='';el.className='inline-status';return;}
+ const stale=Number.isSafeInteger(state.draftBaseVersion)&&state.match.version!==state.draftBaseVersion;
+ el.textContent='Brouillon non envoyé conservé sur cet appareil · match '+state.selectedMatch+
+  ' · version de départ '+state.draftBaseVersion+
+  (stale?' · ATTENTION : le score distant a changé. Votre brouillon n’a pas été écrasé.':'');
+ el.className='inline-status'+(stale?' error':'');
+}
+function persistInputDraft(){
+ if(!state.scope||!state.match||!['admin','editor'].includes(state.role))return;
+ if(!state.draftDirty){state.draftDirty=true;state.draftBaseVersion=state.match.version;}
+ const data={a:$('home').value,b:$('away').value,format:state.match.format,
+  baseVersion:state.draftBaseVersion,token:'draft'+newId()};
+ try{
+  saveDraft(localStorage,state.scope,state.selectedMatch,data);
+  state.draftToken=data.token;
+  showDraftNotice();
+ }catch(e){
+  status('Attention : saisie NON sauvegardée localement : '+errorText(e)+'. Ne pas quitter cette page.','error');
  }
+}
+function switchMatch(mid){
  state.selectedMatch=mid;
- state.draftDirty=false;state.draftBaseVersion=null;
+ state.draftDirty=false;state.draftBaseVersion=null;state.draftToken=null;
  state.match=state.matches[mid]||null;
  syncScore();
- const draft=state.drafts.get(mid);
- if(draft){
-  $('home').value=draft.a;$('away').value=draft.b;
-  state.draftDirty=true;state.draftBaseVersion=draft.baseVersion;
+ if(state.match&&state.scope){
+  try{
+   const draft=readDraft(localStorage,state.scope,mid,state.match.format);
+   if(draft){
+    $('home').value=draft.a;$('away').value=draft.b;
+    state.draftDirty=true;state.draftBaseVersion=draft.baseVersion;
+    state.draftToken=draft.token;
+   }
+  }catch(e){
+   status(errorText(e)+' ; aucune suppression automatique.','error');
+  }
  }
  $('matchSelect').value=mid||'';
+ showDraftNotice();
  updateUI();
 }
 function renderMatches(){
@@ -94,6 +123,7 @@ function syncScore(){
  if(!state.draftDirty){
    $('home').value=x?.a??0;$('away').value=x?.b??0;state.draftBaseVersion=null;
  }
+ showDraftNotice();
 }
 // Les premières opérations de chaque match peuvent avoir des délais distincts.
  // Le blocage d'un match n'empêche pas la reprise indépendante d'un autre.
@@ -223,6 +253,7 @@ async function prepareRoom(trialId){
    if(!isCurrent()){outbox.close();return;}
    state.trial=trialId;state.role=role;state.outbox=outbox;
    state.scope={tournamentId:trialId,actorId:uid,deviceId:state.deviceId};
+   state.selectedMatch=null; // forcer la relecture du brouillon sur le premier snapshot
    $('trialId').value=trialId;
    $('demo').hidden=false;$('sharing').hidden=role!=='admin';updateUI();
    localStorage.setItem(LAST_TRIAL_KEY,trialId);
@@ -292,7 +323,6 @@ async function createAdditionalMatch(){
   // Attendre la notification RTDB si elle n'est pas encore arrivée.
   // Ne jamais écraser une sélection manuelle arrivée entre l'écriture
   // Firebase et son accusé de réception. L'écoute onValue actualise la liste.
-  state.drafts.delete(mid);
   if(state.matches[mid])renderMatches();
   status('Match fictif '+mid+' créé sur Firebase Emulator.','good');
  }catch(e){if(state.trial===id)status('Création du match refusée : '+errorText(e),'error');}
@@ -404,15 +434,25 @@ async function sendScore(){
  // modifier l'interface d'une autre salle ou d'un autre compte Google.
  const outbox=state.outbox,scope=state.scope,uid=state.user.uid,generation=state.roomGeneration;
  const sameRoom=()=>state.roomGeneration===generation&&state.outbox===outbox&&state.scope===scope&&state.user?.uid===uid;
- const matchId=state.selectedMatch;
+ const matchId=state.selectedMatch,draftTokenAtSend=state.draftToken;
  const command={...scope,id:'e'+newId(),matchId,type:'set.record',format:state.match.format,expectedVersion:state.draftDirty&&state.draftBaseVersion!==null?state.draftBaseVersion:state.match.version,setIndex:0,goals:{a,b}};
  state.enqueuing=true;updateUI();
  try{
   const result=await outbox.enqueue(scope,command,Date.now(),{chainLocalScore:true});
   if(!sameRoom())return; // Les événements confirmés restent dans leur file IndexedDB d'origine.
   if(result.status!=='queued'&&result.status!=='duplicate'){status('Ajout local non confirmé : '+result.status,'error');return;}
-  state.drafts.delete(matchId);
-  if(state.selectedMatch===matchId){state.draftDirty=false;state.draftBaseVersion=null;}
+  // Acquittement de la mise EN FILE, pas de la confirmation Firebase.
+  // Si une nouvelle saisie du même match a eu lieu pendant l'await,
+  // son token diffère et son brouillon reste intact.
+  if(draftTokenAtSend){
+   try{
+    discardDraftIfSame(localStorage,scope,matchId,draftTokenAtSend);
+   }catch(e){status('Score dans la file, mais brouillon non nettoyé : '+errorText(e),'error');}
+  }
+  if(state.selectedMatch===matchId&&state.draftToken===draftTokenAtSend){
+   state.draftDirty=false;state.draftBaseVersion=null;state.draftToken=null;
+   showDraftNotice();
+  }
   await refreshQueue();
   if(!sameRoom())return;
   if(!['admin','editor'].includes(state.role)){
@@ -486,7 +526,7 @@ async function initialize(){
    if(document.visibilityState==='visible')void resumeForeground();
  });
  window.addEventListener('pageshow',()=>{void resumeForeground();});
- for(const id of ['home','away'])$(''+id).addEventListener('input',()=>{if(!state.draftDirty){state.draftDirty=true;state.draftBaseVersion=state.match?.version??null;}});
+ for(const id of ['home','away'])$(id).addEventListener('input',persistInputDraft);
  $('copyUid').onclick=()=>{if(state.user)void copyText(state.user.uid,'Identifiant',$('who'));};
  $('copyTrial').onclick=()=>{if(state.trial)void copyText(state.trial,'Code de salle',$('trialId'),'roomNotice');};
  $('copyLink').onclick=()=>{if(state.trial)void copyText(trialLink(state.trial),'Lien de partage',$('trialId'),'roomNotice');};
