@@ -516,6 +516,55 @@ async function main(){
   assert.equal(await desktop.locator('#draftNotice').innerText(),'','Explicit recovery clears stale state');
   await desktop.locator('#score').getByText('5 : 3').waitFor({timeout:20000});
   await reconnectTab.close();
+  // MAJ103 : deux matchs indépendants lors d'une même coupure du Samsung.
+  for(const mid of ['late103A','late103B']){
+   await samsung.locator('#newMatch').fill(mid);
+   await samsung.locator('#newMatchFormat').selectOption('belle5');
+   await samsung.locator('#createMatch').click();
+   await samsung.locator('#matchSelect').locator('option[value="'+mid+'"]').waitFor({state:'attached'});
+   await desktop.locator('#matchSelect').locator('option[value="'+mid+'"]').waitFor({state:'attached'});
+  }
+  await phone.setOffline(true);
+  for(const [mid,a,b] of [['late103A','5','2'],['late103B','6','4']]){
+   await samsung.locator('#matchSelect').selectOption(mid);
+   await samsung.locator('#home').fill(a);await samsung.locator('#away').fill(b);
+   await samsung.locator('#send').click();
+   await samsung.locator('#matchQueue').getByText(mid+' : 1 en attente',{exact:false}).waitFor({timeout:20000});
+  }
+  await samsung.locator('#queue').getByText('2 en attente',{exact:false}).waitFor({timeout:20000});
+  await desktop.locator('#matchSelect').selectOption('late103A');
+  await desktop.locator('#home').fill('7');await desktop.locator('#away').fill('5');
+  await desktop.locator('#send').click();
+  await desktop.locator('#score').getByText('7 : 5').waitFor({timeout:20000});
+  await env.withSecurityRulesDisabled(async ctx=>{
+   remote=(await ctx.database(databaseURL).ref('v2Trials/'+room+'/matches').once('value')).val();
+  });
+  assert.equal(remote.late103A.version,1,'PC confirms A while Samsung is offline');
+  assert.equal(remote.late103B.version,0,'B remains untouched while offline');
+  await phone.setOffline(false);
+  await samsung.locator('#matchQueue').getByText('late103A : 0 en attente, 0 en cours, 1 conflit(s)',{exact:false}).waitFor({timeout:25000});
+  await samsung.locator('#matchQueue').getByText('late103B : 0 en attente, 0 en cours, 0 conflit(s)',{exact:false}).waitFor({timeout:25000});
+  await samsung.locator('#score').getByText('6 : 4').waitFor({timeout:20000});
+  const localConflicts103=await samsung.locator('#conflicts').innerText();
+  assert.match(localConflicts103,/Match late103A/);
+  assert.match(localConflicts103,/Score local A 5 : B 2/);
+  assert.doesNotMatch(localConflicts103,/Match late103B/);
+  await env.withSecurityRulesDisabled(async ctx=>{
+   remote=(await ctx.database(databaseURL).ref('v2Trials/'+room+'/matches').once('value')).val();
+  });
+  assert.equal(remote.late103A.version,1,'Late ack never overwrites A');
+  assert.equal(remote.late103B.version,1,'B confirms independently');
+  assert.deepEqual(remote.late103A.sets['0'],{a:7,b:5});
+  assert.deepEqual(remote.late103B.sets['0'],{a:6,b:4});
+  assert.equal(remote.late103A.updatedBy,uidPc);
+  assert.equal(remote.late103B.updatedBy,uidMobile);
+  await samsung.evaluate(()=>window.dispatchEvent(new Event('pageshow')));
+  await samsung.locator('#matchQueue').getByText('late103A : 0 en attente, 0 en cours, 1 conflit(s)',{exact:false}).waitFor();
+  await env.withSecurityRulesDisabled(async ctx=>{
+   remote=(await ctx.database(databaseURL).ref('v2Trials/'+room+'/matches').once('value')).val();
+  });
+  assert.equal(remote.late103A.version,1);
+  assert.equal(remote.late103B.version,1);
   // Vérifier aussi la saisie en lecture seule : les valeurs affichées
   // ne peuvent plus être modifiées tant que le propriétaire n'a pas
   // restauré le rôle éditeur (les autres brouillons locaux sont conservés).
