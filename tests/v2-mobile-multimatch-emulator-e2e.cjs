@@ -304,7 +304,8 @@ async function main(){
   await samsung.locator('#send').click();
   await samsung.locator('#queue').getByText('0 en attente',{exact:false}).waitFor({timeout:20000});
   await samsung.locator('#queue').getByText('0 conflit(s)',{exact:false}).waitFor({timeout:20000});
-  assert.equal(await samsung.locator('#draftNotice').innerText(),'','Acknowledged draft should not remain in editable inputs');
+  await samsung.waitForFunction(()=>document.getElementById('draftNotice').textContent==='',null,{timeout:20000});
+  assert.equal(await samsung.locator('#draftNotice').innerText(),'','Acknowledged draft should be cleared after IndexedDB enqueue');
   await env.withSecurityRulesDisabled(async ctx=>{
    remote=(await ctx.database(databaseURL).ref('v2Trials/'+room+'/matches').once('value')).val();
   });
