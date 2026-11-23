@@ -418,6 +418,36 @@ async function main(){
   await desktop.locator('#draftNotice').getByText('Conflit entre onglets',{exact:false}).waitFor();
   await desktop.locator('#restoreDraft').click();
   assert.equal(await desktop.locator('#draftNotice').innerText(),'');
+  // MAJ101 : le signal storage d'un changement survenu en arrière-plan
+  // peut ne pas avoir été reçu. Le pageshow vérifie le jeton persistant.
+  await samsung.locator('#newMatch').fill('foreground101');
+  await samsung.locator('#newMatchFormat').selectOption('belle5');
+  await samsung.locator('#createMatch').click();
+  await desktop.locator('#matchSelect').locator('option[value="foreground101"]').waitFor({state:'attached'});
+  await desktop.locator('#matchSelect').selectOption('foreground101');
+  await desktop.locator('#home').fill('5');
+  await desktop.locator('#away').fill('2');
+  await desktop.locator('#draftNotice').getByText('Brouillon non envoyé',{exact:false}).waitFor();
+  await desktop.evaluate(()=>{
+   const k=Object.keys(localStorage).find(x=>x.startsWith('MILFT_V2_MULTI_EMULATOR_DRAFT97_')&&x.includes('"foreground101"'));
+   if(!k)throw Error('foreground101 draft not persisted');
+   const value=JSON.parse(localStorage.getItem(k));
+   localStorage.setItem(k,JSON.stringify({...value,b:'3',token:'replacement101'}));
+   // Modification faite dans cet onglet : pas d'événement storage pour lui.
+   window.dispatchEvent(new Event('pageshow'));
+  });
+  await desktop.locator('#draftNotice').getByText('Conflit entre onglets',{exact:false}).waitFor();
+  assert.equal(await desktop.locator('#away').inputValue(),'2','Foreground mismatch cannot erase displayed draft');
+  assert.equal(await desktop.locator('#send').isDisabled(),true,'Foreground mismatch cannot send');
+  await desktop.locator('#restoreDraft').click();
+  assert.equal(await desktop.locator('#away').inputValue(),'3','Foreground recovery is explicit');
+  await desktop.locator('#send').click();
+  await desktop.locator('#score').getByText('5 : 3').waitFor({timeout:20000});
+  await env.withSecurityRulesDisabled(async ctx=>{
+   remote=(await ctx.database(databaseURL).ref('v2Trials/'+room+'/matches').once('value')).val();
+  });
+  assert.equal(remote.foreground101.version,1);
+  assert.deepEqual(remote.foreground101.sets['0'],{a:5,b:3});
   // Vérifier aussi la saisie en lecture seule : les valeurs affichées
   // ne peuvent plus être modifiées tant que le propriétaire n'a pas
   // restauré le rôle éditeur (les autres brouillons locaux sont conservés).

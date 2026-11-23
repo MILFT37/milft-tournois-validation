@@ -125,6 +125,19 @@ function persistInputDraft(){
  showDraftNotice();updateUI();
  if(!state.draftStale)void persistDraftChanges();
 }
+// Un onglet mis en veille peut manquer ou recevoir tardivement l'événement
+// storage. À la reprise, recontrôler le token avant toute reprise du réseau.
+function verifyDraftAfterForeground(){
+ if(!state.scope||!state.match||!state.draftDirty||state.draftStale||state.draftSaving)return;
+ try{
+  const saved=readDraft(localStorage,state.scope,state.selectedMatch,state.match.format);
+  if((saved?.token??null)===state.draftToken)return;
+ }catch(e){
+  status('Contrôle du brouillon après reprise impossible : '+errorText(e),'error');
+ }
+ state.draftStale=true;state.unsavedDraft=true;
+ showDraftNotice();updateUI();
+}
 function restoreLatestDraft(){
  if(!state.draftStale||!state.scope||!state.match||state.draftSaving)return;
  try{
@@ -601,9 +614,9 @@ async function initialize(){
  // Retour au premier plan après mise en veille / changement d'application.
  // Ne pas envoyer depuis un onglet masqué, ni contourner un délai retryAt.
  document.addEventListener('visibilitychange',()=>{
-   if(document.visibilityState==='visible')void resumeForeground();
+   if(document.visibilityState==='visible'){verifyDraftAfterForeground();void resumeForeground();}
  });
- window.addEventListener('pageshow',()=>{void resumeForeground();});
+ window.addEventListener('pageshow',()=>{verifyDraftAfterForeground();void resumeForeground();});
  for(const id of ['home','away'])$(id).addEventListener('input',persistInputDraft);
  $('copyUid').onclick=()=>{if(state.user)void copyText(state.user.uid,'Identifiant',$('who'));};
  $('copyTrial').onclick=()=>{if(state.trial)void copyText(state.trial,'Code de salle',$('trialId'),'roomNotice');};
