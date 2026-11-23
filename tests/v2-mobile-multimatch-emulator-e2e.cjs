@@ -387,11 +387,24 @@ async function main(){
   await tab2.locator('#matchSelect').selectOption('dual99');
   await tab2.locator('#home').fill('5');
   await tab2.locator('#away').fill('3');
-  // L'ancien onglet tente d'envoyer 5–2 tandis que le second a sauvé 5–3.
-  await desktop.locator('#send').click();
-  await desktop.locator('#status.error').getByText('modifié dans un autre onglet',{exact:false}).waitFor();
-  await desktop.locator('#queue').getByText('0 en attente',{exact:false}).waitFor();
+  // MAJ100 : le PREMIER onglet tente de ressauver son ancien 5–2 alors
+  // que le second a enregistré 5–3. Sa nouvelle édition 5–1 doit rester
+  // affichée, sans remplacer le 5–3 dans le stockage partagé.
+  await tab2.locator('#draftNotice').getByText('Brouillon non envoyé',{exact:false}).waitFor();
+  await desktop.locator('#away').fill('1');
+  await desktop.locator('#draftNotice').getByText('Conflit entre onglets',{exact:false}).waitFor();
+  assert.equal(await desktop.locator('#away').inputValue(),'1','Stale tab retains its displayed value');
+  const stored=await tab2.evaluate(()=>{
+   const k=Object.keys(localStorage).find(x=>x.startsWith('MILFT_V2_MULTI_EMULATOR_DRAFT97_')&&x.includes('"dual99"'));
+   return k?JSON.parse(localStorage.getItem(k)):null;
+  });
+  assert.equal(stored.b,'3','Older tab cannot overwrite newer stored draft');
+  assert.equal(await desktop.locator('#send').isDisabled(),true,'Stale tab cannot send');
+  await desktop.locator('#restoreDraft').click();
+  assert.equal(await desktop.locator('#away').inputValue(),'3','Explicit reload chooses newer saved draft');
+  // Le dernier onglet envoie 5–3 ; aucun autre score concurrent n'est émis.
   await tab2.locator('#send').click();
+  await desktop.locator('#queue').getByText('0 en attente',{exact:false}).waitFor();
   await tab2.locator('#score').getByText('5 : 3').waitFor({timeout:20000});
   await env.withSecurityRulesDisabled(async ctx=>{
    remote=(await ctx.database(databaseURL).ref('v2Trials/'+room+'/matches').once('value')).val();

@@ -39,3 +39,22 @@ export function discardDraftIfSame(storage,scope,matchId,token){
  if(storage.getItem(k)!==null)throw Error('Suppression du brouillon non confirmée');
  return true;
 }
+
+export function draftStorageKey(scope,matchId){return key(scope,matchId);}
+// Le stockage local seul n'offre pas de compare-and-swap atomique entre onglets.
+// Exiger un verrou Web Locks exclusif ; en son absence, refuser plutôt que
+// risquer l'écrasement d'un brouillon saisi ailleurs.
+export async function withDraftLock(locks,scope,matchId,operation){
+ if(!locks||typeof locks.request!=='function')throw Error('Verrou inter-onglets indisponible : opération locale suspendue');
+ if(typeof operation!=='function')throw Error('Opération de brouillon invalide');
+ return locks.request('MILFT_V2_DRAFT100_'+key(scope,matchId),{mode:'exclusive'},operation);
+}
+export async function saveDraftIfCurrent(storage,locks,scope,matchId,expectedToken,data){
+ if(expectedToken!==null&&(typeof expectedToken!=='string'||!ID.test(expectedToken)))throw Error('Jeton antérieur invalide');
+ return withDraftLock(locks,scope,matchId,()=>{
+  const current=readDraft(storage,scope,matchId,data.format);
+  if((current?.token??null)!==expectedToken)return {status:'stale'};
+  saveDraft(storage,scope,matchId,data);
+  return {status:'saved'};
+ });
+}

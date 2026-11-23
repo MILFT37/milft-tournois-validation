@@ -2,21 +2,21 @@
 // Ce fichier et sa page ne sont pas déployés sur GitHub Pages. Aucune configuration Firebase réelle.
 import {firebaseConfig} from './multimatch-emulator-config-test-only.mjs';
 import {validScore,formatLabels} from './score-formats-emulator.mjs';
-import {readDraft,saveDraft,discardDraftIfSame} from './draft-multimatch-emulator.mjs';
+import {readDraft,draftStorageKey,saveDraftIfCurrent,withDraftLock,discardDraftIfSame} from './draft-multimatch-emulator.mjs';
 const $=id=>document.getElementById(id);
 const valid=/^[A-Za-z0-9][A-Za-z0-9_-]{0,79}$/;
 const uidValid=/^[A-Za-z0-9_-]{1,128}$/;
-const state={api:null,auth:null,db:null,user:null,outbox:null,scope:null,trial:null,role:null,match:null,unsubscribe:null,unsubscribeMember:null,deviceId:null,sending:false,enqueuing:false,roomGeneration:0,recoveryTimer:null,draftDirty:false,draftBaseVersion:null,selectedMatch:'demo',matches:{},draftToken:null,unsavedDraft:false,draftRevision:0};
+const state={api:null,auth:null,db:null,user:null,outbox:null,scope:null,trial:null,role:null,match:null,unsubscribe:null,unsubscribeMember:null,deviceId:null,sending:false,enqueuing:false,roomGeneration:0,recoveryTimer:null,draftDirty:false,draftBaseVersion:null,selectedMatch:'demo',matches:{},draftToken:null,unsavedDraft:false,draftRevision:0,draftSaving:false,draftStale:false};
 function status(msg,tone=''){const e=$('status');e.textContent=msg;e.className=tone;}
 function log(s){const e=$('log');e.textContent=(new Date().toLocaleTimeString('fr-FR')+' · '+s+'\n'+e.textContent).slice(0,3000)}
 function errorText(e){return String(e?.code||e?.message||e||'Erreur').slice(0,200)}
-function resetRoom(){state.roomGeneration++;clearTimeout(state.recoveryTimer);state.recoveryTimer=null;state.sending=false;state.enqueuing=false;state.unsubscribe?.();state.unsubscribe=null;state.unsubscribeMember?.();state.unsubscribeMember=null;state.trial=null;state.match=null;state.role=null;state.scope=null;state.outbox?.close();state.outbox=null;state.draftDirty=false;state.draftBaseVersion=null;state.draftToken=null;state.unsavedDraft=false;state.draftRevision=0;state.selectedMatch='demo';state.matches={};$('draftNotice').textContent='';$('matchSelect').replaceChildren();$('matchQueue').textContent='';$('score').textContent='— : —';$('version').textContent='Version distante inconnue';$('matchFormat').textContent='Format inconnu';$('home').value=0;$('away').value=0;$('demo').hidden=true;$('sharing').hidden=true;$('roomNotice').textContent='';$('inviteNotice').textContent='';$('conflicts').textContent='';$('copyConflicts').disabled=true;$('conflictNotice').textContent='';$('conflictFallback').value='';$('conflictFallback').hidden=true;}
+function resetRoom(){state.roomGeneration++;clearTimeout(state.recoveryTimer);state.recoveryTimer=null;state.sending=false;state.enqueuing=false;state.unsubscribe?.();state.unsubscribe=null;state.unsubscribeMember?.();state.unsubscribeMember=null;state.trial=null;state.match=null;state.role=null;state.scope=null;state.outbox?.close();state.outbox=null;state.draftDirty=false;state.draftBaseVersion=null;state.draftToken=null;state.unsavedDraft=false;state.draftRevision=0;state.draftSaving=false;state.draftStale=false;state.selectedMatch='demo';state.matches={};$('draftNotice').textContent='';$('matchSelect').replaceChildren();$('matchQueue').textContent='';$('score').textContent='— : —';$('version').textContent='Version distante inconnue';$('matchFormat').textContent='Format inconnu';$('home').value=0;$('away').value=0;$('demo').hidden=true;$('sharing').hidden=true;$('roomNotice').textContent='';$('inviteNotice').textContent='';$('conflicts').textContent='';$('copyConflicts').disabled=true;$('conflictNotice').textContent='';$('conflictFallback').value='';$('conflictFallback').hidden=true;}
 function updateUI(){
   $('rooms').hidden=!state.user;
   $('signIn').hidden=!!state.user;$('signOut').hidden=!state.user;
   $('who').value=state.user?.uid||'Non connecté';
   $('role').textContent=state.role==='admin'?'Propriétaire':state.role==='editor'?'Autorisé à saisir':state.role==='viewer'?'Lecture seule':'Non autorisé';
-  $('send').disabled=!['admin','editor'].includes(state.role)||!state.match||state.match.status!=='playing'||!formatLabels[state.match.format]||!state.outbox||state.sending||state.enqueuing;
+  $('send').disabled=!['admin','editor'].includes(state.role)||!state.match||state.match.status!=='playing'||!formatLabels[state.match.format]||!state.outbox||state.sending||state.enqueuing||state.draftSaving||state.draftStale;
   $('retry').disabled=!['admin','editor'].includes(state.role)||!state.outbox||state.sending;
   // Lecture seule : aucun score ne peut être édité même localement.
   $('home').readOnly=!['admin','editor'].includes(state.role);
@@ -28,6 +28,7 @@ function updateUI(){
   $('copyConflicts').disabled=!state.user||!state.scope||!state.outbox||!$('conflicts').textContent.trim();
   $('createMatch').disabled=state.role!=='admin'||!state.trial;
   $('matchSelect').disabled=!state.trial||!Object.keys(state.matches).length;
+  $('restoreDraft').hidden=!state.draftStale||!state.match;
 }
 function newId(){return Array.from(crypto.getRandomValues(new Uint8Array(12)),n=>n.toString(16).padStart(2,'0')).join('');}
 function trialLink(id){
@@ -61,15 +62,19 @@ function persistentDeviceId(){
   if(localStorage.getItem(DEVICE_KEY)!==value)throw Error('Stockage local V2 non fiable');
   return value;
 }
-// Chaque saisie non transmise est écrite SYNCHRONEMENT avant toute navigation.
-// Ne jamais effacer un brouillon sur simple réception Firebase, changement de salle
-// ou modification des droits. La clef contient la salle + l'UID + l'appareil + le match.
+// Chaque frappe marque immédiatement une saisie à protéger. Les écritures
+// entre deux onglets sont sérialisées sous Web Locks avec contrôle du jeton
+// antérieur. Une version concurrente est JAMAIS écrasée automatiquement.
 function showDraftNotice(){
  const el=$('draftNotice');
  if(!state.draftDirty||!state.match){el.textContent='';el.className='inline-status';return;}
+ if(state.draftStale){
+  el.textContent='Conflit entre onglets : un brouillon plus récent a été enregistré ailleurs. Votre saisie reste affichée, non envoyée. Copier les valeurs avant de choisir « Charger le dernier brouillon ».';
+  el.className='inline-status error';return;
+ }
  const stale=Number.isSafeInteger(state.draftBaseVersion)&&state.match.version!==state.draftBaseVersion;
  if(state.unsavedDraft){
-  el.textContent='ATTENTION : saisie non sauvegardée localement sur cet appareil. Rester sur ce match ou enregistrer dans la file locale.';
+  el.textContent='ATTENTION : saisie non sauvegardée localement sur cet appareil. Rester sur ce match ou réessayer après rétablissement du stockage.';
   el.className='inline-status error';return;
  }
  el.textContent='Brouillon non envoyé conservé sur cet appareil · match '+state.selectedMatch+
@@ -77,22 +82,61 @@ function showDraftNotice(){
   (stale?' · ATTENTION : le score distant a changé. Votre brouillon n’a pas été écrasé.':'');
  el.className='inline-status'+(stale?' error':'');
 }
+async function persistDraftChanges(){
+ if(state.draftSaving||state.draftStale||!state.scope||!state.match)return;
+ const scope=state.scope,mid=state.selectedMatch,generation=state.roomGeneration;
+ const same=()=>state.roomGeneration===generation&&state.scope===scope&&state.selectedMatch===mid;
+ state.draftSaving=true;updateUI();
+ try{
+  while(same()&&state.unsavedDraft&&!state.draftStale){
+   const revision=state.draftRevision;
+   const expected=state.draftToken;
+   const data={a:$('home').value,b:$('away').value,format:state.match.format,
+    baseVersion:state.draftBaseVersion,token:'draft'+newId()};
+   const result=await saveDraftIfCurrent(localStorage,navigator.locks,scope,mid,expected,data);
+   if(!same())return;
+   if(result.status==='stale'){
+    state.draftStale=true;state.unsavedDraft=true;
+    showDraftNotice();
+    status('Brouillon plus récent trouvé dans un autre onglet : votre saisie n’a pas été écrasée.','error');
+    return;
+   }
+   state.draftToken=data.token;
+   if(state.draftRevision===revision){
+    state.unsavedDraft=false;showDraftNotice();return;
+   }
+   // Nouvelle frappe pendant la sauvegarde : enregistrer la PLUS RECENTE
+   // avec comme version attendue celle que notre onglet vient de créer.
+  }
+ }catch(err){
+  if(same()){
+   state.unsavedDraft=true;showDraftNotice();
+   status('Attention : saisie NON sauvegardée localement : '+errorText(err)+'. Ne pas quitter cette page.','error');
+  }
+ }finally{
+  if(same()){state.draftSaving=false;updateUI();}
+ }
+}
 function persistInputDraft(){
  if(!state.scope||!state.match||!['admin','editor'].includes(state.role))return;
  if(!state.draftDirty){state.draftDirty=true;state.draftBaseVersion=state.match.version;}
  state.draftRevision++;
- state.unsavedDraft=true;state.draftToken=null;
- const data={a:$('home').value,b:$('away').value,format:state.match.format,
-  baseVersion:state.draftBaseVersion,token:'draft'+newId()};
+ state.unsavedDraft=true;
+ showDraftNotice();updateUI();
+ if(!state.draftStale)void persistDraftChanges();
+}
+function restoreLatestDraft(){
+ if(!state.draftStale||!state.scope||!state.match||state.draftSaving)return;
  try{
-  saveDraft(localStorage,state.scope,state.selectedMatch,data);
-  state.draftToken=data.token;
-  state.unsavedDraft=false;
-  showDraftNotice();
- }catch(e){
-  showDraftNotice();
-  status('Attention : saisie NON sauvegardée localement : '+errorText(e)+'. Ne pas quitter cette page.','error');
- }
+  const draft=readDraft(localStorage,state.scope,state.selectedMatch,state.match.format);
+  state.draftRevision++;state.draftStale=false;state.unsavedDraft=false;
+  state.draftDirty=!!draft;state.draftToken=draft?.token??null;
+  state.draftBaseVersion=draft?.baseVersion??null;
+  if(draft){$('home').value=draft.a;$('away').value=draft.b;}
+  else{const latest=state.match.sets?.['0'];$('home').value=latest?.a??0;$('away').value=latest?.b??0;}
+  showDraftNotice();updateUI();
+  status('Dernier brouillon enregistré sur cet appareil rechargé. Aucune transmission automatique.','good');
+ }catch(err){status('Restauration non confirmée, saisie inchangée : '+errorText(err),'error');}
 }
 function switchMatch(mid){
  if(mid!==state.selectedMatch&&state.unsavedDraft){
@@ -102,7 +146,7 @@ function switchMatch(mid){
  }
  state.draftRevision++;
  state.selectedMatch=mid;
- state.draftDirty=false;state.draftBaseVersion=null;state.draftToken=null;state.unsavedDraft=false;
+ state.draftDirty=false;state.draftBaseVersion=null;state.draftToken=null;state.unsavedDraft=false;state.draftStale=false;
  state.match=state.matches[mid]||null;
  syncScore();
  if(state.match&&state.scope){
@@ -112,7 +156,7 @@ function switchMatch(mid){
     $('home').value=draft.a;$('away').value=draft.b;
     state.draftDirty=true;state.draftBaseVersion=draft.baseVersion;
     state.draftToken=draft.token;
-    state.unsavedDraft=false;
+    state.unsavedDraft=false;state.draftStale=false;
    }
   }catch(e){
    status(errorText(e)+' ; aucune suppression automatique.','error');
@@ -456,33 +500,35 @@ async function sendScore(){
  const outbox=state.outbox,scope=state.scope,uid=state.user.uid,generation=state.roomGeneration;
  const sameRoom=()=>state.roomGeneration===generation&&state.outbox===outbox&&state.scope===scope&&state.user?.uid===uid;
  const matchId=state.selectedMatch,draftTokenAtSend=state.draftToken,revisionAtSend=state.draftRevision;
- // Un second onglet du même appareil peut avoir sauvegardé une nouvelle version
- // de ce brouillon. Le premier onglet ne doit PAS émettre sa copie périmée.
- if(draftTokenAtSend){
-  try{
-   const fresh=readDraft(localStorage,scope,matchId,state.match.format);
-   if(!fresh||fresh.token!==draftTokenAtSend){
-    status('Brouillon modifié dans un autre onglet : envoi annulé. Changer de match puis revenir pour charger la dernière version.','error');
-    return;
-   }
-  }catch(e){status('Contrôle du brouillon impossible : envoi bloqué. '+errorText(e),'error');return;}
- }
+ if(state.draftSaving||state.draftStale){status('Envoi bloqué : brouillon en cours de sauvegarde ou en conflit entre onglets.','error');return;}
  const command={...scope,id:'e'+newId(),matchId,type:'set.record',format:state.match.format,expectedVersion:state.draftDirty&&state.draftBaseVersion!==null?state.draftBaseVersion:state.match.version,setIndex:0,goals:{a,b}};
  state.enqueuing=true;updateUI();
  try{
-  const result=await outbox.enqueue(scope,command,Date.now(),{chainLocalScore:true});
-  if(!sameRoom())return; // Les événements confirmés restent dans leur file IndexedDB d'origine.
-  if(result.status!=='queued'&&result.status!=='duplicate'){status('Ajout local non confirmé : '+result.status,'error');return;}
-  // Acquittement de la mise EN FILE, pas de la confirmation Firebase.
-  // Si une nouvelle saisie du même match a eu lieu pendant l'await,
-  // son token diffère et son brouillon reste intact.
-  if(draftTokenAtSend){
-   try{
-    discardDraftIfSame(localStorage,scope,matchId,draftTokenAtSend);
-   }catch(e){status('Score dans la file, mais brouillon non nettoyé : '+errorText(e),'error');}
+  // Tenir le verrou pendant le contrôle du jeton ET la mise en file
+  // IndexedDB : aucun autre onglet ne peut intercaler une écriture.
+  let cleanupError=null;
+  const result=await withDraftLock(navigator.locks,scope,matchId,async()=>{
+   const current=readDraft(localStorage,scope,matchId,command.format);
+   if(draftTokenAtSend?current?.token!==draftTokenAtSend:!!current)return {status:'stale'};
+   const queued=await outbox.enqueue(scope,command,Date.now(),{chainLocalScore:true});
+   if(['queued','duplicate'].includes(queued.status)&&draftTokenAtSend){
+    try{discardDraftIfSame(localStorage,scope,matchId,draftTokenAtSend);}
+    catch(e){cleanupError=e;}
+   }
+   return queued;
+  });
+  if(!sameRoom())return;
+  if(result.status==='stale'){
+   state.draftStale=true;state.unsavedDraft=true;showDraftNotice();updateUI();
+   status('Brouillon modifié dans un autre onglet : envoi annulé et saisie conservée.','error');
+   return;
   }
+  if(result.status!=='queued'&&result.status!=='duplicate'){
+   status('Ajout local non confirmé : '+result.status,'error');return;
+  }
+  if(cleanupError)status('Score en file IndexedDB, mais brouillon local non nettoyé : '+errorText(cleanupError),'error');
   if(state.selectedMatch===matchId&&state.draftToken===draftTokenAtSend&&state.draftRevision===revisionAtSend){
-   state.draftDirty=false;state.draftBaseVersion=null;state.draftToken=null;state.unsavedDraft=false;
+   state.draftDirty=false;state.draftBaseVersion=null;state.draftToken=null;state.unsavedDraft=false;state.draftStale=false;
    showDraftNotice();
   }
   await refreshQueue();
@@ -563,6 +609,17 @@ async function initialize(){
  $('copyTrial').onclick=()=>{if(state.trial)void copyText(state.trial,'Code de salle',$('trialId'),'roomNotice');};
  $('copyLink').onclick=()=>{if(state.trial)void copyText(trialLink(state.trial),'Lien de partage',$('trialId'),'roomNotice');};
  $('copyConflicts').onclick=()=>{void copyConflictReport();};
+ $('restoreDraft').onclick=restoreLatestDraft;
+ window.addEventListener('storage',event=>{
+  if(!state.scope||!state.match||!state.draftDirty||event.storageArea!==localStorage)return;
+  if(event.key!==draftStorageKey(state.scope,state.selectedMatch))return;
+  try{
+   const current=readDraft(localStorage,state.scope,state.selectedMatch,state.match.format);
+   if((current?.token??null)!==state.draftToken){
+    state.draftStale=true;state.unsavedDraft=true;showDraftNotice();updateUI();
+   }
+  }catch(e){state.draftStale=true;state.unsavedDraft=true;showDraftNotice();updateUI();}
+ });
  $('create').onclick=createRoom;
  $('createMatch').onclick=createAdditionalMatch;
  $('matchSelect').onchange=()=>{switchMatch($('matchSelect').value);void refreshQueue();};

@@ -3,7 +3,7 @@
 // Test autonome sans connexion réseau ou Firebase.
 const assert=require('node:assert/strict');
 (async()=>{
- const {readDraft,saveDraft,discardDraftIfSame}=await import('../v2/draft-multimatch-emulator.mjs');
+ const {readDraft,saveDraft,discardDraftIfSame,saveDraftIfCurrent,withDraftLock}=await import('../v2/draft-multimatch-emulator.mjs');
  class FakeStorage{
   constructor(){this.values=new Map();this.failRead=false;this.failWrite=false;this.failRemove=false;}
   getItem(k){if(this.failRead)throw Error('storage read denied');return this.values.get(k)??null;}
@@ -41,5 +41,34 @@ const assert=require('node:assert/strict');
  store.setItem('MILFT_V2_MULTI_EMULATOR_DRAFT97_'+JSON.stringify([scope.tournamentId,scope.actorId,scope.deviceId,'matchC']),'{invalid');
  assert.throws(()=>readDraft(store,scope,'matchC','belle5'),/illisible/);
  assert.equal(store.values.size,1,'corrupted draft never erased implicitly');
+ // MAJ100 : verrou multi-onglets, CAS sur le jeton antérieur, refus si indisponible.
+ const tails=new Map();
+ const locks={request:(name,opts,operation)=>{
+  assert.equal(opts.mode,'exclusive');
+  const prior=tails.get(name)||Promise.resolve();
+  const job=prior.catch(()=>{}).then(operation);
+  tails.set(name,job.catch(()=>{}));
+  return job;
+ }};
+ assert.rejects(saveDraftIfCurrent(store,null,scope,'matchA',null,draft('fail')),/Verrou inter-onglets indisponible/);
+ const first=draft('draftInit','5','1');
+ assert.equal((await saveDraftIfCurrent(store,locks,scope,'matchA',null,first)).status,'saved');
+ const [a100,b100]=await Promise.all([
+  saveDraftIfCurrent(store,locks,scope,'matchA','draftInit',draft('draftTabA','5','2')),
+  saveDraftIfCurrent(store,locks,scope,'matchA','draftInit',draft('draftTabB','5','3'))
+ ]);
+ assert.deepEqual([a100.status,b100.status],['saved','stale'],'only first tab can replace expected token');
+ assert.equal(readDraft(store,scope,'matchA','belle5').token,'draftTabA');
+ assert.equal((await saveDraftIfCurrent(store,locks,scope,'matchA','draftTabA',draft('draftTabB','5','3'))).status,'saved');
+ let release;
+ const inLock=withDraftLock(locks,scope,'matchA',()=>new Promise(resolve=>{release=resolve;}));
+ // Wait until the holder actually enters the critical section.
+ await Promise.resolve();await Promise.resolve();await Promise.resolve();
+ const second=saveDraftIfCurrent(store,locks,scope,'matchA','draftTabB',draft('draftTabC'));
+ release('done');
+ assert.equal(await inLock,'done');
+ assert.equal((await second).status,'saved');
+ assert.equal(readDraft(store,scope,'matchA','belle5').token,'draftTabC');
+ assert.equal(discardDraftIfSame(store,scope,'matchA','draftTabB'),false,'Old receipt cannot clear newer token');
  console.log('OK MAJ98: draft scopes, denied storage, stale receipt, corrupted records and no unwanted deletion');
 })().catch(error=>{console.error(error);process.exitCode=1;});
