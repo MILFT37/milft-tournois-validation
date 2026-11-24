@@ -690,6 +690,52 @@ async function main(){
   assert.equal(lease105.confirmed,'confirmed');
   assert.equal(lease105.replay,'already-confirmed','Confirmed ID is idempotent');
   assert.equal(lease105.remaining,0,'Both independent matches completely acknowledged');
+  // MAJ106 : une commande en pause après échecs successifs ne doit
+  // bloquer ni un autre match, ni reprendre sans geste explicite.
+  const pause106=await samsung.evaluate(async()=>{
+   const scope={tournamentId:'trial106synthetic',actorId:'actor106',deviceId:'phone106'};
+   const outbox=await MILFTV2Outbox.open({indexedDB,dbName:'MILFT_V2_MULTIMATCH_EMULATOR_20261123'});
+   const mk=(id,mid,goals)=>({...scope,id,matchId:mid,type:'set.record',
+    format:'belle5',expectedVersion:0,setIndex:0,goals});
+   try{
+    await outbox.enqueue(scope,mk('evt106A','match106A',{a:5,b:3}),1000,{chainLocalScore:true});
+    await outbox.enqueue(scope,mk('evt106B','match106B',{a:6,b:4}),1001,{chainLocalScore:true});
+    const first=await outbox.claimNext(scope,{now:1100,leaseMs:1000});
+    const failure1=await outbox.finish(scope,first.command.id,first.leaseToken,'temporary-error',
+     {now:1110,retryAfterMs:2000,reason:'network error 1'});
+    const retryTooSoon=await outbox.claimNext(scope,{now:2000,leaseMs:1000});
+    const retry=await outbox.claimNext(scope,{now:3111,leaseMs:1000});
+    const failure2=await outbox.finish(scope,retry.command.id,retry.leaseToken,'temporary-error',
+     {now:3120,retryAfterMs:3000,reason:'network error 2'});
+    const other=await outbox.claimNext(scope,{now:4000,leaseMs:1000});
+    const otherDone=await outbox.finish(scope,other.command.id,other.leaseToken,'applied',{now:4001});
+    const repeated=await outbox.claimNext(scope,{now:6121,leaseMs:1000});
+    const paused=await outbox.finish(scope,repeated.command.id,repeated.leaseToken,'temporary-error',
+     {now:6130,reason:'too many transient errors',pauseRetry:true});
+    const cannotAutoResume=await outbox.claimNext(scope,{now:500000,leaseMs:1000});
+    const forced=await outbox.claimNext(scope,{now:500001,leaseMs:1000,ignoreRetryAt:true});
+    const confirmed=await outbox.finish(scope,forced.command.id,forced.leaseToken,'applied',{now:500002});
+    const result=await outbox.list(scope);
+    return {first:first.command.id,failure1,failure2,retryTooSoon,retry:retry?.command.id,
+     other:other?.command.id,otherDone:otherDone.status,repeated:repeated?.command.id,
+     paused,cannotAutoResume,forced:forced?.command.id,confirmed:confirmed.status,
+     remaining:result.length};
+   }finally{outbox.close();}
+  });
+  assert.equal(pause106.first,'evt106A');
+  assert.equal(pause106.failure1.retryAt,3110);
+  assert.equal(pause106.retryTooSoon?.command?.id,'evt106B','B continues during the first retry delay');
+  // The previous claim is held; after its lease expires B is reclaimable.
+  assert.equal(pause106.retry,'evt106A');
+  assert.equal(pause106.failure2.retryAt,6120);
+  assert.equal(pause106.other,'evt106B');
+  assert.equal(pause106.otherDone,'confirmed');
+  assert.equal(pause106.repeated,'evt106A');
+  assert.equal(pause106.paused.retryPaused,true);
+  assert.equal(pause106.cannotAutoResume,null,'Paused command must never retry itself');
+  assert.equal(pause106.forced,'evt106A','Explicit retry unlocks only the selected queue');
+  assert.equal(pause106.confirmed,'confirmed');
+  assert.equal(pause106.remaining,0,'No unfinished commands after explicit retry');
   // Vérifier aussi la saisie en lecture seule : les valeurs affichées
   // ne peuvent plus être modifiées tant que le propriétaire n'a pas
   // restauré le rôle éditeur (les autres brouillons locaux sont conservés).
