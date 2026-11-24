@@ -22,6 +22,18 @@ Ne modifier ni application V1.1, ni règles Firebase réelles/candidates, ni app
 
 ## Validation
 
-Attendre GitHub Actions SUCCESS avant clôture. Aucun déploiement autorisé.
+- Commit initial : `8414a7c9b93f2c5c94b3ad8fcff959925254e5f7`.
+- GitHub Actions `45375487196` : **SUCCESS**, Chromium et WebKit, job terminé.
+- Le test réel de la file couvre la transaction explicitement annulée, l'absence de score fantôme, la persistance d'une commande confirmée durablement, le refus de l'ancien bail et la confirmation indépendante de B.
+- La fermeture d'onglet après le bail a été testée. **La fermeture physique au milieu d'une transaction navigateur non contrôlable temporellement est approchée par un `abort()` explicite**, sans prétendre reproduire tous les crashs d'un appareil réel.
+
+## Clôture MAJ113 — 24 novembre 2026
+
+**MAJ113 VALIDÉE ET CLÔTURÉE SUR BANC HTTPS LOOPBACK SEULEMENT.**
+
+- Les règles Firebase, le prototype V2 et V1.1, les données du club et les archives Drive sont intacts.
+- Aucun serveur LAN réel ouvert, aucun appareil ni compte Google réel utilisé.
+- Le test physique Samsung/PC avec deux comptes Google distincts reste une étape distincte nécessitant autorisation spécifique.
+- **Action utilisateur : aucune.**
 
 **Action utilisateur : aucune.**
