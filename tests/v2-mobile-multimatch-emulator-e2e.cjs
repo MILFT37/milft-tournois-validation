@@ -643,6 +643,53 @@ async function main(){
   });
   assert.equal(remote.flap104A.version,2,'No duplicate on repeated empty reconnect: A');
   assert.equal(remote.flap104B.version,2,'No duplicate on repeated empty reconnect: B');
+  // MAJ105 : baux, retryAt, accusés périmés et reprise INDEPENDANTE
+  // de deux matchs, via la même IndexedDB du prototype multi-match.
+  // Portée 105 fictive, sans aucune opération Firebase réelle ni écran V1.1.
+  const lease105=await samsung.evaluate(async()=>{
+   const scope={tournamentId:'trial105synthetic',actorId:'actor105',deviceId:'phone105'};
+   const store=await MILFTV2Outbox.open({indexedDB,dbName:'MILFT_V2_MULTIMATCH_EMULATOR_20261123'});
+   const make=(id,mid,a,b)=>({...scope,id,matchId:mid,type:'set.record',
+    format:'belle5',expectedVersion:0,setIndex:0,goals:{a,b}});
+   try{
+    await store.enqueue(scope,make('evt105A','match105A',5,3),1000,{chainLocalScore:true});
+    await store.enqueue(scope,make('evt105B','match105B',6,4),1001,{chainLocalScore:true});
+    const first=await store.claimNext(scope,{now:1100,leaseMs:1000});
+    const deferred=await store.finish(scope,first.command.id,first.leaseToken,'temporary-error',
+     {now:1110,reason:'temporary disconnect',retryAfterMs:6000});
+    // A est temporisé jusqu'à 7110 : B ne doit pas attendre son délai.
+    const second=await store.claimNext(scope,{now:1200,leaseMs:1000});
+    const secondDone=await store.finish(scope,second.command.id,second.leaseToken,'applied',{now:1210});
+    const premature=await store.claimNext(scope,{now:7000,leaseMs:1000});
+    const resumed=await store.claimNext(scope,{now:7111,leaseMs:1000});
+    const unexpired=await store.claimNext(scope,{now:7300,leaseMs:1000});
+    // Le bail est expiré, l'autre onglet peut le réclamer.
+    const replacement=await store.claimNext(scope,{now:8112,leaseMs:1000});
+    const stale=await store.finish(scope,resumed.command.id,resumed.leaseToken,'applied',{now:8120});
+    const confirmed=await store.finish(scope,replacement.command.id,replacement.leaseToken,'applied',{now:8130});
+    const replay=await store.enqueue(scope,make('evt105A','match105A',5,3),8140,{chainLocalScore:true});
+    const remaining=await store.list(scope);
+    return {first:first?.command.id,deferred,second:second?.command.id,
+     secondDone:secondDone.status,premature,resumed:resumed?.command.id,
+     unexpired,replacement:replacement?.command.id,oldToken:resumed?.leaseToken,
+     newToken:replacement?.leaseToken,stale:stale.status,confirmed:confirmed.status,
+     replay:replay.status,remaining:remaining.length};
+   }finally{store.close();}
+  });
+  assert.equal(lease105.first,'evt105A');
+  assert.equal(lease105.deferred.status,'pending');
+  assert.equal(lease105.deferred.retryAt,7110);
+  assert.equal(lease105.second,'evt105B','Unrelated match B must progress while A waits');
+  assert.equal(lease105.secondDone,'confirmed');
+  assert.equal(lease105.premature,null,'A cannot bypass retryAt');
+  assert.equal(lease105.resumed,'evt105A','A resumes only after retry deadline');
+  assert.equal(lease105.unexpired,null,'Unexpired sending lease is exclusive');
+  assert.equal(lease105.replacement,'evt105A','Expired lease can be reclaimed');
+  assert.notEqual(lease105.oldToken,lease105.newToken,'Lease token must rotate');
+  assert.equal(lease105.stale,'stale-lease','Late acknowledgment cannot erase reclaimed command');
+  assert.equal(lease105.confirmed,'confirmed');
+  assert.equal(lease105.replay,'already-confirmed','Confirmed ID is idempotent');
+  assert.equal(lease105.remaining,0,'Both independent matches completely acknowledged');
   // Vérifier aussi la saisie en lecture seule : les valeurs affichées
   // ne peuvent plus être modifiées tant que le propriétaire n'a pas
   // restauré le rôle éditeur (les autres brouillons locaux sont conservés).
