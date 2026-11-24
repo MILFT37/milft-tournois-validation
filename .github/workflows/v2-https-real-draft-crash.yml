@@ -1,0 +1,33 @@
+name: V2.0 — MAJ112 brouillons et fermeture pendant verrou HTTPS (CI isolée)
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'tests/v2-https-real-draft-crash.cjs'
+      - 'docs/MILFT_TOURNOIS_MAJ112_CRASH_BROUILLON_HTTPS_2026-11-24.md'
+      - 'v2/draft-multimatch-emulator.mjs'
+      - '.github/workflows/v2-https-real-draft-crash.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  draft-crash:
+    runs-on: ubuntu-24.04
+    container:
+      image: mcr.microsoft.com/playwright:v1.56.1-noble
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Installer Playwright isolé
+        run: npm install --no-save playwright@1.56.1
+      - name: Tester le vrai module sous HTTPS loopback Chromium
+        run: |
+          node --check tests/v2-https-real-draft-crash.cjs
+          node tests/v2-https-real-draft-crash.cjs
+      - name: Tester le vrai module sous HTTPS loopback WebKit
+        env:
+          MILFT_BROWSER: webkit
+        run: node tests/v2-https-real-draft-crash.cjs
