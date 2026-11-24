@@ -38,4 +38,15 @@ Préparation documentaire et audit statique automatique uniquement. **Pas de con
 
 ## Validation GitHub Actions
 
-À compléter après le contrôle automatique. Ne pas déclarer ce plan opérationnel pour deux appareils physiques.
+- Commit de préparation `b28acbdfa6edd4c744b6147c24562ff4029ca982`.
+- GitHub Actions `45360212921` : **SUCCESS**. Audit hors réseau des exigences du plan, du loopback Firebase Emulator et de l'absence de publication multi-match via GitHub Pages.
+
+## Clôture MAJ109 — 24 novembre 2026
+
+**MAJ109 VALIDÉE ET CLÔTURÉE — PLAN / AUDIT SEULEMENT.**
+
+Aucun serveur HTTPS installé ni démarré. Aucun émulateur accessible depuis un autre appareil. Aucune connexion à des comptes Google réels. Aucun déploiement, aucune modification des règles Firebase, de V1.1, des données des championnats ou des archives Drive.
+
+**Suite :** la préparation documentaire et les contrôles non intrusifs sont terminés pour cette étape. Une mise en réseau véritable et un test sur appareil physique devront faire l'objet d'une autorisation ciblée ; ne pas les lancer automatiquement au titre du GO de développement autonome.
+
+**Action utilisateur actuelle : aucune.**
