@@ -1,0 +1,24 @@
+name: V2.0 — MAJ109 plan HTTPS LAN non activé (audit hors réseau)
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'docs/MILFT_TOURNOIS_MAJ109_PLAN_HTTPS_EPHEMERE_2026-11-24.md'
+      - 'tests/v2-lan-architecture-audit.cjs'
+      - '.github/workflows/v2-lan-architecture-audit.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  audit-plan:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Contrôler le plan et absence d'exposition réelle
+        run: |
+          node --check tests/v2-lan-architecture-audit.cjs
+          node tests/v2-lan-architecture-audit.cjs
