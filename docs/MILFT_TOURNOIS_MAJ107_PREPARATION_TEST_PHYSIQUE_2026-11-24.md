@@ -49,4 +49,21 @@
 
 Le script `tests/v2-physical-readiness-audit.cjs` et le workflow GitHub Actions `v2-physical-readiness-audit.yml` doivent contrôler les protections sans accès réseau externe, sans authentification réelle et sans relancer inutilement la campagne E2E déjà validée sur code inchangé.
 
-**Statut de clôture : à renseigner après SUCCESS de GitHub Actions.**
+## Vérifications GitHub Actions
+
+- Commit initial (protocole, audit et workflow séparé) : `e86946ca890a4603b73b4df5053644b3f27366c1`.
+- Exécution initiale `45359221814` : **FAILURE** d'une assertion documentaire sensible à la casse (« test non réalisé » / « Test physique non réalisé »). Les cinq contrôles de configuration et d'isolement précédents étaient déjà réussis.
+- Correction de l'assertion : commit `978583fe5b4b346ec197653a8b481f9c88162005`, sans changement applicatif ni de sécurité.
+- **Exécution finale `45359319728` : SUCCESS.** Contrôle des adresses loopback, modules test-only, identités émulées, absence du prototype multi-match dans GitHub Pages, absence de commandes de déploiement Firebase et présence des prérequis du test physique.
+
+## Clôture MAJ107 — 24 novembre 2026
+
+**MAJ107 VALIDÉE ET CLÔTURÉE : PRÉPARATION / AUDIT UNIQUEMENT.**
+
+Le test physique est **toujours non réalisé**. Un essai véritable nécessitera une étape ultérieure distincte de préparation de l'accès inter-appareils et, si un service hébergé est retenu, un **GO spécifique** avant publication ou changement de règles Firebase réelles. Aucun feu vert de ce type n'est présumé.
+
+Aucune donnée réelle, archive Google Drive, championnat ou version officielle V1.1 modifiée. Le projet Firebase Spark reste inchangé.
+
+**Suite technique possible sans intervention utilisateur :** concevoir/valider un harnais de test sur réseau local entièrement isolé avec deux navigateurs et deux identités de test, sans prétendre tester les comptes Google réels. Pour un essai physique authentique, demander l'autorisation spécifique au moment adéquat, et non pendant les étapes locales.
+
+**Action utilisateur actuelle : aucune.**
