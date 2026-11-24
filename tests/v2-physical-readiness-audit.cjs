@@ -60,7 +60,7 @@ check('Checklist physique créée avec autorisation préalable obligatoire',()=>
  const d=read('docs/MILFT_TOURNOIS_MAJ107_PREPARATION_TEST_PHYSIQUE_2026-11-24.md');
  for(const required of ['GO spécifique','deux comptes Google distincts',
   'compte invité','mode lecture seule','Firebase réel','V1.1','archives Drive',
-  'test non réalisé','séparé de la production']){
+  'Test physique non réalisé','séparé de la production']){
   assert(d.includes(required),'Physical test document missing: '+required);
  }
 });
