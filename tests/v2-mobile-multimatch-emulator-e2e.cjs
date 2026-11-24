@@ -576,6 +576,73 @@ async function main(){
   });
   assert.equal(remote.late103A.version,1);
   assert.equal(remote.late103B.version,1);
+  // MAJ104 : deux coupures successives sur les mêmes deux matchs.
+  // Chaque aller-retour hors-ligne / en-ligne transmet UNE SEULE fois
+  // chaque commande. Les réveils répétés ne créent aucune version fantôme.
+  for(const mid of ['flap104A','flap104B']){
+   await samsung.locator('#newMatch').fill(mid);
+   await samsung.locator('#newMatchFormat').selectOption('belle5');
+   await samsung.locator('#createMatch').click();
+   await samsung.locator('#matchSelect').locator('option[value="'+mid+'"]').waitFor({state:'attached'});
+   await desktop.locator('#matchSelect').locator('option[value="'+mid+'"]').waitFor({state:'attached'});
+  }
+  const flapRounds=[
+   [{mid:'flap104A',a:5,b:3},{mid:'flap104B',a:5,b:2}],
+   [{mid:'flap104A',a:6,b:4},{mid:'flap104B',a:7,b:5}]
+  ];
+  for(let round=0;round<flapRounds.length;round++){
+   const scores=flapRounds[round];
+   await phone.setOffline(true);
+   for(const {mid,a,b} of scores){
+    await samsung.locator('#matchSelect').selectOption(mid);
+    await samsung.locator('#home').fill(String(a));
+    await samsung.locator('#away').fill(String(b));
+    await samsung.locator('#send').click();
+    await samsung.locator('#matchQueue').getByText(mid+' : 1 en attente',{exact:false}).waitFor({timeout:20000});
+   }
+   await env.withSecurityRulesDisabled(async ctx=>{
+    remote=(await ctx.database(databaseURL).ref('v2Trials/'+room+'/matches').once('value')).val();
+   });
+   for(const {mid} of scores)assert.equal(remote[mid].version,round,'No writes while offline: '+mid);
+   await phone.setOffline(false);
+   for(const {mid,a,b} of scores){
+    await samsung.locator('#matchSelect').selectOption(mid);
+    await samsung.locator('#score').getByText(a+' : '+b).waitFor({timeout:25000});
+    await desktop.locator('#matchSelect').selectOption(mid);
+    await desktop.locator('#score').getByText(a+' : '+b).waitFor({timeout:25000});
+   }
+   // Ne pas se contenter du score affiché : attendre l'acquittement réel
+   // des deux commandes de cette génération dans la file IndexedDB.
+   await samsung.waitForFunction(async()=>{
+    const outbox=await MILFTV2Outbox.open({indexedDB,dbName:'MILFT_V2_MULTIMATCH_EMULATOR_20261123'});
+    try{
+     const scope={tournamentId:document.getElementById('trialId').value,
+      actorId:document.getElementById('who').value,
+      deviceId:localStorage.getItem('MILFT_V2_MULTI_EMULATOR_DEVICE_ID')};
+     const items=(await outbox.list(scope)).filter(x=>['flap104A','flap104B'].includes(x.command.matchId));
+     return !items.some(x=>['pending','sending','conflict','blocked'].includes(x.state));
+    }finally{outbox.close();}
+   },null,{timeout:25000});
+   await env.withSecurityRulesDisabled(async ctx=>{
+    remote=(await ctx.database(databaseURL).ref('v2Trials/'+room+'/matches').once('value')).val();
+   });
+   for(const {mid,a,b} of scores){
+    assert.equal(remote[mid].version,round+1,'Exactly one remote version per round: '+mid);
+    assert.deepEqual(remote[mid].sets['0'],{a,b},'Correct score for '+mid);
+    assert.equal(remote[mid].updatedBy,uidMobile,'Author remains Samsung for '+mid);
+   }
+  }
+  // Deux reconnexions sans nouvelle saisie ne doivent PAS rejouer les reçus.
+  for(let count=0;count<2;count++){
+   await phone.setOffline(true);
+   await phone.setOffline(false);
+   await samsung.evaluate(()=>{window.dispatchEvent(new Event('pageshow'));});
+  }
+  await env.withSecurityRulesDisabled(async ctx=>{
+   remote=(await ctx.database(databaseURL).ref('v2Trials/'+room+'/matches').once('value')).val();
+  });
+  assert.equal(remote.flap104A.version,2,'No duplicate on repeated empty reconnect: A');
+  assert.equal(remote.flap104B.version,2,'No duplicate on repeated empty reconnect: B');
   // Vérifier aussi la saisie en lecture seule : les valeurs affichées
   // ne peuvent plus être modifiées tant que le propriétaire n'a pas
   // restauré le rôle éditeur (les autres brouillons locaux sont conservés).
