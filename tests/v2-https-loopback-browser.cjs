@@ -118,6 +118,44 @@ async function main(){
    await a.evaluate(()=>window.release());
    await b.waitForFunction(()=>window.second===true);
    await Promise.all([a.evaluate(()=>window.held),b.evaluate(()=>window.queued)]);
+   // MAJ111 : un onglet détenteur disparaît avant de libérer son verrou.
+   // Le navigateur doit libérer le bail Web Locks et l'autre onglet doit
+   // pouvoir progresser, sans perdre les données locales persistantes.
+   const crashed=await first.newPage();
+   await crashed.goto(url);
+   await crashed.evaluate(()=>{
+    window.holding=false;
+    window.lockForever=navigator.locks.request('MILFT111_CRASH_LOCK',async()=>{
+     window.holding=true;
+     await new Promise(()=>{});
+    });
+   });
+   await crashed.waitForFunction(()=>window.holding===true);
+   await b.evaluate(()=>{
+    window.recovered=false;
+    window.afterCrash=navigator.locks.request('MILFT111_CRASH_LOCK',()=>{
+     window.recovered=true;
+    });
+   });
+   await b.waitForFunction(async()=>{
+    const q=await navigator.locks.query();
+    return q.pending.some(x=>x.name==='MILFT111_CRASH_LOCK');
+   });
+   assert.equal(await b.evaluate(()=>window.recovered),false,
+    'Second tab cannot pass while first holds crash lock');
+   await crashed.close();
+   await b.waitForFunction(()=>window.recovered===true,{timeout:15000});
+   await b.evaluate(()=>window.afterCrash);
+   assert.equal(await get(b),'5:3','IndexedDB survives closure of another tab');
+   assert.equal(await b.evaluate(()=>localStorage.getItem('MILFT110_LOCAL')),'one',
+    'localStorage survives closure of another tab');
+   await b.reload();
+   const stateAfterReload=await b.evaluate(()=>({
+    secure:isSecureContext,locks:typeof navigator.locks?.request==='function',
+    saved:localStorage.getItem('MILFT110_LOCAL')
+   }));
+   assert.deepEqual(stateAfterReload,{secure:true,locks:true,saved:'one'});
+   assert.equal(await get(b),'5:3','IndexedDB survives explicit reload');
    assert.equal(forbidden,0,'No external URLs may be fetched');
    console.log('OK MAJ110 '+flavor+': HTTPS réel loopback, TLS strict, Web Locks exclusifs, IndexedDB/localStorage isolés, aucun accès LAN/Firebase');
   }finally{await Promise.allSettled([first.close(),second.close()]);}
