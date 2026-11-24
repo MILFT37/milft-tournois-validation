@@ -1,0 +1,32 @@
+name: V2.0 — MAJ108 sécurité LAN HTTPS (test simulé, sans accès réel)
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'tests/v2-lan-preflight-browser.cjs'
+      - 'docs/MILFT_TOURNOIS_MAJ108_PREFLIGHT_LAN_SECURITE_2026-11-24.md'
+      - '.github/workflows/v2-lan-preflight.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  lan-preflight:
+    runs-on: ubuntu-24.04
+    container:
+      image: mcr.microsoft.com/playwright:v1.56.1-noble
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Installer navigateur de test isolé
+        run: npm install --no-save playwright@1.56.1
+      - name: Vérifier le précontrôle LAN et les exclusions de publication
+        run: |
+          node --check tests/v2-lan-preflight-browser.cjs
+          node tests/v2-lan-preflight-browser.cjs
+      - name: Refaire uniquement le précontrôle LAN sous WebKit
+        env:
+          MILFT_BROWSER: webkit
+        run: node tests/v2-lan-preflight-browser.cjs
