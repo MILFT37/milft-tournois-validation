@@ -22,6 +22,20 @@ V1.1 officielle, Firebase réel ou candidat, GitHub Pages, championnats et archi
 
 ## Vérifications GitHub Actions
 
-À consigner ici avant clôture : exécutions Chromium et WebKit, résultats, commits de correction le cas échéant.
+- Commit du banc d'essai : `5f642c70bcd4998d8081fc5c37ae0deab0610ff0`.
+- Workflow GitHub Actions `45372973886` : **SUCCESS**, y compris Chromium et WebKit.
+- Vérification HTTPS loopback, refus TLS du certificat autosigné en mode normal, contexte de sécurité, Web Locks exclusifs, partage de stockage entre onglets et séparation entre contextes, sans requête externe.
+
+## Clôture MAJ110 — 24 novembre 2026
+
+**MAJ110 VALIDÉE ET CLÔTURÉE — BANC HTTPS CI LOCAL UNIQUEMENT.**
+
+Le serveur et le certificat n'ont existé que dans l'exécution GitHub Actions, sur `127.0.0.1` et avec nettoyage automatique. Aucun appareil réel, service Firebase réel, serveur LAN ou compte Google n'a été utilisé.
+
+Les fichiers officiels V1.1, les règles Firebase, la production, les championnats et archives Drive restent intacts.
+
+**Reprise technique MAJ111 envisageable :** préparer des tests supplémentaires de résistance du transport HTTPS et des isolations multi-contextes sans activer de réseau LAN ni prétendre valider le test physique.
+
+**Action utilisateur : aucune.**
 
 **Action utilisateur : aucune.**
