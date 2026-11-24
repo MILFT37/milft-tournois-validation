@@ -21,4 +21,17 @@ Renforcer la preuve d'absence de doublons sur **deux matchs fictifs indépendant
 - **Action utilisateur : aucune.**
 
 ## GitHub Actions
-À compléter avec les commits et exécutions. Clôture uniquement après succès du parcours ciblé.
+- Commit initial : `b7fd16ef835ba4d29c02ea258f52b599b2cebdd0`.
+- GitHub Actions E2E `45357234373` : **SUCCESS** (workflow et job terminés avec succès le 24 novembre 2026).
+- Vérification Playwright : deux rounds complets de scores, deux matchs indépendants, vérification des acquittements IndexedDB, auteurs et versions distantes 1 puis 2 ; deux reconnexions supplémentaires sans score à envoyer n'ont généré aucune version supplémentaire.
+- Les tests précédemment acquis du même workflow ont été parcourus sans échec.
+
+## Clôture MAJ104 — 24 novembre 2026
+
+**MAJ104 VALIDÉE ET CLÔTURÉE SUR ÉMULATEURS UNIQUEMENT.**
+
+Aucune modification applicative, des règles candidates ou réelles Firebase, de la production V1.1, des championnats, des données réelles ou des archives Google Drive.
+
+**Prochaine étape MAJ105 :** vérifier les tentatives temporisées, les baux d'envoi et les confirmations périmées entre deux matchs indépendants, en privilégiant des tests ciblés des fonctions de file locale. Garder la sécurité anti-doublons et ne pas refaire de tests inutilement sur les fichiers inchangés.
+
+**Action utilisateur : aucune.**
