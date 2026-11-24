@@ -1,0 +1,30 @@
+name: V2.0 — MAJ107 audit préparation test physique (sans accès réel)
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'tests/v2-physical-readiness-audit.cjs'
+      - 'docs/MILFT_TOURNOIS_MAJ107_PREPARATION_TEST_PHYSIQUE_2026-11-24.md'
+      - 'firebase.v2.multimatch.emulator.json'
+      - 'v2/mobile-multimatch-emulator.mjs'
+      - 'tests/v2-mobile-multimatch-emulator-e2e.cjs'
+      - '.github/workflows/milft-pages-deploy.yml'
+      - '.github/workflows/v2-mobile-multimatch-emulator.yml'
+      - '.github/workflows/v2-multimatch-candidate.yml'
+      - '.github/workflows/v2-physical-readiness-audit.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  audit-sans-reseau:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Vérifier exclusivement les garde-fous du prototype
+        run: |
+          node --check tests/v2-physical-readiness-audit.cjs
+          node tests/v2-physical-readiness-audit.cjs
