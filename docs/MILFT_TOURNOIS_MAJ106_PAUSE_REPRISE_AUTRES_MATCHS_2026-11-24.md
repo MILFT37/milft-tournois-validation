@@ -18,4 +18,16 @@ Test de file locale uniquement, sans changement du code applicatif ni des règle
 **Action utilisateur : aucune.**
 
 ## GitHub Actions
-À contrôler avant toute clôture.
+- Premier commit du scénario : `7a8f2c2f6451de7cbe113f5cb879195bf6ff361f`.
+- Workflow E2E Firebase Emulator `45358035738` : **SUCCESS**, workflow et job terminés.
+- Les tests vérifient trois échecs temporaires sur A, les délais successifs, la confirmation indépendante de B, la pause de sécurité sur A, la non-reprise automatique malgré l'avancement de l'horloge, et la reprise explicite suivie d'une confirmation.
+
+## Clôture MAJ106 — 24 novembre 2026
+
+**MAJ106 VALIDÉE ET CLÔTURÉE SUR ÉMULATEURS UNIQUEMENT.**
+
+- Changements limités aux tests émulés et à ce document. Pas de déploiement GitHub Pages ni Firebase réel, pas de modification des règles candidates.
+- V1.1, tournois/championnats, données réelles et archives Drive intacts.
+- Test physique Samsung/PC avec deux comptes Google distincts encore à réaliser ultérieurement.
+- **Suite recommandée MAJ107** : documenter et tester les scénarios du test physique multi-appareils sur une salle dédiée, sans basculer sur Firebase réel sans GO spécifique.
+- **Aucune action utilisateur nécessaire.**
