@@ -1,0 +1,33 @@
+name: V2.0 — MAJ113 file IndexedDB sous HTTPS et fermeture onglet
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'tests/v2-https-outbox-transaction-recovery.cjs'
+      - 'docs/MILFT_TOURNOIS_MAJ113_REPRISE_FILE_INDEXEDDB_HTTPS_2026-11-24.md'
+      - 'v2/outbox-multimatch-emulator.js'
+      - '.github/workflows/v2-https-outbox-recovery.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  indexeddb-recovery:
+    runs-on: ubuntu-24.04
+    container:
+      image: mcr.microsoft.com/playwright:v1.56.1-noble
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Installer Playwright isolé
+        run: npm install --no-save playwright@1.56.1
+      - name: Tester transactions et reprise réelle Chromium
+        run: |
+          node --check tests/v2-https-outbox-transaction-recovery.cjs
+          node tests/v2-https-outbox-transaction-recovery.cjs
+      - name: Tester transactions et reprise réelle WebKit
+        env:
+          MILFT_BROWSER: webkit
+        run: node tests/v2-https-outbox-transaction-recovery.cjs
