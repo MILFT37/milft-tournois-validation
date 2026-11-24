@@ -35,3 +35,19 @@ La MAJ108 ne change ni le prototype multi-match existant ni le contenu de GitHub
 Deux tests navigateur **SUCCESS** (Chromium + WebKit) ; le dernier commit et les identifiants GitHub Actions seront enregistrés ici. Le test physique demeure en attente et nécessitera son **GO spécifique**.
 
 **Action utilisateur maintenant : aucune.**
+
+## Vérifications automatiques
+
+- Commit initial `56b7f184649dd2284ca713112d068c968546fa1d`.
+- Workflow GitHub Actions `45359982242` : **SUCCESS** (job terminé).
+- Précontrôles Chromium et WebKit réussis, sur un serveur strictement `127.0.0.1` et une origine IP privée **simulée** dont toutes les requêtes sont interceptées.
+- Le scénario ne démontre ni la confiance d'un certificat HTTPS sur un vrai téléphone ni la disponibilité de Web Locks sur Safari iPhone ; ces points restent à vérifier ultérieurement si nécessaires.
+
+## Clôture MAJ108 — 24 novembre 2026
+
+**MAJ108 VALIDÉE ET CLÔTURÉE : ÉTUDE / TEST ISOLÉ UNIQUEMENT.**
+
+- Le prototype multi-match, les configurations Firebase Emulator, les règles candidates ou réelles, GitHub Pages et la V1.1 n'ont pas été modifiés.
+- **Aucun serveur LAN réellement ouvert** et aucun appareil réel utilisé ; le véritable test physique reste non réalisé.
+- Suite recommandée : MAJ109 — préparation autonome d'un **plan de transport HTTPS éphémère**, analyse des choix techniques et tests d'isolation statiques, sans activation du serveur LAN ni du projet Firebase réel. Toute mise à disposition réelle nécessitera un GO dédié.
+- **Aucune action utilisateur nécessaire.**
