@@ -37,3 +37,7 @@ Ne modifier ni application V1.1, ni règles Firebase réelles/candidates, ni app
 - **Action utilisateur : aucune.**
 
 **Action utilisateur : aucune.**
+
+## Statut global V2 — précision importante
+
+La clôture de cette MAJ valide **uniquement le scénario IndexedDB/HTTPS isolé**. Elle ne valide **ni la préparation d'une candidate accessible au Samsung et au PC, ni les comptes Google réels, ni l'intégration à l'application officielle**. Voir le [tableau consolidé du vrai état de la V2](MILFT_TOURNOIS_V2_ETAT_REEL_PREPARATION_ET_INTEGRATION_2026-11-24.md) pour les travaux restants et leur ordre.
