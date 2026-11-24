@@ -19,4 +19,16 @@ Contrôler de manière ciblée les baux locaux de la file IndexedDB du prototype
 **Action utilisateur : aucune.**
 
 ## Vérification GitHub Actions
-En attente de vérification du workflow après commit. Ne pas clôturer sans succès.
+- Commit de test : `b05e633e147556fd791480138b5914f0c50ac960`.
+- Workflow E2E Firebase Emulator `45357702667` : **SUCCESS**, exécution et job terminés le 24 novembre 2026.
+- Les assertions couvrent le délai `retryAt`, la progression du match B pendant la temporisation de A, la non-reprise d'un bail actif, la rotation du jeton après expiration, le refus de l'ancien acquittement `stale-lease`, la confirmation et le reçu idempotent `already-confirmed`.
+
+## Clôture MAJ105 — 24 novembre 2026
+
+**MAJ105 VALIDÉE ET CLÔTURÉE SUR ÉMULATEURS UNIQUEMENT.**
+
+- Aucun code applicatif changé ; ajout de vérifications et de cette documentation uniquement.
+- Aucun déploiement Firebase réel ou GitHub Pages ; V1.1, données, championnats et archives Google Drive intacts.
+- Test physique deux appareils / deux comptes Google toujours à effectuer ultérieurement.
+- **Prochaine MAJ106 envisagée :** tester les délais répétés et les pauses après échecs temporaires pour garantir que les autres matchs continuent de progresser.
+- **Action utilisateur : aucune.**
