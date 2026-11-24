@@ -1,0 +1,32 @@
+name: V2.0 — MAJ110 HTTPS loopback et stockage isolé (sans Firebase réel)
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'tests/v2-https-loopback-browser.cjs'
+      - 'docs/MILFT_TOURNOIS_MAJ110_HTTPS_LOOPBACK_SECURITE_2026-11-24.md'
+      - '.github/workflows/v2-https-loopback.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  https-loopback:
+    runs-on: ubuntu-24.04
+    container:
+      image: mcr.microsoft.com/playwright:v1.56.1-noble
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Installer Playwright
+        run: npm install --no-save playwright@1.56.1
+      - name: Vérifier HTTPS TLS Web Locks et stockage sous Chromium
+        run: |
+          node --check tests/v2-https-loopback-browser.cjs
+          node tests/v2-https-loopback-browser.cjs
+      - name: Vérifier HTTPS TLS Web Locks et stockage sous WebKit
+        env:
+          MILFT_BROWSER: webkit
+        run: node tests/v2-https-loopback-browser.cjs
