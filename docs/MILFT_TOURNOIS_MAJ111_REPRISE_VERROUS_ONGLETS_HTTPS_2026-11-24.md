@@ -20,6 +20,18 @@ Cette simulation vérifie uniquement la sémantique des verrous et du stockage d
 
 ## Tests GitHub Actions
 
-À consigner après succès.
+- Commit du scénario : `6be48b23799d57d5e2ca08354653bc2488956ffc`.
+- GitHub Actions `45373214021` : **SUCCESS**, Chromium et WebKit.
+- Vérification : le second onglet attend effectivement un verrou Web Locks exclusif ; après fermeture brutale de l'onglet titulaire, il reprend et conserve ses données IndexedDB et localStorage, y compris après son propre rechargement.
+
+## Clôture MAJ111 — 24 novembre 2026
+
+**MAJ111 VALIDÉE ET CLÔTURÉE SUR LE BANC HTTPS LOOPBACK SEULEMENT.**
+
+Le prototype applicatif V2, les règles Firebase candidates et réelles, les fichiers de production V1.1, les championnats et archives Drive sont inchangés. Aucun serveur LAN ni appareil réel n'a été utilisé.
+
+**Reste à autoriser ultérieurement :** test physique Samsung/PC sur un véritable réseau et, séparément, vérification de deux comptes Google authentiques.
+
+**Action utilisateur : aucune à ce stade.**
 
 **Action utilisateur : aucune.**
