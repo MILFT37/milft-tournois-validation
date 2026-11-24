@@ -22,6 +22,18 @@ Tester le **véritable module V2 des brouillons** `v2/draft-multimatch-emulator.
 
 ## GitHub Actions
 
-À documenter avant clôture (Chromium et WebKit). Ne pas prétendre valider le test physique.
+- Commit initial : `c35b35e2d0758387abb4ac8b5a76cce4c159f208`.
+- GitHub Actions `45375171747` : **SUCCESS**, Chromium et WebKit, les deux vérifications et le job réussis.
+- Cas validés : module réel des brouillons, onglet fermé avant de sauvegarder sous un verrou Web Locks, autre match indépendant, réouverture avec dernière version durable, rejet de jeton ancien et des suppressions obsolètes.
+
+## Clôture MAJ112 — 24 novembre 2026
+
+**MAJ112 VALIDÉE ET CLÔTURÉE SUR BANC HTTPS LOOPBACK UNIQUEMENT.**
+
+Aucun code applicatif V2 ou V1.1 modifié, aucune règle Firebase candidate ou réelle changée, aucune archive Drive ou donnée réelle touchée. Le test physique Samsung/PC avec deux comptes Google authentiques demeure non réalisé et nécessitera son autorisation spécifique.
+
+**Prochaine priorité technique MAJ113 :** ajouter un scénario de reprise après fermeture *pendant* la sauvegarde IndexedDB (file de scores), en testant une confirmation durable versus une transaction interrompue, sans serveur LAN.
+
+**Action utilisateur : aucune.**
 
 **Action utilisateur : aucune.**
